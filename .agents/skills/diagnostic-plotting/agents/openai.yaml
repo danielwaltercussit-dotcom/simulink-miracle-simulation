@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnostic Plotting"
+  short_description: "Export simulation diagnostics and figure manifests"
+  default_prompt: "Use $diagnostic-plotting to export diagnostic figures, metrics, and a figure manifest for this Simulink run."
