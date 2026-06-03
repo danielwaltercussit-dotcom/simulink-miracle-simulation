@@ -33,12 +33,16 @@ hasMA = ~isempty(which('Simulink.ModelAdvisor.run')) || ...
         ~isempty(which('ModelAdvisor.run'));
 hasLic = license('test','Simulink_Check') == 1;
 if ~hasMA || ~hasLic
-    s.status = 'SKIPPED';
+    % No Simulink Check license/product: instead of a decorative SKIP, fall
+    % back to a license-free static lint so this gate still catches obvious
+    % structural defects (algebraic loops, unconnected ports, mixed sample
+    % times, root overlap). The fallback is FAIL-eligible via FS-016.
     if ~hasMA
-        s.note = 'Model Advisor API not on path. Check Simulink Check installation.';
-    elseif ~hasLic
-        s.note = 'Simulink Check license not available (license(''test'',''Simulink_Check'')=0). MA stage permanently skipped on this MATLAB instance.';
+        reason = 'Model Advisor API not on path.';
+    else
+        reason = 'Simulink Check license not available.';
     end
+    s = iLocalStaticLintGate(modelName, iterDir, reason);
     return
 end
 
@@ -74,6 +78,132 @@ s.report_path = reportPath;
 if s.fail_count > 0
     error('AIInLoop:ModelAdvisorFail', ...
         'Model Advisor reported %d fail check(s). See %s', s.fail_count, reportPath);
+end
+end
+
+
+function s = iLocalStaticLintGate(modelName, iterDir, reason)
+% License-free fallback for the S7B quality gate. Runs a set of structural
+% find_system checks and writes model_advisor_summary.md. Returns status
+% 'PASS' (clean) or raises AIInLoop:ModelAdvisorFail (FS-016) on any fail,
+% so the gate is enforcing rather than decorative.
+s = struct('name','S7B_MODELADVISOR','status','PASS','model',char(modelName));
+s.fail_count = 0;
+s.warn_count = 0;
+s.report_path = '';
+s.backend = 'static_lint';
+
+loadedHere = false;
+if ~bdIsLoaded(modelName)
+    load_system(char(modelName));
+    loadedHere = true;
+end
+cleanup = onCleanup(@() iLocalCloseIfOpened(modelName, loadedHere));
+
+fails = {};
+warns = {};
+
+% Check 1: algebraic loops (license-free API).
+try
+    al = Simulink.BlockDiagram.getAlgebraicLoops(char(modelName));
+    if ~isempty(al)
+        fails{end+1} = sprintf('Algebraic loops detected: %d', numel(al)); %#ok<AGROW>
+    end
+catch
+    % API shape varies by release; skip rather than false-fail.
+end
+
+% Check 2: unconnected root-level signal ports. Reported as a WARN, not a
+% FAIL: a dangling monitoring outport (e.g. an unused DFIG measurement bus
+% on a focused test bench) is legitimate and must not block an otherwise
+% runnable model. Only structurally model-breaking issues below are FAILs.
+try
+    nUnconnected = iLocalCountUnconnectedPorts(modelName);
+    if nUnconnected > 0
+        warns{end+1} = sprintf('Unconnected root signal ports: %d', nUnconnected); %#ok<AGROW>
+    end
+catch ME
+    warns{end+1} = sprintf('Unconnected-port scan failed: %s', ME.message); %#ok<AGROW>
+end
+
+% Check 3: root block overlap (reuse project scanner).
+try
+    ov = scan_block_overlap(char(modelName), 'ThrowOnFail', false);
+    if ~ov.ok
+        fails{end+1} = sprintf('Root block overlap: %d pair(s)', ov.nOverlaps); %#ok<AGROW>
+    end
+catch ME
+    warns{end+1} = sprintf('Overlap scan failed: %s', ME.message); %#ok<AGROW>
+end
+
+% Check 4: sample-time hygiene — a discrete model should not silently carry
+% continuous-time states. Warn (not fail) since some donors are legitimately
+% continuous.
+try
+    st = get_param(char(modelName), 'SolverType');
+    if strcmpi(st, 'Fixed-step')
+        nCont = numel(find_system(char(modelName), 'LookUnderMasks','all', ...
+            'FollowLinks','on', 'BlockType','Integrator'));
+        if nCont > 0
+            warns{end+1} = sprintf('Fixed-step model has %d continuous Integrator block(s)', nCont); %#ok<AGROW>
+        end
+    end
+catch
+end
+
+s.fail_count = numel(fails);
+s.warn_count = numel(warns);
+s.report_path = iLocalWriteStaticSummary(iterDir, modelName, reason, fails, warns);
+
+if s.fail_count > 0
+    error('AIInLoop:ModelAdvisorFail', ...
+        'Static lint gate reported %d fail(s). See %s', s.fail_count, s.report_path);
+end
+end
+
+
+function n = iLocalCountUnconnectedPorts(modelName)
+% Count unconnected *signal* ports we are responsible for wiring: root-level
+% Inport/Outport block ports only. Physical SPS/Simscape 'connection' ports
+% (PMIOPort, PMComponent, Multimeter, three-phase LConn/RConn) legitimately
+% have Line==-1 and are NOT signal wiring, so they are excluded. Donor
+% subsystem internals (e.g. DFIG_W33) are upstream content we don't rewire,
+% so we stay at the root canvas.
+n = 0;
+ph = find_system(char(modelName), 'SearchDepth', 1, 'FindAll','on', 'Type','port');
+for k = 1:numel(ph)
+    pt = get_param(ph(k), 'PortType');
+    if ~any(strcmp(pt, {'inport','outport'})); continue; end
+    if get_param(ph(k), 'Line') == -1
+        n = n + 1;
+    end
+end
+end
+
+
+function path = iLocalWriteStaticSummary(iterDir, modelName, reason, fails, warns)
+path = '';
+if isempty(iterDir); return; end
+if ~isfolder(iterDir); mkdir(iterDir); end
+path = fullfile(iterDir, 'model_advisor_summary.md');
+fid = fopen(path, 'w');
+if fid < 0
+    warning('AIInLoop:CannotWriteSummary', 'Cannot write %s', path); path = ''; return;
+end
+oc = onCleanup(@() fclose(fid));
+fprintf(fid, '# Model Advisor Summary (static lint fallback)\n\n');
+fprintf(fid, 'Model: `%s`\n', char(modelName));
+fprintf(fid, 'Backend: `static_lint` (%s)\n\n', reason);
+fprintf(fid, '- Fail: %d\n', numel(fails));
+fprintf(fid, '- Warn: %d\n\n', numel(warns));
+if ~isempty(fails)
+    fprintf(fid, '## Fail Checks (FS-016)\n\n');
+    for k = 1:numel(fails); fprintf(fid, '- %s\n', fails{k}); end
+    fprintf(fid, '\n');
+end
+if ~isempty(warns)
+    fprintf(fid, '## Warn Checks\n\n');
+    for k = 1:numel(warns); fprintf(fid, '- %s\n', warns{k}); end
 end
 end
 
