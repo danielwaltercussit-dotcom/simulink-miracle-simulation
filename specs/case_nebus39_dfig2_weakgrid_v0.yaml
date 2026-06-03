@@ -1,0 +1,48 @@
+system:
+  name: nebus39_dfig2_weakgrid_v0
+  base_mva: 100
+  frequency_hz: 50
+  stop_time: 5.0
+  solver: FixedStepDiscrete
+  sample_time: 5e-5
+  modeling_level: multi_unit_weak_grid_closed_loop_tuning_bench
+  parent_models:
+    sg_top: SGbyhjq.slx
+    dfig_donor: ieee39_10m39bus_sg5_dfig5_nebus_layout.slx  # W33 reused twice
+    derivation_predecessor:
+      - nebus39_dfig2_v0          # parallel topology
+      - nebus39_dfig_weakgrid_v0  # weak grid + PLL test pattern
+  derivation_strategy: |
+    Combines the parallel-DFIG topology of nebus39_dfig2_v0 with the
+    weak-grid (SCR=2.5) configuration of nebus39_dfig_weakgrid_v0 to test
+    multi-unit closed-loop tuning. DFIG_W33_a is intentionally given an
+    unstable PLL setting; DFIG_W33_b is at M01 default. The tuning stage
+    must (a) detect oscillation, (b) find the right unit's knob via the
+    multi-knob registry, (c) detune only that one.
+
+topology:
+  source:
+    type: Three-Phase Programmable Voltage Source
+    base_kv: 13.8
+    fault_injection: { enabled: true, mode: amplitude_step, t_start_s: 0.5, t_end_s: 0.7, amplitude_pu_during_fault: 0.5 }
+  weak_tie_line: { R_pu: 0.05, L_pu: 0.40 }
+  unit_a:
+    name: DFIG_W33_a
+    pll_initial:
+      ParK: [15, 9.6, 3, 150]
+      note: 3x M01 default — drives 15 Hz PLL-grid oscillation under SCR≈2.5
+  unit_b:
+    name: DFIG_W33_b
+    pll_initial:
+      ParK: [5, 3.2, 1, 50]
+      note: M01 default — should remain stable on its own
+
+convergence_targets:
+  smoke: { duration_s: 0.005, no_nan: true }
+  steady_state: { duration_s: 5.0, voltage_band_pu: [0.94, 1.06] }
+  oscillation_damping: { I_osc_growth_max: 1.05 }
+  fault_recovery: { recovery_window_s: 1.0 }
+
+notes:
+  - Two PLL knobs registered: pll_a, pll_b. Loop must touch the right one.
+  - Same fault scenario as v0 / weakgrid_v0 for comparability.

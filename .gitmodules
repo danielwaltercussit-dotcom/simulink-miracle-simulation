@@ -1,0 +1,45 @@
+[submodule "external/simulink-agentic-toolkit"]
+	path = external/simulink-agentic-toolkit
+	url = https://github.com/matlab/simulink-agentic-toolkit.git
+[submodule "external/simulink-skills"]
+	path = external/simulink-skills
+	url = https://github.com/simulink/skills.git
+[submodule "external/matlab-agentic-toolkit"]
+	path = external/matlab-agentic-toolkit
+	url = https://gh-proxy.com/https://github.com/matlab/matlab-agentic-toolkit
+[submodule "external/Matsim"]
+	path = external/Matsim
+	url = https://github.com/gave92/Matsim.git
+[submodule "external/github/huanhyougo-matlab-power-electronics-skill"]
+	path = external/github/huanhyougo-matlab-power-electronics-skill
+	url = https://github.com/huanhyougo/matlab-power-electronics-skill.git
+[submodule "external/github/mathworks-ci-verify"]
+	path = external/github/mathworks-ci-verify
+	url = https://gh-proxy.com/https://github.com/mathworks/Continuous-Integration-Verification-Simulink-Models
+[submodule "external/github/matlab-actions-run-tests"]
+	path = external/github/matlab-actions-run-tests
+	url = https://gh-proxy.com/https://github.com/matlab-actions/run-tests
+[submodule "external/github/matlab-agent-skills-playground"]
+	path = external/github/matlab-agent-skills-playground
+	url = https://github.com/matlab/agent-skills-playground.git
+[submodule "external/github/McSCert-Auto-Layout"]
+	path = external/github/McSCert-Auto-Layout
+	url = https://github.com/McSCert/Auto-Layout.git
+[submodule "external/github/McSCert-Simulink-Utility"]
+	path = external/github/McSCert-Simulink-Utility
+	url = https://github.com/McSCert/Simulink-Utility.git
+[submodule "external/github/npuzsy-simulink-power-electronics"]
+	path = external/github/npuzsy-simulink-power-electronics
+	url = https://github.com/npuzsy/simulink-power-electronics.git
+[submodule "external/github/obra-superpowers"]
+	path = external/github/obra-superpowers
+	url = https://gh-proxy.com/https://github.com/obra/superpowers
+[submodule "external/github/pwrsys-matlab"]
+	path = external/github/pwrsys-matlab
+	url = https://github.com/efantnu/pwrsys-matlab.git
+[submodule "external/github/Simscape_Electrical_Support_Library"]
+	path = external/github/Simscape_Electrical_Support_Library
+	url = https://github.com/mathworks/Simscape_Electrical_Support_Library.git
+[submodule "external/github/simulink-skills-upstream"]
+	path = external/github/simulink-skills-upstream
+	url = https://github.com/simulink/skills.git

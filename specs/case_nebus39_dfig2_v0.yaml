@@ -1,0 +1,81 @@
+system:
+  name: nebus39_dfig2_v0
+  base_mva: 100
+  frequency_hz: 50
+  stop_time: 5.0
+  solver: FixedStepDiscrete
+  sample_time: 5e-5
+  modeling_level: derived_from_nebus39_dfig1_v0_two_unit_parallel
+  parent_models:
+    sg_top: SGbyhjq.slx
+    dfig_donor: ieee39_10m39bus_sg5_dfig5_nebus_layout.slx  # W33 reused twice
+    derivation_predecessor: nebus39_dfig1_v0
+  derivation_strategy: |
+    Second derivation built from the same cookbook as nebus39_dfig1_v0
+    (simulink-modeling-assistant/references/derivation-cookbook.md). Two
+    copies of W33 DFIG (DFIG_W33_a, DFIG_W33_b) each with its own 10 MVA
+    13.8/0.575 kV step-up transformer (T1, T2), paralleled at the 13.8 kV
+    bus that is fed by the programmable source through a series tie line.
+    Same fault scenario as nebus39_dfig1_v0 to make results comparable.
+
+topology:
+  source:
+    type: Three-Phase Programmable Voltage Source
+    base_kv: 13.8
+    fault_injection:
+      enabled: true
+      mode: amplitude_step
+      t_start_s: 0.5
+      t_end_s: 0.7
+      amplitude_pu_during_fault: 0.5
+  tie_line:
+    type: Three-Phase Series RLC Branch
+    R_pu: 0.001
+    L_pu: 0.05
+  unit_a:
+    step_up_transformer:
+      type: Three-Phase Transformer (Two Windings)
+      rating_mva: 10
+      kv_primary: 13.8
+      kv_secondary: 0.575
+    generator:
+      type: DFIG (W33 from baseline, copy a)
+      rating_mva: 9
+      voltage_v: 575
+      wind_speed_m_s: 14
+      qref_pu: 0.0
+  unit_b:
+    step_up_transformer:
+      type: Three-Phase Transformer (Two Windings)
+      rating_mva: 10
+      kv_primary: 13.8
+      kv_secondary: 0.575
+    generator:
+      type: DFIG (W33 from baseline, copy b)
+      rating_mva: 9
+      voltage_v: 575
+      wind_speed_m_s: 14
+      qref_pu: 0.0
+  ground: Ground (one per unit, on 0.575 kV side)
+
+convergence_targets:
+  smoke:
+    duration_s: 0.005
+    no_nan: true
+  steady_state:
+    duration_s: 5.0
+    no_nan: true
+    voltage_band_pu: [0.94, 1.06]
+  fault_recovery:
+    fault_window_s: [0.5, 0.7]
+    recovery_window_s: 1.0
+    post_recovery_voltage_band_pu: [0.94, 1.06]
+
+notes:
+  - Cookbook regression test (2nd derivation). Reuses InitFcn self-containment
+    (FS-018), no-overlap self-check (FS-005), introspected mask names (FS-017).
+  - Expected outcome: same fast path as v0 — 5 s sim PASS first try, no
+    iteration needed, S6 converges with default M01 parameters.
+  - Comparison metric vs v0: total apparent power doubled to 2x9 = 18 MVA;
+    each unit should still see |V|=1.0 pu steady, fault depth 0.5 pu,
+    recovery <100 ms.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Device Adapters"
+  short_description: "Standardize device template and adapter contracts"
+  default_prompt: "Use $simulink-device-adapters to inspect and standardize the adapter contract for this derived Simulink power-system model."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scenario Fault Library"
+  short_description: "Reusable fault and stress scenarios for model validation"
+  default_prompt: "Use $scenario-fault-library to choose and generate a reusable fault scenario patch for this Simulink power-system model."

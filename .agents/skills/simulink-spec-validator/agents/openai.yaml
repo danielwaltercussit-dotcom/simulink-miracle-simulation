@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Spec Validator"
+  short_description: "Validate power-system model specs before build"
+  default_prompt: "Use $simulink-spec-validator to validate this Simulink power-system model spec before building."

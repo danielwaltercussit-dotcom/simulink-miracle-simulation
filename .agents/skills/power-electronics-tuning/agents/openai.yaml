@@ -1,0 +1,4 @@
+interface:
+  display_name: "Power Electronics Tuning"
+  short_description: "Tune converter controls with bounded registry rules"
+  default_prompt: "Use $power-electronics-tuning to inspect and improve the tuning registry for this Simulink power-electronics model."

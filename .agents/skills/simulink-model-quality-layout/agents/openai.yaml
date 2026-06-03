@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Model Quality Layout"
+  short_description: "Audit Simulink layout quality beyond overlap"
+  default_prompt: "Use $simulink-model-quality-layout to audit this derived Simulink model's layout, Goto/From policy, logging surface, and oracle/reference hygiene."

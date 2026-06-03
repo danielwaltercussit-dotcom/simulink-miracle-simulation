@@ -1,0 +1,3 @@
+display_name: Power Electronics Libraries
+short_description: Use GitHub power electronics libraries.
+default_prompt: Use this skill when selecting or integrating MATLAB/Simulink components for converter-interfaced power systems.

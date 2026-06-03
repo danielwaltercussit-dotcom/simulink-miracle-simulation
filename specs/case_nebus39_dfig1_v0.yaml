@@ -1,0 +1,69 @@
+system:
+  name: nebus39_dfig1_v0
+  base_mva: 100
+  frequency_hz: 50
+  stop_time: 5.0
+  solver: FixedStepDiscrete
+  sample_time: 5e-5
+  modeling_level: derived_from_baseline_w33_under_m07_top
+  parent_models:
+    sg_top: SGbyhjq.slx           # M07 — single-machine NEBUS top template
+    dfig_donor: ieee39_10m39bus_sg5_dfig5_nebus_layout.slx  # baseline — donor of W33
+  derivation_strategy: |
+    Build a single-DFIG benchmark by copying W33 (Asynchronous-Machine-based
+    DFIG with full controls) from the project baseline into a new model that
+    reuses the M07 top-level scaffolding (programmable voltage source,
+    series RLC, ground, powergui). Replace the M07 G2 synchronous machine
+    with the W33 DFIG. The DFIG is a 9 MVA / 575 V machine, so a 575 V/13.8 kV
+    step-up transformer is inserted between W33 and the NEBUS RLC tie line.
+
+topology:
+  source:
+    type: Three-Phase Programmable Voltage Source
+    base_kv: 13.8
+    fault_injection:
+      enabled: true
+      mode: amplitude_step
+      t_start_s: 0.5
+      t_end_s: 0.7
+      amplitude_pu_during_fault: 0.5
+  tie_line:
+    type: Three-Phase Series RLC Branch
+    R_pu: 0.001
+    L_pu: 0.05
+  step_up_transformer:
+    type: Three-Phase Transformer (Two Windings)
+    rating_mva: 10
+    kv_primary: 13.8
+    kv_secondary: 0.575
+    Z_pu_pos: [0.001, 0.05]
+  generator:
+    type: DFIG (W33 from baseline)
+    rating_mva: 9
+    voltage_v: 575
+    wind_speed_m_s: 14
+    qref_pu: 0.0
+  ground:
+    type: Ground
+
+convergence_targets:
+  smoke:
+    duration_s: 0.005
+    no_nan: true
+  steady_state:
+    duration_s: 5.0
+    no_nan: true
+    voltage_band_pu: [0.94, 1.06]
+    no_loss_of_synchronism: true
+  fault_recovery:
+    fault_window_s: [0.5, 0.7]
+    recovery_window_s: 1.0
+    post_recovery_voltage_band_pu: [0.94, 1.06]
+
+notes:
+  - First derived model that exercises the full ai-in-loop closed loop
+    (S2 BUILD -> S3 LAYOUT -> S4 COMPILE -> S5 SMOKE -> S6 TUNE -> S9 REPORT).
+  - DFIG defaults sourced from M01 mathematical model parameters
+    (modeling-pattern-library §2). Loop tuning may override.
+  - This spec is the canonical example of "swap source / change one block"
+    used by simulink-modeling-assistant skill.

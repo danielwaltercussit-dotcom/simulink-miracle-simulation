@@ -1,0 +1,47 @@
+system:
+  name: ieee39_sg5_dfig5_v0
+  source_case: data/matpower/case39.m
+  source_format: MATPOWER case39
+  base_mva: 100
+  frequency_hz: 60
+  stop_time: 10
+  solver: FixedStepDiscrete
+  sample_time: 5e-5
+  modeling_level: traceable_template_assembly_v0
+
+replacement_policy:
+  description: Replace five generator buses with equal-capacity DFIG templates.
+  dfig_buses: [33, 34, 35, 36, 37]
+  sg_buses: [30, 31, 32, 38, 39]
+  preserve_pg_qg_from_power_flow: true
+  preserve_bus_voltage_setpoint: true
+
+templates:
+  synchronous_generator:
+    source_model: power_KundurTwoAreaSystem.slx
+    source_blocks:
+      machine: power_KundurTwoAreaSystem/Area 1/M1 900 MVA
+      turbine_regulators: "power_KundurTwoAreaSystem/Area 1/M1: Turbine &\nRegulators"
+    status: copied_as_traceable_template_node
+  dfig_wind:
+    source_model: power_wind_dfig_avg.slx
+    source_blocks:
+      turbine: power_wind_dfig_avg/DFIG Wind Turbine
+    status: copied_as_traceable_template_node
+
+convergence_targets:
+  load_flow:
+    voltage_range_pu: [0.94, 1.06]
+    source: MATPOWER solved case39 bus voltages
+  initialization:
+    max_initial_current_pu: 2.0
+    status: planned_for_next_physical_network_iteration
+  simulation:
+    duration_s: 10
+    no_nan: true
+    status: planned_for_next_physical_network_iteration
+
+notes:
+  - This v0.1 spec is a workflow-generated assembly target.
+  - The generated Simulink model is traceable and template-based, but the detailed three-phase network interconnection is deferred to the next physical-network iteration.
+  - Control tuning in v0.1 is rule-based and documented in build/reports/tuning_report.md.

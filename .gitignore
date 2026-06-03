@@ -1,0 +1,28 @@
+# Session-local / agent context
+.ctx/
+
+# Generated Simulink/MATLAB artifacts
+build/
+slprj/
+*.slxc
+*.mex*
+*.asv
+*.autosave
+*.log
+*.tmp
+*.bak
+*.old
+*.orig
+
+# MATLAB caches and project-local scratch
+*.mlappinstall
+*.mldatx.bak
+*.m~
+*.mat.tmp
+*.fig.tmp
+
+# OS/editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*

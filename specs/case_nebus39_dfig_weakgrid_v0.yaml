@@ -1,0 +1,73 @@
+system:
+  name: nebus39_dfig_weakgrid_v0
+  base_mva: 100
+  frequency_hz: 50
+  stop_time: 5.0
+  solver: FixedStepDiscrete
+  sample_time: 5e-5
+  modeling_level: closed_loop_tuning_test_bench
+  parent_models:
+    sg_top: SGbyhjq.slx
+    dfig_donor: ieee39_10m39bus_sg5_dfig5_nebus_layout.slx  # W33
+    derivation_predecessor: nebus39_dfig1_v0
+  derivation_strategy: |
+    Test bench for closed-loop PLL tuning. Same single-DFIG topology as
+    nebus39_dfig1_v0 but with the tie line lengthened to ~300 km of RL
+    impedance, giving an SCR ≈ 2-3 at the DFIG terminal. The build script
+    intentionally raises the W33 PLL ParK to ~3x M01 default (driving the
+    PLL bandwidth into the unstable region for this SCR), so the closed-loop
+    S6 tune stage has something real to fix.
+
+topology:
+  source:
+    type: Three-Phase Programmable Voltage Source
+    base_kv: 13.8
+    fault_injection:
+      enabled: true
+      mode: amplitude_step
+      t_start_s: 0.5
+      t_end_s: 0.7
+      amplitude_pu_during_fault: 0.5
+  weak_tie_line:
+    type: Three-Phase Series RLC Branch
+    R_pu: 0.05      # ~10x stronger than v0 (was 0.001)
+    L_pu: 0.40      # ~8x stronger than v0 (was 0.05) -> SCR ≈ 2.5
+  step_up_transformer:
+    rating_mva: 10
+    kv_primary: 13.8
+    kv_secondary: 0.575
+  generator:
+    type: DFIG (W33)
+    rating_mva: 9
+    voltage_v: 575
+    wind_speed_m_s: 14
+    qref_pu: 0.0
+  pll_initial_setting:
+    block: DFIG_W33/Control/Measurement and Transformation/Improved Discrete 3-phase PLL
+    mask_param: ParK
+    intentional_value: [15 9.6 3 150]  # 3x M01 default = aggressive for SCR=2.5
+    rationale: |
+      M01 default ParK is approximately [5 3.2 1 50]. SCR<3 weak-grid
+      stability research (see references/dfig-pll-tuning-refs.md) recommends
+      lowering PLL bandwidth instead. Raising it 3x deliberately destabilises
+      so S6 has to detune.
+
+convergence_targets:
+  smoke:
+    duration_s: 0.005
+    no_nan: true
+  steady_state:
+    duration_s: 5.0
+    no_nan: true
+    voltage_band_pu: [0.94, 1.06]
+  oscillation_damping:
+    damping_ratio_min: 0.10
+    dom_freq_band_hz: [1, 100]
+  fault_recovery:
+    fault_window_s: [0.5, 0.7]
+    recovery_window_s: 1.0
+
+notes:
+  - Failure expected on round 0; PLL ParK should auto-detune by ai_in_loop_stage_tune.
+  - Convergence target: round 1-3 PASS. If S6 fails after MaxRounds, the
+    closed-loop tuning capability needs more knobs (currents loops etc).

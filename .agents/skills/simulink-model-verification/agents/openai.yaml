@@ -1,0 +1,3 @@
+display_name: Simulink Model Verification
+short_description: Verify derived Simulink power-system models before PASS.
+default_prompt: Verify this derived Simulink power-system model with compile, smoke simulation, finite logged-output, layout, InitFcn, and report-artifact checks.
