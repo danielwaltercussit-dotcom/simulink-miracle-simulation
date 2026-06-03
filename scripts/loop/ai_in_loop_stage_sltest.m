@@ -21,7 +21,17 @@ end
 testFiles = dir(fullfile(testDir,'*.mldatx'));
 s.sltest_files = {testFiles.name};
 if ~isempty(testFiles)
-    s.note = 'Simulink Test artifacts detected; functional fallback still runs as the hard gate.';
+    s.backend = 'sltest_testmanager_plus_functional_fallback';
+    s.testmanager = run_sltest_artifacts(testFiles);
+    if strcmp(s.testmanager.status, 'FAIL')
+        result = struct('passed', false, 'message', s.testmanager.message, ...
+            'sim_time', tSmoke, 'checks', struct('sltest_testmanager', false));
+        s.status = 'FAIL';
+        s.report_path = fullfile(iterDir, 'sltest_summary.md');
+        write_sltest_summary(s.report_path, s, result);
+        error('AIInLoop:SltestHarnessFail', 'Simulink Test harness failed: %s', s.testmanager.message);
+    end
+    s.note = s.testmanager.message;
 else
     s.note = 'No .mldatx artifacts found; ran functional fallback per testing-simulink-models guidance for unavailable Simulink Test.';
 end
@@ -45,6 +55,65 @@ if ~result.passed
     error('AIInLoop:FunctionalTestFail', 'Functional model test failed: %s', result.message);
 end
 write_sltest_summary(s.report_path, s, result);
+end
+
+function summary = run_sltest_artifacts(testFiles)
+summary = struct('status','SKIPPED','passed',true,'total',0,'failed',0, ...
+    'files',{{testFiles.name}}, 'message','');
+if exist('sltest.testmanager.load', 'file') ~= 2 || exist('sltest.testmanager.run', 'file') ~= 2
+    summary.message = 'Simulink Test Manager API unavailable; functional fallback remains the hard gate.';
+    return
+end
+
+summary.status = 'PASS';
+summary.message = 'Simulink Test artifacts ran successfully; functional fallback also runs as the hard gate.';
+for k = 1:numel(testFiles)
+    filePath = fullfile(testFiles(k).folder, testFiles(k).name);
+    try
+        sltest.testmanager.clear;
+        sltest.testmanager.load(filePath);
+        resultSet = sltest.testmanager.run;
+        outcome = extract_sltest_outcome(resultSet);
+        summary.total = summary.total + 1;
+        if is_sltest_failure(outcome)
+            summary.failed = summary.failed + 1;
+            summary.status = 'FAIL';
+            summary.passed = false;
+            summary.message = sprintf('Failing Simulink Test artifact: %s (%s)', testFiles(k).name, outcome);
+            return
+        end
+    catch ME
+        summary.failed = summary.failed + 1;
+        summary.status = 'FAIL';
+        summary.passed = false;
+        summary.message = sprintf('Could not run Simulink Test artifact %s: %s', testFiles(k).name, ME.message);
+        return
+    end
+end
+end
+
+function outcome = extract_sltest_outcome(resultSet)
+try
+    outcome = char(resultSet.Outcome);
+catch
+    try
+        outcome = char(getOutcome(resultSet));
+    catch
+        try
+            outcome = strtrim(evalc('disp(resultSet)'));
+        catch
+            outcome = 'unknown';
+        end
+    end
+end
+if isempty(outcome)
+    outcome = 'unknown';
+end
+end
+
+function tf = is_sltest_failure(outcome)
+txt = lower(string(outcome));
+tf = contains(txt, 'fail') || contains(txt, 'error') || contains(txt, 'incomplete');
 end
 
 function write_functional_test(path)
@@ -82,6 +151,20 @@ fprintf(fid, '- backend: `%s`\n', s.backend);
 fprintf(fid, '- status: `%s`\n', ternary(result.passed, 'PASS', 'FAIL'));
 fprintf(fid, '- sim_time: %.6g\n', result.sim_time);
 fprintf(fid, '- message: %s\n\n', result.message);
+if isfield(s, 'testmanager')
+    fprintf(fid, '## Simulink Test Manager\n\n');
+    fprintf(fid, '- status: `%s`\n', s.testmanager.status);
+    fprintf(fid, '- total_artifacts: %d\n', s.testmanager.total);
+    fprintf(fid, '- failed_artifacts: %d\n', s.testmanager.failed);
+    fprintf(fid, '- message: %s\n\n', s.testmanager.message);
+end
+if isfield(s, 'sltest_files') && ~isempty(s.sltest_files)
+    fprintf(fid, '## Test Artifacts\n\n');
+    for k = 1:numel(s.sltest_files)
+        fprintf(fid, '- `%s`\n', s.sltest_files{k});
+    end
+    fprintf(fid, '\n');
+end
 fprintf(fid, '## Checks\n\n');
 names = fieldnames(result.checks);
 for k = 1:numel(names)
