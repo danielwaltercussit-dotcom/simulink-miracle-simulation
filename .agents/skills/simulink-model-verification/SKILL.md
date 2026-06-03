@@ -41,6 +41,10 @@ assert(r.passed)
    harnesses when the model has signal-based Inport/Outport interfaces.
 3. `ai-in-loop` when verification should trigger tuning, diagnosis, reporting,
    and AI summary snapshotting.
+4. `multitimescale-analysis` when a failed or borderline check needs a
+   cross-band explanation before choosing tuning or debugging.
+5. `diagnostic-plotting` when a failed or borderline check needs waveform
+   evidence before routing the next fix.
 
 ## What The Helper Checks
 
@@ -71,3 +75,7 @@ Keep chat short. Point to:
 - `build/reports/verification/<model>.md` for standalone verification
 - `build/reports/loop/iter_<NN>/sltest_summary.md` for AI-in-loop S7
 - `build/reports/loop/iter_<NN>/status.json` for machine state
+- `build/reports/loop/iter_<NN>/multitimescale_notes.md` when a failed metric
+  was classified across dynamic time scales
+- `build/reports/diagnostics/<model>/<run_id>/figure_manifest.json` and
+  `index.md` when plots were generated to explain a failure or borderline metric
