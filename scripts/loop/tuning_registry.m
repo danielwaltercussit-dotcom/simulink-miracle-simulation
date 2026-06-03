@@ -14,10 +14,13 @@ function reg = tuning_registry(modelName)
 %     .fs_targets  cell array of FS ids this knob can fix
 %     .scale_fcn   function handle: (oldVal, sigDir) -> newVal
 %
-% Each derived model adds its own block paths. PLL is the primary knob.
-% W33 grid-side and rotor-side PI controllers use workspace variable names
-% as their mask values (e.g. Kp_dc, Ki_dc), so we tune them by changing
-% the model's InitFcn — see scale_init_var_factor below.
+% Each derived model adds its own block paths. PLL is the primary knob,
+% but the rotor-side / grid-side current PI, DC-link PI and speed PI are all
+% real mask parameters on the DFIG_W33 subsystem (inherited from the baseline
+% W33 donor: Krotor_side_cur_reg, Kgrid_side_cur_reg, Kdc, Kspeed). They are
+% read and written directly with get_param/set_param — there is no InitFcn /
+% workspace-variable indirection. Verified on nebus39_dfig_weakgrid_v0:
+% all five knobs resolve via get_param and accept set_param.
 
 reg = struct('id',{},'block_path',{},'mask_param',{}, ...
     'current',{},'min',{},'max',{},'units',{}, ...

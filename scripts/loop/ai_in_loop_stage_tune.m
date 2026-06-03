@@ -78,9 +78,13 @@ end
 knob_state = repmat(struct('id','','last_dir',0,'no_improve',0,'flip_count',0,'exhausted',false), 1, numel(reg));
 for k = 1:numel(reg); knob_state(k).id = reg(k).id; end
 
-% Track best growth seen so we can detect "no improvement"
+% Track best growth seen so we can detect "no improvement".
+% Also snapshot the parameter set that achieved best_growth so we can roll
+% back to it if tuning never converges — otherwise the last (possibly worse
+% than initial) attempt would be left written to disk.
 best_growth = m.I_osc_growth;
 if isnan(best_growth); best_growth = Inf; end
+best_snapshot = capture_registry(modelName);
 
 for round = 1:opt.MaxRounds
     targetSig = m.fs_signature;
@@ -160,6 +164,7 @@ for round = 1:opt.MaxRounds
     if isnan(new_growth); new_growth = Inf; end
     if new_growth < best_growth - 0.02
         best_growth = new_growth;
+        best_snapshot = capture_registry(modelName);
         knob_state(knobIdx).no_improve = 0;
     else
         knob_state(knobIdx).no_improve = knob_state(knobIdx).no_improve + 1;
@@ -188,6 +193,15 @@ end
 s.status = 'FAIL';
 s.note   = sprintf('Tuning did not converge in %d rounds (last FS=%s)', opt.MaxRounds, m.fs_signature);
 s.final_metrics = m;
+% Roll back to the best parameter set we found, so a non-converged run does
+% not leave the model worse than where it started. The model is saved with
+% the best-so-far knobs; final_metrics still reflects the last (worse) sim.
+restored = restore_registry(modelName, best_snapshot);
+if restored
+    save_system(modelName);
+    s.rolled_back_to_best = true;
+    s.best_I_osc_growth   = best_growth;
+end
 write_tuning_report(opt.ReportPath, s);
 end
 
@@ -201,18 +215,27 @@ catch ME
 end
 end
 
-function knob = pick_knob(reg, fs)
-knob = [];
-for k = 1:numel(reg)
-    if any(strcmp(reg(k).fs_targets, fs))
-        knob = reg(k);
-        return
-    end
-end
-end
-
 function v = clamp_to_bounds(v, lo, hi)
 v = max(lo, min(hi, v));
+end
+
+function ok = restore_registry(modelName, snapshot)
+% Write a captured {id -> value} snapshot back onto the model's knobs.
+% Used to roll a non-converged tuning run back to its best-so-far params.
+ok = false;
+if isempty(snapshot) || ~isstruct(snapshot); return; end
+reg = tuning_registry(modelName);
+for k = 1:numel(reg)
+    if ~isfield(snapshot, reg(k).id); continue; end
+    val = snapshot.(reg(k).id);
+    if isempty(val) || any(isnan(val(:))); continue; end
+    try
+        set_param(reg(k).block_path, reg(k).mask_param, mat2str(val));
+        ok = true;
+    catch
+        % skip knobs that can no longer be written; best-effort restore
+    end
+end
 end
 
 function snap = capture_registry(modelName)
