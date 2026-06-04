@@ -58,12 +58,24 @@ p.addParameter('study_objective','closed-loop Simulink model validation',@(x)isc
 p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
 p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
 p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
+% S5B weak-grid SCR large-disturbance evidence (off by default; opt-in because
+% it runs one extra full sim per SCR point). scr_values=[] -> stage skips.
+p.addParameter('weakgrid_scr',false,@(x)islogical(x)||isnumeric(x));
+p.addParameter('scr_values',[1.5 2 3 5],@(x)isnumeric(x)&&isvector(x));
+p.addParameter('scr_vbase_ll',13.8e3,@isnumeric);
+p.addParameter('scr_sbase',100e6,@isnumeric);
+p.addParameter('scr_f',50,@isnumeric);
+p.addParameter('scr_fault_start',0.5,@isnumeric);
+p.addParameter('scr_fault_end',0.7,@isnumeric);
+p.addParameter('scr_t_full',1.0,@isnumeric);
+p.addParameter('scr_min_damping',0.05,@isnumeric);
 p.parse(varargin{:});
 opt = p.Results;
 opt.fast = logical(opt.fast);
 opt.snapshot = logical(opt.snapshot);
 opt.fidelity_decision = logical(opt.fidelity_decision);
 opt.validation_evidence = logical(opt.validation_evidence);
+opt.weakgrid_scr = logical(opt.weakgrid_scr);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
@@ -153,6 +165,16 @@ for iter = 0:(opt.max_iter-1)
         state.stages.S5 = ai_in_loop_stage_smoke(opt.model_name, opt.t_smoke);
         ai_in_loop_require_stage_pass(state.stages.S5, false);
         state.evidence  = 'simulated';
+
+        % S5B WEAK-GRID SCR — large-disturbance evidence sweep (opt-in).
+        % Restores the tie impedance on exit so later stages see the model as
+        % built. Feeds measured evidence into S10C section 9.
+        state.weakgrid_scr_evidence = '';
+        if opt.weakgrid_scr
+            state.stages.S5B = ai_in_loop_stage_weakgrid_scr(projectRoot, opt.model_name, opt);
+            ai_in_loop_require_stage_pass(state.stages.S5B, true);
+            state.weakgrid_scr_evidence = state.stages.S5B.report_path;
+        end
 
         % S6 TUNE
         if any(strcmp(opt.goal, {'tune','sltest','full'}))
