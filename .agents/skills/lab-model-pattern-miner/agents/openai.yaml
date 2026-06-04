@@ -1,0 +1,3 @@
+display_name: Lab Model Pattern Miner
+short_description: Detect drift between the read-only lab archive and the project pattern library.
+default_prompt: Scan the read-only lab reference archive for machine-readable facts (file inventory, .slx block counts, .m variable names) and report drift against docs/MODELING_PATTERN_LIBRARY.md without editing the archive or curated docs.
