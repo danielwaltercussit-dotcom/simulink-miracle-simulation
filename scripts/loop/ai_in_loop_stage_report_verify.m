@@ -55,6 +55,11 @@ if isfield(state.stages, 'S6')
         error('AIInLoop:ReportStatusMismatch', 'status.json does not contain tune=true.');
     end
 end
+if isfield(state.stages, 'S7')
+    if ~isfield(decoded, 'sltest') || ~islogical(decoded.sltest) || ~decoded.sltest
+        error('AIInLoop:ReportStatusMismatch', 'status.json does not contain sltest=true.');
+    end
+end
 
 s.verified_at = char(datetime('now','Format','yyyy-MM-dd HH:mm:ss'));
 end

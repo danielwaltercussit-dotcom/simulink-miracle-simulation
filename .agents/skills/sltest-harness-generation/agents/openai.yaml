@@ -1,0 +1,3 @@
+display_name: SLTest Harness Generation
+short_description: Create repeatable Simulink Test and fallback S7 harnesses.
+default_prompt: Create or review an S7 Simulink Test harness or verification fallback for this generated power-system model.
