@@ -26,3 +26,7 @@ Thumbs.db
 desktop.ini
 .DS_Store
 ~$*
+
+# Python generated caches
+__pycache__/
+*.py[cod]
