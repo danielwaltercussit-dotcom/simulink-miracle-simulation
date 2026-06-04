@@ -52,6 +52,7 @@ copiedLayoutQuality = copy_latest_layout_quality(projectRoot, modelName, dstDir)
 append_copied(copiedLayoutQuality);
 copy_if_exists(fullfile(iterDir, 'tuning_report.md'), fullfile(dstDir, 'latest_tuning_report.md'));
 copy_if_exists(fullfile(iterDir, 'sltest_summary.md'), fullfile(dstDir, 'latest_sltest_summary.md'));
+copy_if_exists(fullfile(iterDir, 'model_advisor_summary.md'), fullfile(dstDir, 'latest_model_advisor_summary.md'));
 copy_if_exists(fullfile(iterDir, 'top.png'), fullfile(dstDir, [modelName '_latest_top.png']));
 
 manifest = struct();
@@ -70,6 +71,14 @@ cleanup = onCleanup(@() fclose(fid));
 fprintf(fid, '%s', jsonencode(manifest));
 
 write_model_readme(fullfile(dstDir, 'README.md'), manifest);
+
+audit = ai_in_loop_audit_snapshot(projectRoot, modelName, dstDir);
+s.audit_report_path = audit.report_path;
+s.audit_passed = audit.passed;
+if ~audit.passed
+    s.status = 'FAIL';
+    error('AIInLoop:SnapshotAuditFail', 'Snapshot audit failed. See %s', audit.report_path);
+end
 
     function copy_if_exists(src, dst)
         if isfile(src)
