@@ -100,6 +100,40 @@ Newest entry on top. Each agent appends what it did, branch state, and open
 items so the other can pick up without re-deriving. Push to `origin` is owned
 by Codex; Claude only commits locally and records here.
 
+### 2026-06-04 (latest) — Claude — P1 MERGED into integration
+
+Landed the stranded P1 work. `fix/loop-run-docs` (S5B weak-grid SCR + S8B
+modal + S10C wiring + doc sync) is now merged into
+`integration/skills-maturation-2026-06` via `--no-ff` commit `b5c1e14`.
+
+- Merge was conflict-free: P1 files (loop stages + AI_IN_LOOP_WORKFLOW.md) are
+  a disjoint set from the P2 miner work (skill + protocol doc). Verified with
+  `git merge-tree` before merging.
+- Re-validated the P1 contract end-to-end on a fresh `Tie_RLC` model
+  (`nebus39_dfig_weakgrid_v0`, built with Force=true): S5B produced measured
+  SCR evidence; feeding it to S10C flipped the weak-grid row WARN->PASS
+  (with: pass=6 warn=0; without: pass=5 warn=1). missing_count unchanged (the
+  other unrun stages), as expected for an isolated stub.
+- checkcode on all 4 P1 files: clean except one benign dead-store warning in
+  ai_in_loop_stage_weakgrid_scr.m L138 (`v=NaN;` always reassigned;
+  fixable:false). Left as-is.
+- Two findings worth knowing: the default `..._nebus_layout` model has NO
+  Tie_RLC, so S5B always SKIPs on it — weak-grid SCR only applies to the
+  `nebus39_..._weakgrid` variants. And iter_00/modal_summary.md was stale
+  (17:06) from a prior session; the failing-at-S3 run never reached S8B.
+
+Branch state (all local; Codex to push — user reaffirmed push is Codex's job):
+- `integration/skills-maturation-2026-06` is ahead 7 of origin: merge `b5c1e14`
+  + P2 `bac039c` + the 5 P1 commits the merge made reachable. Worktree clean.
+- The two log entries below ("Ready to merge into integration") are now
+  superseded by this merge — kept for history per append-only rule.
+
+Open / deferred:
+- S5B top docstring still says "PASS = every row stable"; the code intentionally
+  keeps PASS when the sweep RUNS (verdict lives in all_stable/n_stable, see body
+  comment). User chose to leave the docstring as-is for now.
+- P3 (impedance/frequency-domain skill) and P4 (stronger IBR evidence) remain.
+
 ### 2026-06-04 (later) — Claude
 
 Wired two analysis skills into the loop as real, measured evidence sources
