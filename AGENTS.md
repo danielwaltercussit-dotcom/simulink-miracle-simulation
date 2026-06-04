@@ -7,6 +7,9 @@ Before doing workflow-driven power-system model generation in this project, read
 `docs/MODELING_WORKFLOW_DRAFT.md`. Treat it as the current living specification
 for the user's desired portable Simulink modeling process.
 
+For Codex / Claude Code division of labor, handoff packets, and the ordered
+skills-library optimization backlog, read `docs/CODEX_CLAUDE_COLLABORATION.md`.
+
 Project-local repositories:
 
 - `external/simulink-agentic-toolkit`
