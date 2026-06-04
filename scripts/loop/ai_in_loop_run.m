@@ -10,8 +10,32 @@ function status = ai_in_loop_run(varargin)
 %     'sltest' - + run/create minimal sltest harness
 %     'full'   - + screenshots + traceability refresh
 %
+%   Name-Value parameters:
+%     'goal'                'smoke'|'tune'|'sltest'|'full' (default 'smoke')
+%     'max_iter'            max iterations before giving up (default 5)
+%     'spec_path'           spec YAML, relative to project root
+%     't_smoke'             smoke-sim stop time, s (default 0.05)
+%     't_full'              tune/full sim stop time, s (default 1.0)
+%     'model_name'          derived model name (no extension)
+%     'build_fcn'           build script name for model_name
+%     'fast'                logical; skip layout re-apply and force-reuse the
+%                           existing .slx on iter 0 (default false)
+%     'snapshot'            logical; export AI-summary package + audit it via
+%                           S10/S10B (default true)
+%     'snapshot_root'       snapshot destination root folder
+%     'study_objective'     text used by S0.25 fidelity inference
+%     'fidelity'            'auto' or an explicit fidelity label for S0.25
+%     'fidelity_decision'   logical; run S0.25 fidelity-decision stage
+%                           (default true). See model-fidelity-selector skill.
+%     'validation_evidence' logical; run S10C IBR validation-evidence stage
+%                           (default true). See ibr-model-validation-evidence.
+%
 %   This function sequences project skills; it does not replace them.
 %   See docs/AI_IN_LOOP_WORKFLOW.md and .agents/skills/ai-in-loop/SKILL.md.
+%
+%   Stage map: S0.25 fidelity, S1 spec, S2 build, S3 layout, S4 compile,
+%   S5 smoke, S6 tune, S7 sltest, S7B model-advisor, S9 report, S10 snapshot,
+%   S10B snapshot-audit, S10C IBR validation-evidence.
 %
 %   Artifacts: build/reports/loop/iter_<NN>/ + build/reports/loop/status.json
 
@@ -28,18 +52,39 @@ p.addParameter('build_fcn','build_ieee39_10m39bus_sg5_dfig5_nebus_layout',@(x)is
 % rapid debug cycles where the model file is known good and only spec or
 % tuning is being iterated. Do NOT use after a build script change.
 p.addParameter('fast',false,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
-  p.addParameter('study_objective','closed-loop Simulink model validation',@(x)ischar(x)||isstring(x));
-  p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
-  p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
-  p.parse(varargin{:});
-  opt = p.Results;
-  opt.fast = logical(opt.fast);
-  opt.snapshot = logical(opt.snapshot);
-  opt.fidelity_decision = logical(opt.fidelity_decision);
-  opt.validation_evidence = logical(opt.validation_evidence);
+p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
+p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
+p.addParameter('study_objective','closed-loop Simulink model validation',@(x)ischar(x)||isstring(x));
+p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
+p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
+p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
+% S5B weak-grid SCR large-disturbance evidence (off by default; opt-in because
+% it runs one extra full sim per SCR point). scr_values=[] -> stage skips.
+p.addParameter('weakgrid_scr',false,@(x)islogical(x)||isnumeric(x));
+p.addParameter('scr_values',[1.5 2 3 5],@(x)isnumeric(x)&&isvector(x));
+p.addParameter('scr_vbase_ll',13.8e3,@isnumeric);
+p.addParameter('scr_sbase',100e6,@isnumeric);
+p.addParameter('scr_f',50,@isnumeric);
+p.addParameter('scr_fault_start',0.5,@isnumeric);
+p.addParameter('scr_fault_end',0.7,@isnumeric);
+p.addParameter('scr_t_full',1.0,@isnumeric);
+p.addParameter('scr_min_damping',0.05,@isnumeric);
+% S8B small-signal modal analysis (opt-in). Linearizes via dlinmod and maps
+% discrete poles to the s-plane to report oscillatory modes + damping.
+p.addParameter('modal_analysis',false,@(x)islogical(x)||isnumeric(x));
+p.addParameter('modal_ts',5e-5,@isnumeric);
+p.addParameter('modal_zmin',1e-6,@isnumeric);
+p.addParameter('modal_fmin',0.1,@isnumeric);
+p.addParameter('modal_fmax',200,@isnumeric);
+p.addParameter('modal_min_damping',0.05,@isnumeric);
+p.parse(varargin{:});
+opt = p.Results;
+opt.fast = logical(opt.fast);
+opt.snapshot = logical(opt.snapshot);
+opt.fidelity_decision = logical(opt.fidelity_decision);
+opt.validation_evidence = logical(opt.validation_evidence);
+opt.weakgrid_scr = logical(opt.weakgrid_scr);
+opt.modal_analysis = logical(opt.modal_analysis);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
@@ -130,6 +175,16 @@ for iter = 0:(opt.max_iter-1)
         ai_in_loop_require_stage_pass(state.stages.S5, false);
         state.evidence  = 'simulated';
 
+        % S5B WEAK-GRID SCR — large-disturbance evidence sweep (opt-in).
+        % Restores the tie impedance on exit so later stages see the model as
+        % built. Feeds measured evidence into S10C section 9.
+        state.weakgrid_scr_evidence = '';
+        if opt.weakgrid_scr
+            state.stages.S5B = ai_in_loop_stage_weakgrid_scr(projectRoot, opt.model_name, opt);
+            ai_in_loop_require_stage_pass(state.stages.S5B, true);
+            state.weakgrid_scr_evidence = state.stages.S5B.report_path;
+        end
+
         % S6 TUNE
         if any(strcmp(opt.goal, {'tune','sltest','full'}))
             tuningReport = fullfile(iterDir, 'tuning_report.md');
@@ -151,6 +206,16 @@ for iter = 0:(opt.max_iter-1)
         if any(strcmp(opt.goal, {'sltest','full'}))
             state.stages.S7B = ai_in_loop_stage_modeladvisor(projectRoot, opt.model_name, iterDir);
             ai_in_loop_require_stage_pass(state.stages.S7B, true);
+        end
+
+        % S8B MODAL — small-signal damping diagnosis (opt-in, non-blocking).
+        % Explains time-domain ringing by mode ownership; a low damping ratio
+        % is diagnostic evidence, not a failure (SKIPPED tolerated).
+        state.modal_evidence = '';
+        if opt.modal_analysis
+            state.stages.S8B = ai_in_loop_stage_modal(projectRoot, opt.model_name, iterDir, opt);
+            ai_in_loop_require_stage_pass(state.stages.S8B, true);
+            state.modal_evidence = state.stages.S8B.report_path;
         end
 
         % S9 REPORT (success path)
