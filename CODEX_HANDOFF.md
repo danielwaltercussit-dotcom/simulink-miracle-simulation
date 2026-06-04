@@ -91,3 +91,56 @@ python C:\Users\jonas\.codex\skills\context-management\scripts\ctx_search.py --p
 ## Operational Rule For Future Codex Work
 
 Do not dump full model files, long MATLAB logs, or large script outputs into the chat. Route them through `ctx_compress.py --index` and search the local `.ctx` database when detail is needed.
+
+---
+
+## Claude <-> Codex Work Log (append-only)
+
+Newest entry on top. Each agent appends what it did, branch state, and open
+items so the other can pick up without re-deriving. Push to `origin` is owned
+by Codex; Claude only commits locally and records here.
+
+### 2026-06-04 — Claude
+
+Picked up after Codex matured the skills library on
+`integration/skills-maturation-2026-06` (5 new skills + loop wiring:
+model-fidelity-selector, small-signal-modal-analysis, weak-grid-scr-scenario,
+gfl-gfm-control-comparison, ibr-model-validation-evidence; stages S0.25
+fidelity, S10C IBR-evidence; helper scripts under scripts/analysis,
+scripts/scenarios, scripts/verification).
+
+Verified (MATLAB MCP, model `nebus39_dfig_weakgrid_v0`):
+- All Codex new .m files pass Code Analyzer with 0 issues.
+- `ai_in_loop_run goal=smoke` PASS; S0.25 infers `averaged_emt_plus_modal`.
+- `ai_in_loop_run goal=tune, validation_evidence=true, snapshot=false` PASS;
+  S10C runs even with empty snapshotDir and emits an honest evidence matrix
+  (large-disturbance + snapshot-audit correctly marked MISSING, not faked).
+- Codex's edit to `tuning_registry.m` is a pure preallocation cleanup; it
+  preserved Claude's earlier best-so-far rollback fix and doc correction.
+
+Did (branch `fix/loop-run-docs`, off `integration/...`, commit 8f04fe9):
+- Documented all `ai_in_loop_run` Name-Value params (incl. the 5 Codex added:
+  study_objective, fidelity, fidelity_decision, validation_evidence) + full
+  stage map in the help block. `help ai_in_loop_run` had hidden them.
+- Fixed stray leading-space indentation on the new addParameter/opt lines.
+- No behavior change; static analysis clean; loop still PASS.
+
+Branch state (all local; none pushed — Codex to push):
+- `fix/loop-run-docs` = integration + 1 (this doc fix). Ready to merge into
+  `integration/skills-maturation-2026-06`.
+- Earlier Claude branches already merged by Codex into integration:
+  fix/s6-tuning, fix/s7b-static-lint, fix/ai-in-loop-routing, and the 5
+  feature/* skill branches.
+- `main` untouched at d33c66a.
+
+Open items / next-step candidates for whoever picks up:
+- S10C evidence matrix marks "large disturbance / fault recovery" MISSING.
+  weak-grid-scr-scenario + generate_weak_grid_scr_matrix.m exist but are not
+  yet wired into the loop as an automatic large-disturbance evidence source.
+- small-signal-modal-analysis has summarize_modal_eigs.m but no loop stage;
+  it is helper-only by design — confirm with user before auto-wiring.
+- DONE this session: `docs/AI_IN_LOOP_WORKFLOW.md` was missing S0.25/S10/S10B/
+  S10C (the agent-facing `.agents/skills/ai-in-loop/SKILL.md` already had them
+  — verified, not stale). Updated the human-facing doc's loop diagram and
+  iteration-artifacts list to match. Same branch `fix/loop-run-docs`.
+

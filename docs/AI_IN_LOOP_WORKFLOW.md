@@ -12,17 +12,24 @@ The project already has good static skills for **what** to build (templates, lay
 ## 2. Loop overview
 
 ```
-spec.yaml ─▶ S1 validate ─▶ S2 build ─▶ S3 layout ─▶ S4 compile ─▶ S5 smoke
-                                                                 │
-                                                                 ▼
-                                       S6 tune ◀── S8 diagnose ◀─┘
-                                          │             ▲
-                                          ▼             │
-                                       S7 sltest ───────┘
-                                          │
-                                          ▼
-                                       S9 report
+spec.yaml ─▶ S0.25 fidelity ─▶ S1 validate ─▶ S2 build ─▶ S3 layout ─▶ S4 compile ─▶ S5 smoke
+                                                                              │
+                                                                              ▼
+                                            S6 tune ◀── S8 diagnose ◀─────────┘
+                                               │             ▲
+                                               ▼             │
+                                            S7 sltest ───────┘
+                                               │
+                                               ▼
+                                            S7B model-advisor
+                                               │
+                                               ▼
+                                            S9 report ─▶ S10 snapshot ─▶ S10B snapshot-audit ─▶ S10C IBR-evidence
 ```
+
+S0.25 (fidelity decision) and S10C (IBR validation evidence) are optional,
+on by default, and gated by `fidelity_decision` / `validation_evidence`.
+S10/S10B run when `snapshot` is enabled.
 
 Stages, primary skills and stop conditions are documented in
 `.agents/skills/ai-in-loop/SKILL.md`. This document is the human-facing
@@ -37,11 +44,17 @@ build/reports/loop/iter_<NN>/
   report.md
   status.json
   top.png
-  tuning_report.md      # only if S6 ran
-  sltest_summary.md     # only if S7 ran
+  fidelity_decision.md/json      # only if S0.25 ran (fidelity_decision=true)
+  tuning_report.md               # only if S6 ran
+  sltest_summary.md              # only if S7 ran
   model_verification_summary.md  # only if S7 ran
+  snapshot_audit.md              # only if S10B ran (snapshot enabled)
+  ibr_validation_evidence.md/json # only if S10C ran (validation_evidence=true)
 build/reports/loop/status.json   # always points to latest iteration
 ```
+
+The canonical fidelity decision is also mirrored under
+`build/reports/fidelity/<case>_fidelity_decision.md/json`.
 
 On successful iterations the runner also snapshots the model package to:
 
