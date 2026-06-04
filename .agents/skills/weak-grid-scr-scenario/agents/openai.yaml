@@ -1,0 +1,3 @@
+display_name: Weak-Grid SCR Scenario
+short_description: Design SCR and weak-grid scenario matrices for IBR studies.
+default_prompt: Build a weak-grid SCR/ESCR scenario matrix for this converter-grid model, including control sensitivity axes, disturbances, observables, and validation routing.

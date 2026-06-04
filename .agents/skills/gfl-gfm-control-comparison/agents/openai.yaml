@@ -1,0 +1,3 @@
+display_name: GFL GFM Control Comparison
+short_description: Compare PLL/GFL and VSG/GFM controls with fair evidence.
+default_prompt: Compare these GFL and GFM control variants using matched scenarios, fidelity, tuning policy, waveforms, and modal evidence.
