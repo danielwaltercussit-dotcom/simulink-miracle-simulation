@@ -1,0 +1,3 @@
+display_name: Multitimescale Analysis
+short_description: Analyze Simulink dynamics across electrical and control time scales.
+default_prompt: Use $multitimescale-analysis to diagnose this Simulink power-system run across initialization, electrical, converter-control, mechanical, scenario, and regression windows.
