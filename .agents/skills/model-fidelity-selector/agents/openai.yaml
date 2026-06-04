@@ -1,0 +1,3 @@
+display_name: Model Fidelity Selector
+short_description: Choose the right Simulink fidelity for converter-grid studies.
+default_prompt: Select the appropriate model fidelity for this converter-dominated power-system study and record the included dynamics, excluded dynamics, and validation route.
