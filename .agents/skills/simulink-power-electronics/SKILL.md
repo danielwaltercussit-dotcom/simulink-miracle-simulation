@@ -55,6 +55,16 @@ block paths, logged signals, simulations, and numeric checks.
 - `references/capability-map.md` only when asked about scope.
 - `references/self-iteration-loop.md` and `references/example-derived-patterns.md`
   for user-approved corpus/self-improvement.
+- Use `model-fidelity-selector` when the PE question could be answered by
+  RMS/phasor, averaged EMT, switching EMT, modal, impedance, or hybrid models.
+- Use `small-signal-modal-analysis` for eigenvalue, damping, participation, or
+  controller-interaction questions.
+- Use `weak-grid-scr-scenario` for SCR/ESCR, low system strength, and
+  fault/line-contingency stress matrices.
+- Use `gfl-gfm-control-comparison` for fair PLL/GFL versus VSG/droop/GFM
+  comparisons.
+- Use `ibr-model-validation-evidence` when model credibility or handoff
+  evidence is the goal.
 - `subskills/three-phase-grid-inverter/SKILL.md` for active grid-inverter work.
 - Treat other `subskills/*/SKILL.md` files as evidence guides until populated.
 - Use Simulink Agentic Toolkit or model-based-design skills for generic build,
@@ -78,6 +88,10 @@ block paths, logged signals, simulations, and numeric checks.
   structure over hiding complex plant or controller relationships inside one
   large MATLAB Function block. Use functions only for small, well-contained
   algorithms or when the user explicitly asks for script/function generation.
+- Before declaring that a PE model is "accurate", name the chosen fidelity and
+  the dynamics it excludes. If the study is about weak-grid damping, fault
+  recovery, protection, harmonics, or GFL/GFM control choice, route through the
+  corresponding project skill before accepting the result.
 - For block-heavy PE models, make the top level an architecture view: separate
   plant/power electronics from control/scenario/diagnostics, then connect those
   areas with named `Goto`/`From` tags or buses.

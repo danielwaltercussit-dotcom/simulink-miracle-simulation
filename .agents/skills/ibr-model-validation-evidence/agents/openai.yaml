@@ -1,0 +1,3 @@
+display_name: IBR Validation Evidence
+short_description: Package model credibility evidence for inverter-based resources.
+default_prompt: Build or audit an IBR model validation evidence package with provenance, fidelity, disturbance coverage, weak-grid behavior, and known limitations.

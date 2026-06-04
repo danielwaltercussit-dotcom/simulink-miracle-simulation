@@ -11,7 +11,10 @@ This is a **router** skill, not a handbook. It maps a user request to:
 2. The right combination of project skills (`building-simulink-models`,
    `simulink-auto-layout-github`, `simulink-power-electronics`,
    `simulink-device-adapters`, `simulink-model-quality-layout`,
-   `simulating-simulink-models`, `testing-simulink-models`, `ai-in-loop`).
+   `simulating-simulink-models`, `testing-simulink-models`, `ai-in-loop`,
+   `model-fidelity-selector`, `small-signal-modal-analysis`,
+   `weak-grid-scr-scenario`, `gfl-gfm-control-comparison`,
+   `ibr-model-validation-evidence`).
 
 The goal is **token economy**: when a request is similar to one of the
 M01–M08 reference models, reuse their parameters and layout instead of
@@ -72,6 +75,20 @@ classify by request type:
 - `references/derivation-cookbook.md` — end-to-end recipe to build a new derived model (donor pick, spec, build script, FS-017 prevention, validation gate, AI-summary snapshot). **Read this when user asks for a new derived model.**
 - `docs/MODELING_PATTERN_LIBRARY.md` — full pattern catalogue (load lazily).
 
+Additional research-routing skills:
+
+- Use `model-fidelity-selector` before deriving a new model when the user asks
+  about RMS/EMT, phasor, switching, weak-grid, modal, impedance, or validation
+  credibility rather than only a structural model edit.
+- Use `small-signal-modal-analysis` when the user asks why a DFIG/VSC/MMC model
+  oscillates or when lab M03/M05 Jacobian scripts are relevant.
+- Use `weak-grid-scr-scenario` for SCR/ESCR, line strength, low short-circuit
+  capacity, and contingency sweeps.
+- Use `gfl-gfm-control-comparison` when the user asks to compare PLL/GFL and
+  VSG/droop/GFM behavior.
+- Use `ibr-model-validation-evidence` when the output is a reusable model
+  package rather than a one-off smoke simulation.
+
 ## Stage Routing
 
 When authoring or reviewing a build script for a derived model, use
@@ -83,6 +100,12 @@ When touching root layout, use `simulink-model-quality-layout` after the
 layout cookbook. The desktop `实验室仿真模型汇总` folder is a read-only style
 reference for M01/M02 spacing, M07 compact single-machine templates, and M08
 signal-only Goto/From practice.
+
+When the request is research-driven rather than only build-driven, run
+`model-fidelity-selector` before choosing a donor. If the selected path is
+small-signal/modal, do not force a derived `.slx` build first; use the lab math
+scripts or exported linearization evidence as the primary artifact and pair it
+with time-domain validation later.
 
 Same routing table as `ai-in-loop` SKILL.md, with one extra:
 
@@ -102,7 +125,8 @@ set; otherwise the loop proceeds normally.
 
 ## What This Skill Does Not Do
 
-- Symbolic small-signal A-matrix derivation. Use the reference `.m` files
+- It does not itself perform symbolic small-signal A-matrix derivation. Route
+  that work to `small-signal-modal-analysis` and use the reference `.m` files
   (`NF_4_model_VSG_*.m`, `DFIGmfile.m`, `Copy_3_of_x2_*.m`) as ground truth.
 - Stateflow / HDL / PIL / SIL workflows.
 - Toolbox-license-gated features without checking `license`.

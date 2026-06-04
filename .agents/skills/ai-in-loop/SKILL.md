@@ -86,22 +86,30 @@ S3 now includes a model quality / layout gate. `ai_in_loop_stage_layout` runs
 | Stage | Primary skill | Fallback / supporting |
 |---|---|---|
 | S0 | `building-simulink-models` (toolkit init) | `simulink-interactions` for inspection |
+| S0.25 | `model-fidelity-selector` | run before build when the study objective may need RMS/phasor/EMT/small-signal/hybrid selection |
 | S0.5 | `simulink-modeling-assistant` (pattern-match fast path) | skip if no M-row matches |
 | S1 | `specifying-plant-models`, `specifying-mbd-algorithms` | `generate-requirement-drafts` |
 | S2 | `building-simulink-models` | `simulink-modeling-assistant` for layout/parameter recipes; `simulink-interactions` for surgical edits |
 | S3 | `simulink-auto-layout-github` | `simulink-modeling-assistant` layout cookbook for power-grid templates |
 | S4 | `simulating-simulink-models` | `simulink-debug-commandline` |
 | S5 | `simulating-simulink-models` | `simulink-profile-initialization` if init slow |
-| S6 | `simulink-power-electronics` (PE) + project tuning scripts | `multitimescale-analysis` for cross-window diagnosis; `simulink-solver-profiler-analyzer` if numeric issue; `matlab-optimize-performance` for slow tuning scripts |
+| S6 | `simulink-power-electronics` (PE) + project tuning scripts | `multitimescale-analysis` and `small-signal-modal-analysis` for cross-window or low-damping diagnosis; `weak-grid-scr-scenario` for low-SCR sensitivity; `simulink-solver-profiler-analyzer` if numeric issue; `matlab-optimize-performance` for slow tuning scripts |
 | S7 | `simulink-model-verification`, `testing-simulink-models` | `sltest-harness-generation` for persistent S7 tests; `baseline-regression` for golden-run comparisons; `filing-bug-reports` if real defect found; `matlab-write-performance-tests` for `matlab.perftest` regressions in `scripts/loop/`; mathworks-ci-verify reference: `LaneFollowingExecModelAdvisor.m` pattern for ModelAdvisor harness |
-| S8 | this skill (router) | `diagnostic-plotting` for failure-localization figures; `simulink-profiler-analyzer` for perf, `code-simplifier` / `matlab-modernize-code` for script cleanups |
+| S8 | this skill (router) | `diagnostic-plotting` for failure-localization figures; `gfl-gfm-control-comparison` for controller-choice failures; `simulink-profiler-analyzer` for perf, `code-simplifier` / `matlab-modernize-code` for script cleanups |
 | S9 | this skill | `diagnostic-plotting` for logsout figures and `figure_manifest.json` |
-| S10 | this skill + `snapshot-auditor` | `snapshot-auditor` for copied package completeness before handoff |
+| S10 | this skill + `snapshot-auditor` | `snapshot-auditor` for copied package completeness before handoff; `ibr-model-validation-evidence` for handoff-ready plant/model credibility packages |
 
 For S9 report figures, use `diagnostic-plotting` when smoke, tuning, scenario,
 or regression evidence needs waveform plots beyond the root `top.png` layout
 screenshot. Use `snapshot-auditor` before treating a copied AI summary package
 as reusable evidence outside this workspace.
+
+Use `model-fidelity-selector` before S2 when the requested study could be
+answered at multiple fidelities (RMS/phasor, averaged EMT, switching EMT,
+small-signal, impedance, or hybrid). Use `weak-grid-scr-scenario` and
+`gfl-gfm-control-comparison` when the acceptance question depends on low system
+strength or PLL/VSG/GFM/GFL control choice rather than only compile/smoke
+success.
 External reference repos (read-only, do not auto-import scripts):
 
 - `external/github/mathworks-ci-verify` — pattern source for ModelAdvisor + sltest harness organisation. Treat as a template, not as code-on-path.
@@ -139,6 +147,10 @@ Under `build/reports/loop/iter_<NN>/`:
 - `sltest_summary.md` (if S7 ran)
 - `model_verification_summary.md` (if S7 ran)
 - `snapshot_audit.md` when S10 snapshot export is enabled
+- `fidelity_decision.md` or a linked fidelity report when model fidelity is
+  part of the study question
+- `ibr_validation_evidence.md` when the output is intended as a handoff-ready
+  IBR plant/model package
 
 The aggregate status at `build/reports/loop/status.json` always points to the latest iteration.
 
