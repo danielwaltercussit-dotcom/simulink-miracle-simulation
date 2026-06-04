@@ -69,6 +69,14 @@ p.addParameter('scr_fault_start',0.5,@isnumeric);
 p.addParameter('scr_fault_end',0.7,@isnumeric);
 p.addParameter('scr_t_full',1.0,@isnumeric);
 p.addParameter('scr_min_damping',0.05,@isnumeric);
+% S8B small-signal modal analysis (opt-in). Linearizes via dlinmod and maps
+% discrete poles to the s-plane to report oscillatory modes + damping.
+p.addParameter('modal_analysis',false,@(x)islogical(x)||isnumeric(x));
+p.addParameter('modal_ts',5e-5,@isnumeric);
+p.addParameter('modal_zmin',1e-6,@isnumeric);
+p.addParameter('modal_fmin',0.1,@isnumeric);
+p.addParameter('modal_fmax',200,@isnumeric);
+p.addParameter('modal_min_damping',0.05,@isnumeric);
 p.parse(varargin{:});
 opt = p.Results;
 opt.fast = logical(opt.fast);
@@ -76,6 +84,7 @@ opt.snapshot = logical(opt.snapshot);
 opt.fidelity_decision = logical(opt.fidelity_decision);
 opt.validation_evidence = logical(opt.validation_evidence);
 opt.weakgrid_scr = logical(opt.weakgrid_scr);
+opt.modal_analysis = logical(opt.modal_analysis);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
@@ -197,6 +206,16 @@ for iter = 0:(opt.max_iter-1)
         if any(strcmp(opt.goal, {'sltest','full'}))
             state.stages.S7B = ai_in_loop_stage_modeladvisor(projectRoot, opt.model_name, iterDir);
             ai_in_loop_require_stage_pass(state.stages.S7B, true);
+        end
+
+        % S8B MODAL — small-signal damping diagnosis (opt-in, non-blocking).
+        % Explains time-domain ringing by mode ownership; a low damping ratio
+        % is diagnostic evidence, not a failure (SKIPPED tolerated).
+        state.modal_evidence = '';
+        if opt.modal_analysis
+            state.stages.S8B = ai_in_loop_stage_modal(projectRoot, opt.model_name, iterDir, opt);
+            ai_in_loop_require_stage_pass(state.stages.S8B, true);
+            state.modal_evidence = state.stages.S8B.report_path;
         end
 
         % S9 REPORT (success path)
