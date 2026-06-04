@@ -100,6 +100,43 @@ Newest entry on top. Each agent appends what it did, branch state, and open
 items so the other can pick up without re-deriving. Push to `origin` is owned
 by Codex; Claude only commits locally and records here.
 
+### 2026-06-04 (later) — Claude
+
+Wired two analysis skills into the loop as real, measured evidence sources
+(branch `fix/loop-run-docs`, commits on top of the doc-sync work).
+
+S5B weak-grid SCR (`ai_in_loop_stage_weakgrid_scr.m`, opt-in `weakgrid_scr`):
+- For each target SCR, sets the tie reactance to X_pu=1/SCR (keeps build R/X),
+  runs the built-in voltage-dip disturbance, judges each point.
+- Found and fixed a real soundness gap: `extract_tuning_metrics.stable` is
+  OR(not-growing, damped), so a sustained ZERO-damping oscillation passes
+  (fine for S6 "good enough", wrong for a handoff stability claim). S5B adds a
+  stricter damping floor (`scr_min_damping`, default 0.05). Did NOT touch
+  extract_tuning_metrics (S6 depends on its loose verdict — avoided regression).
+- Non-blocking by design: finding an unstable SCR is evidence, not a loop
+  failure. status stays PASS; physical verdict via all_stable / n_stable.
+- Feeds S10C section 9 (weak-grid evidence) via the pre-existing
+  WeakGridEvidencePath param: WARN -> PASS. Verified end-to-end goal=smoke on
+  nebus39_dfig1_v0.
+
+S8B modal (`ai_in_loop_stage_modal.m`, opt-in `modal_analysis`):
+- linmod returns empty 0x0 A on these FixedStepDiscrete benches; dlinmod is
+  required. Discrete poles z mapped to s-plane via s=ln(z)/Ts; z~0 deadbeat
+  states dropped. Non-blocking.
+- Verified on nebus39_dfig_weakgrid_v0: 85 modes, flags 1.65 Hz at zeta=0.0142
+  — independently confirms the time-domain oscillation S5B/S6 see and the known
+  weak-grid PLL mode. Two evidence chains agreeing.
+
+Open items for next pick-up:
+- S5B/S8B are opt-in (default off) to keep the default loop fast. Decide if a
+  "research-grade" goal should turn them on automatically.
+- S8B reports modes but does not yet attach participation factors / state
+  names (summarize_modal_eigs helper supports StateNames; dlinmod state order
+  is not labeled). Wiring named states would localize the 1.65 Hz mode.
+- nebus39_dfig1_v0 fails S6 tune (FS-015) — separate from this work; its tie
+  is unstable at SCR 2-3 under default knobs. Worth a look if dfig1 is meant
+  to be a stable baseline.
+
 ### 2026-06-04 — Claude
 
 Picked up after Codex matured the skills library on
