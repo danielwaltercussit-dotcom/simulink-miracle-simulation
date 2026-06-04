@@ -1,4 +1,4 @@
-function s = ai_in_loop_stage_modeladvisor(projectRoot, modelName, iterDir)
+function s = ai_in_loop_stage_modeladvisor(~, modelName, iterDir)
 %AI_IN_LOOP_STAGE_MODELADVISOR  Run Simulink Model Advisor on the derived model.
 %
 %   s = ai_in_loop_stage_modeladvisor(projectRoot, modelName, iterDir)
@@ -57,7 +57,6 @@ cleanup = onCleanup(@() iLocalCloseIfOpened(modelName, loadedHere));
 
 % Run a default check set. Project-specific ModelAdvisor configurations can
 % later be wired by setting cfg = '<projectRoot>/configs/model_advisor.json'.
-results = [];
 try
     results = Simulink.ModelAdvisor.run(char(modelName), 'maab');
 catch ME
@@ -107,7 +106,7 @@ warns = {};
 try
     al = Simulink.BlockDiagram.getAlgebraicLoops(char(modelName));
     if ~isempty(al)
-        fails{end+1} = sprintf('Algebraic loops detected: %d', numel(al)); %#ok<AGROW>
+        fails{end+1} = sprintf('Algebraic loops detected: %d', numel(al));
     end
 catch
     % API shape varies by release; skip rather than false-fail.
@@ -120,20 +119,20 @@ end
 try
     nUnconnected = iLocalCountUnconnectedPorts(modelName);
     if nUnconnected > 0
-        warns{end+1} = sprintf('Unconnected root signal ports: %d', nUnconnected); %#ok<AGROW>
+        warns{end+1} = sprintf('Unconnected root signal ports: %d', nUnconnected);
     end
 catch ME
-    warns{end+1} = sprintf('Unconnected-port scan failed: %s', ME.message); %#ok<AGROW>
+    warns{end+1} = sprintf('Unconnected-port scan failed: %s', ME.message);
 end
 
 % Check 3: root block overlap (reuse project scanner).
 try
     ov = scan_block_overlap(char(modelName), 'ThrowOnFail', false);
     if ~ov.ok
-        fails{end+1} = sprintf('Root block overlap: %d pair(s)', ov.nOverlaps); %#ok<AGROW>
+        fails{end+1} = sprintf('Root block overlap: %d pair(s)', ov.nOverlaps);
     end
 catch ME
-    warns{end+1} = sprintf('Overlap scan failed: %s', ME.message); %#ok<AGROW>
+    warns{end+1} = sprintf('Overlap scan failed: %s', ME.message);
 end
 
 % Check 4: sample-time hygiene — a discrete model should not silently carry
@@ -145,7 +144,7 @@ try
         nCont = numel(find_system(char(modelName), 'LookUnderMasks','all', ...
             'FollowLinks','on', 'BlockType','Integrator'));
         if nCont > 0
-            warns{end+1} = sprintf('Fixed-step model has %d continuous Integrator block(s)', nCont); %#ok<AGROW>
+            warns{end+1} = sprintf('Fixed-step model has %d continuous Integrator block(s)', nCont);
         end
     end
 catch
