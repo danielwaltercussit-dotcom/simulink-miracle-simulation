@@ -10,8 +10,32 @@ function status = ai_in_loop_run(varargin)
 %     'sltest' - + run/create minimal sltest harness
 %     'full'   - + screenshots + traceability refresh
 %
+%   Name-Value parameters:
+%     'goal'                'smoke'|'tune'|'sltest'|'full' (default 'smoke')
+%     'max_iter'            max iterations before giving up (default 5)
+%     'spec_path'           spec YAML, relative to project root
+%     't_smoke'             smoke-sim stop time, s (default 0.05)
+%     't_full'              tune/full sim stop time, s (default 1.0)
+%     'model_name'          derived model name (no extension)
+%     'build_fcn'           build script name for model_name
+%     'fast'                logical; skip layout re-apply and force-reuse the
+%                           existing .slx on iter 0 (default false)
+%     'snapshot'            logical; export AI-summary package + audit it via
+%                           S10/S10B (default true)
+%     'snapshot_root'       snapshot destination root folder
+%     'study_objective'     text used by S0.25 fidelity inference
+%     'fidelity'            'auto' or an explicit fidelity label for S0.25
+%     'fidelity_decision'   logical; run S0.25 fidelity-decision stage
+%                           (default true). See model-fidelity-selector skill.
+%     'validation_evidence' logical; run S10C IBR validation-evidence stage
+%                           (default true). See ibr-model-validation-evidence.
+%
 %   This function sequences project skills; it does not replace them.
 %   See docs/AI_IN_LOOP_WORKFLOW.md and .agents/skills/ai-in-loop/SKILL.md.
+%
+%   Stage map: S0.25 fidelity, S1 spec, S2 build, S3 layout, S4 compile,
+%   S5 smoke, S6 tune, S7 sltest, S7B model-advisor, S9 report, S10 snapshot,
+%   S10B snapshot-audit, S10C IBR validation-evidence.
 %
 %   Artifacts: build/reports/loop/iter_<NN>/ + build/reports/loop/status.json
 
@@ -28,18 +52,18 @@ p.addParameter('build_fcn','build_ieee39_10m39bus_sg5_dfig5_nebus_layout',@(x)is
 % rapid debug cycles where the model file is known good and only spec or
 % tuning is being iterated. Do NOT use after a build script change.
 p.addParameter('fast',false,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
-  p.addParameter('study_objective','closed-loop Simulink model validation',@(x)ischar(x)||isstring(x));
-  p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
-  p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
-  p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
-  p.parse(varargin{:});
-  opt = p.Results;
-  opt.fast = logical(opt.fast);
-  opt.snapshot = logical(opt.snapshot);
-  opt.fidelity_decision = logical(opt.fidelity_decision);
-  opt.validation_evidence = logical(opt.validation_evidence);
+p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
+p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
+p.addParameter('study_objective','closed-loop Simulink model validation',@(x)ischar(x)||isstring(x));
+p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
+p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
+p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
+p.parse(varargin{:});
+opt = p.Results;
+opt.fast = logical(opt.fast);
+opt.snapshot = logical(opt.snapshot);
+opt.fidelity_decision = logical(opt.fidelity_decision);
+opt.validation_evidence = logical(opt.validation_evidence);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
