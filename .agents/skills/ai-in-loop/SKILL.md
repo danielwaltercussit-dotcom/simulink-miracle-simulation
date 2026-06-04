@@ -72,6 +72,12 @@ Transitions:
 
 Defaults: `max_iter = 5`, `t_smoke = 0.05 s`, `t_full = 1.0 s`, project root fixed.
 
+Current implementation also runs S0.25 when `fidelity_decision=true` (default):
+it writes `fidelity_decision.md/json` in the iteration directory and mirrors
+the canonical decision under `build/reports/fidelity/`. Successful iterations
+can also run S10C when `validation_evidence=true` (default), writing
+`ibr_validation_evidence.md/json` for handoff-ready IBR model packages.
+
 S2 now includes a hard device-adapter contract gate. `ai_in_loop_stage_build`
 runs `scripts/adapters/inspect_device_adapter_contract.m` for both reused and
 rebuilt derived models, writes `build/reports/adapters/<model>.md`, and maps
@@ -134,6 +140,10 @@ Read `references/failure-signatures.md` before any S8 step. Add new entries only
 - `spec_path` (default `specs/case_ieee39_sg5_dfig5_v0.yaml`)
 - `iteration_index` (auto, starts at 0)
 - `max_iter`, `t_smoke`, `t_full`, `goal` (`smoke` | `tune` | `sltest` | `full`)
+- `study_objective` (default `closed-loop Simulink model validation`)
+- `fidelity` (`auto` or an explicit fidelity label)
+- `fidelity_decision` (default `true`)
+- `validation_evidence` (default `true`)
 
 ## Required Reports per Iteration
 
@@ -229,9 +239,12 @@ Current implementation hardens this contract in `scripts/loop/ai_in_loop_run.m`:
   `sltest_summary.md` and `model_verification_summary.md`.
 - S9 re-reads `status.json`, verifies `update/smoke/tune` booleans, verifies
   required `sltest` boolean for `goal>=sltest`, checks required artifacts, and
-  ensures `top.png` exists.
+  ensures `top.png` and enabled `fidelity_decision` artifacts exist.
 - successful iterations snapshot the model package to
   `C:\Users\jonas\Desktop\AI summary of simulation models\<model>\`.
+- S10C writes `ibr_validation_evidence.md/json` through
+  `scripts/loop/ai_in_loop_stage_ibr_validation_evidence.m` when
+  `validation_evidence=true`.
 
 ## Output Style
 

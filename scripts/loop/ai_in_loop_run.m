@@ -28,12 +28,18 @@ p.addParameter('build_fcn','build_ieee39_10m39bus_sg5_dfig5_nebus_layout',@(x)is
 % rapid debug cycles where the model file is known good and only spec or
 % tuning is being iterated. Do NOT use after a build script change.
 p.addParameter('fast',false,@(x)islogical(x)||isnumeric(x));
-p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
-p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
-p.parse(varargin{:});
-opt = p.Results;
-opt.fast = logical(opt.fast);
-opt.snapshot = logical(opt.snapshot);
+  p.addParameter('snapshot',true,@(x)islogical(x)||isnumeric(x));
+  p.addParameter('snapshot_root',fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models'),@(x)ischar(x)||isstring(x));
+  p.addParameter('study_objective','closed-loop Simulink model validation',@(x)ischar(x)||isstring(x));
+  p.addParameter('fidelity','auto',@(x)ischar(x)||isstring(x));
+  p.addParameter('fidelity_decision',true,@(x)islogical(x)||isnumeric(x));
+  p.addParameter('validation_evidence',true,@(x)islogical(x)||isnumeric(x));
+  p.parse(varargin{:});
+  opt = p.Results;
+  opt.fast = logical(opt.fast);
+  opt.snapshot = logical(opt.snapshot);
+  opt.fidelity_decision = logical(opt.fidelity_decision);
+  opt.validation_evidence = logical(opt.validation_evidence);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
@@ -62,6 +68,7 @@ prevFix = '';
 for iter = 0:(opt.max_iter-1)
     iterDir = fullfile(loopRoot, sprintf('iter_%02d', iter));
     if ~isfolder(iterDir); mkdir(iterDir); end
+    ai_in_loop_prepare_iter_dir(iterDir);
 
     state = struct();
     state.iteration       = iter;
@@ -70,6 +77,7 @@ for iter = 0:(opt.max_iter-1)
     state.model_name      = char(opt.model_name);
     state.t_smoke         = opt.t_smoke;
     state.t_full          = opt.t_full;
+    state.study_objective = char(opt.study_objective);
     state.evidence        = 'opened';
     state.failure_sig     = '';
     state.proposed_fix    = '';
@@ -78,6 +86,14 @@ for iter = 0:(opt.max_iter-1)
     state.started_at      = char(datetime('now','Format','yyyy-MM-dd HH:mm:ss'));
 
     try
+        % S0.25 FIDELITY DECISION - automatic research-grade routing note.
+        if opt.fidelity_decision
+            state.stages.S0_25 = ai_in_loop_stage_fidelity(projectRoot, opt.model_name, ...
+                opt.spec_path, iterDir, opt);
+            ai_in_loop_require_stage_pass(state.stages.S0_25, false);
+            state.fidelity_decision = state.stages.S0_25.report_path;
+        end
+
         % S1 SPEC
         state.stages.S1 = ai_in_loop_stage_spec(specAbs);
         ai_in_loop_require_stage_pass(state.stages.S1, false);
@@ -148,6 +164,7 @@ for iter = 0:(opt.max_iter-1)
         ai_in_loop_write_report(iterDir, state);
         state.stages.S9 = ai_in_loop_stage_report_verify(projectRoot, iterDir, state);
         ai_in_loop_require_stage_pass(state.stages.S9, false);
+        snapshotDir = '';
         if opt.snapshot
             state.stages.S10 = ai_in_loop_snapshot_summary(projectRoot, opt.model_name, ...
                 opt.spec_path, opt.build_fcn, iterDir, opt.snapshot_root);
@@ -157,6 +174,12 @@ for iter = 0:(opt.max_iter-1)
             state.stages.S10B = ai_in_loop_audit_snapshot(projectRoot, opt.model_name, ...
                 snapshotDir, snapshotAuditPath);
             ai_in_loop_require_stage_pass(state.stages.S10B, false);
+        end
+        if opt.validation_evidence
+            state.stages.S10C = ai_in_loop_stage_ibr_validation_evidence(projectRoot, ...
+                opt.model_name, iterDir, snapshotDir, state, opt);
+            ai_in_loop_require_stage_pass(state.stages.S10C, false);
+            state.ibr_validation_evidence = state.stages.S10C.report_path;
         end
         ai_in_loop_write_report(iterDir, state);
         ai_in_loop_update_top_status(loopRoot, iterDir, state);
@@ -213,4 +236,26 @@ if isfield(stage, 'note'); note = char(stage.note); end
 if isfield(stage, 'error'); note = char(stage.error); end
 error('AIInLoop:StageFailed', 'Stage %s did not pass: status=%s. %s', ...
     char(stage.name), status, note);
+end
+
+function ai_in_loop_prepare_iter_dir(iterDir)
+%AI_IN_LOOP_PREPARE_ITER_DIR Remove stale generated artifacts for this pass.
+% The loop reuses iter_00/iter_01 names across separate MATLAB invocations.
+% Clearing known generated files prevents S10 evidence from treating old S6/S7
+% reports as proof for a fresh smoke-only run.
+files = {'report.md','status.json','top.png','fidelity_decision.md', ...
+    'fidelity_decision.json','ibr_validation_evidence.md', ...
+    'ibr_validation_evidence.json','tuning_report.md','sltest_summary.md', ...
+    'model_verification_summary.md','model_advisor_summary.md', ...
+    'snapshot_audit.md'};
+for k = 1:numel(files)
+    path = fullfile(iterDir, files{k});
+    if isfile(path)
+        delete(path);
+    end
+end
+diagnosticsDir = fullfile(iterDir, 'diagnostics');
+if isfolder(diagnosticsDir)
+    rmdir(diagnosticsDir, 's');
+end
 end

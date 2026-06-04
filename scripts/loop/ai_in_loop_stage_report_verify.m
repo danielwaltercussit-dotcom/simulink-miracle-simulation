@@ -14,6 +14,10 @@ end
 s.top_png = topPath;
 
 required = {fullfile(iterDir,'report.md'), fullfile(iterDir,'status.json'), topPath};
+if isfield(state.stages, 'S0_25')
+    required{end+1} = fullfile(iterDir, 'fidelity_decision.md');
+    required{end+1} = fullfile(iterDir, 'fidelity_decision.json');
+end
 if isfield(state.stages, 'S6')
     required{end+1} = fullfile(iterDir, 'tuning_report.md');
 end
