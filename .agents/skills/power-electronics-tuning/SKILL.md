@@ -36,4 +36,9 @@ signature routing.
 - Prefer one root cause per outer AI-in-loop iteration.
 - Do not trust literature direction alone; use live metrics such as
   `I_osc_growth`, recovery time, voltage band, and dominant frequency.
+- Use `multitimescale-analysis` before changing knobs when it is unclear
+  whether the dominant behavior is converter-control, electromechanical, or
+  scenario-recovery scale.
+- Use `diagnostic-plotting` for before/after overlays whenever a tuning change
+  is accepted, rejected, or ambiguous.
 - If the same signature and same fix repeat, stop and ask the user.

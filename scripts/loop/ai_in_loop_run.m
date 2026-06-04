@@ -127,6 +127,7 @@ for iter = 0:(opt.max_iter-1)
         if any(strcmp(opt.goal, {'sltest','full'}))
             state.stages.S7 = ai_in_loop_stage_sltest(projectRoot, opt.model_name, iterDir, opt.t_smoke);
             ai_in_loop_require_stage_pass(state.stages.S7, false);
+            state.sltest = strcmp(state.stages.S7.status, 'PASS');
         end
 
         % S7B MODEL ADVISOR — independent gate. Soft-skips if license/product
@@ -151,6 +152,11 @@ for iter = 0:(opt.max_iter-1)
             state.stages.S10 = ai_in_loop_snapshot_summary(projectRoot, opt.model_name, ...
                 opt.spec_path, opt.build_fcn, iterDir, opt.snapshot_root);
             ai_in_loop_require_stage_pass(state.stages.S10, false);
+            snapshotDir = fullfile(opt.snapshot_root, char(opt.model_name));
+            snapshotAuditPath = fullfile(iterDir, 'snapshot_audit.md');
+            state.stages.S10B = ai_in_loop_audit_snapshot(projectRoot, opt.model_name, ...
+                snapshotDir, snapshotAuditPath);
+            ai_in_loop_require_stage_pass(state.stages.S10B, false);
         end
         ai_in_loop_write_report(iterDir, state);
         ai_in_loop_update_top_status(loopRoot, iterDir, state);

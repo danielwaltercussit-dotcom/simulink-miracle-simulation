@@ -69,9 +69,10 @@ The loop stops when any of:
 - `smoke` — minimum: build → compile → 50 ms simulation.
 - `tune` — adds: load-flow + initialization + 1 s simulation under convergence targets.
 - `sltest` — adds: run persistent model tests. If Simulink Test `.mldatx`
-  artifacts are unavailable, S7 runs `tests/ai_in_loop_functional_model_test.m`,
-  which delegates to `scripts/verification/verify_power_system_model.m` for
-  compile, smoke-sim, finite-output, InitFcn, and root-overlap checks.
+  artifacts are present and the Test Manager API is available, S7 runs them.
+  S7 also runs `tests/ai_in_loop_functional_model_test.m`, which delegates to
+  `scripts/verification/verify_power_system_model.m` for compile, smoke-sim,
+  finite-output, InitFcn, and root-overlap checks.
 - `full` — all of the above + screenshot exports + traceability index refresh.
 
 ## 6. MATLAB entry
@@ -90,11 +91,13 @@ Evidence rules inherit from `simulink-power-electronics`:
 
 - `opened` < `compiled` < `simulated` < `measured`. The loop never claims a higher state than has actually been verified.
 - For each stage transition, append the achieved state to `status.json`.
+- For `goal=sltest` or `goal=full`, `status.json` must contain literal
+  `sltest=true` before S9 can pass.
 - A stage may not declare overall success merely by returning a struct. The
   loop checks each required `status` and sends `FAIL` or blocking `SKIPPED`
   states to S8 diagnosis.
 - S9 re-reads `iter_<NN>/status.json`, verifies required artifacts, and checks
-  literal `update/smoke/tune` booleans before PASS is final.
+  literal `update/smoke/tune/sltest` booleans before PASS is final.
 
 ## 8. Skill routing
 
