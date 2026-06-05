@@ -245,6 +245,51 @@ The point is to preserve the closed-loop discipline: every skill improvement
 must have a user-facing purpose, a contract, evidence, and a handoff. It should
 not become a broad file scan or a vague skill rewrite.
 
+## 5.2 Stable Task Package Names
+
+Codex and Claude Code must keep task package names stable across handoffs. The
+name is the durable handle for the work; do not rename it just because the
+wording of the next step changes.
+
+Use these current package names:
+
+- `P3-A impedance-frequency-analysis contract hardening`
+- `P3-B impedance helper persistent validation`
+- `P4-A IBR frequency-domain evidence intake`
+- `P5-A opt-in research evidence profile`
+- `D1 VSC/GFL-GFM support and evidence`
+- `D2 MMC/HVDC support and evidence`
+- `D3 storage/battery/BMS support and evidence`
+
+Rules:
+
+- Handoff packets should refer to these package names exactly.
+- If a package splits, keep the prefix and append a suffix such as `P4-A.1`.
+- If priorities change, mark the package `paused`, `blocked`, or `done`; do not
+  invent a new name for the same work.
+- Codex may plan several packages in parallel, but each package needs its own
+  objective, file boundary, validation expectation, and current status.
+
+## 5.3 Codex Validation Standard
+
+Codex owns result validation after Claude Code work. Reviews should prefer
+actual execution over trusting prose summaries.
+
+Validation expectations:
+
+- For MATLAB helper-only changes, run `checkcode`, run the helper smoke test,
+  and re-read generated markdown/json/csv artifacts from disk.
+- For model, loop, evidence-chain, or `.slx`-touching changes, run the smallest
+  real model-level validation that is feasible: `ai_in_loop_run`, `sim`,
+  compile/update, sltest/model-verification fallback, or a focused MATLAB
+  script against the actual referenced model file.
+- If a full model run is too slow or blocked, Codex must say exactly what was
+  not run, why, and what smaller validation was run instead.
+- Do not mark a result as verified from a handoff note alone. The handoff is an
+  input to review, not evidence by itself.
+- Always re-read generated artifacts from disk before accepting PASS claims, to
+  avoid stale-artifact or hallucinated-result failures.
+
 ## 6. Efficient Handoff Packet
 
 After each Claude Code work chunk, write exactly one compact handoff packet.
