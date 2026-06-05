@@ -1,0 +1,3 @@
+display_name: Impedance / Frequency-Domain Analysis
+short_description: Resonance, passivity, and harmonic-stability evidence from impedance/frequency data.
+default_prompt: Analyze this converter-grid impedance or frequency response for resonance peaks, negative-resistance (passivity) bands, frequency-band energy, and the time-domain and modal validation route. Do not claim instability or hardware validation from spectral features alone.

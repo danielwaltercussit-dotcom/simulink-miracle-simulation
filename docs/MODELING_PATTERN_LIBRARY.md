@@ -3,6 +3,10 @@
 来源: `C:\Users\jonas\Desktop\实验室仿真模型汇总`
 适用: 当用户提"换电源 / 换风机 / 换台数 / 改电压等级 / 改线路距离"等小改动时,**优先复用本库的现成参数与布局**,避免每次从零推算控制器 PI、基准容量和坐标。
 
+补充参考源: `C:\Users\jonas\Desktop\AI summary of simulation models` 中 6.3 以后的模型可作为 AI 生成结果参考; 本仓库只读这些外部参考,不在清理时移动或删除。
+
+旧 `REFERENCE_MODEL_LAYOUT_OBSERVATIONS.md` 与 `IEEE39_LAYOUT_REFERENCES.md` 已并入本文件的布局规则。IEEE39 顶层布局采用横向电气主路径、区域对称和测量信号 Goto/From 的组合; 三相物理连接仍必须显式连线。
+
 ## 0. 库索引
 
 | 编号 | 模型 | 拓扑 | 状态量 | Sb / 频率 | 关键文件 |
@@ -386,4 +390,3 @@ Vs = out.Vabc_HV; t = Vs.time; Vv = Vs.signals.values;
 | S5+ FULL | sim 5 s | NaN count = 0; 稳态 V ∈ [0.94,1.06] pu |
 | S5+ FAULT | 故障期 V ≈ 设定 pu | 期望 vs 实测 误差 < 1% |
 | S5+ RECOVERY | 故障后 V → ≥0.99 pu | 恢复时间 < 1 s（典型 < 100 ms） |
-

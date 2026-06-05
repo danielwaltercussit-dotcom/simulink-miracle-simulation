@@ -102,7 +102,7 @@ if (-not $Apply) {
     Write-Host "  $archiveDir"
     Write-Host ""
     Write-Host "Project policy: do not use -Apply for normal Simulink modeling optimization."
-    Write-Host "Use docs/TOKEN_BUDGET_AUDIT.md to ignore unrelated skills project-locally instead."
+    Write-Host "Use docs/CODEX_CLAUDE_COLLABORATION.md to ignore unrelated skills project-locally instead."
     exit 0
 }
 

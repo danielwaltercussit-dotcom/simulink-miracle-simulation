@@ -36,8 +36,9 @@ profiling work in this project, first inspect the relevant `SKILL.md` file under
 and testing. Use the supplemental `simulink-skills` entries for interactive
 model edits, command-line debugging, and profiler analysis.
 
-Token budget rule: use `docs/TOKEN_BUDGET_AUDIT.md` as the local skill profile
-before loading optional skills. Default to the modeling/review allowlist there;
+Token budget rule: use `docs/CODEX_CLAUDE_COLLABORATION.md` as the local skill
+and handoff profile before loading optional skills. Default to the
+modeling/review allowlist there;
 do not load unrelated global skills, document/office skills, design skills,
 Notion/Slack/Gmail style skills, or skill discovery/creation skills unless the
 user explicitly asks for that capability in this project. This is a project-local

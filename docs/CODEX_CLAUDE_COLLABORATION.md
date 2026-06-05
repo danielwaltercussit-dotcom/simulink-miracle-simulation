@@ -15,6 +15,9 @@ Codex owns global review and repository hygiene:
 - identify high-impact gaps for power-electronics dominated power-system
   modeling, especially cross-time-scale dynamics and renewable grid integration;
 - compare the skills library against the desktop lab reference archive;
+- use planning/review skills, including GitHub-sourced planning skills when
+  useful, as Codex-only planning aids without adding them to the modeling skill
+  routing surface;
 - maintain this collaboration protocol and memory handoff notes;
 - keep the user-facing backlog concise and ordered by value.
 
@@ -24,6 +27,9 @@ Claude Code owns focused implementation:
 - keep edits local to the relevant skill/script/doc surface;
 - run the smallest meaningful MATLAB or static validation;
 - leave a compact handoff packet for Codex review;
+- use engineering creativity inside the stated user goal, evidence contract,
+  and safety boundaries; Codex should point Claude Code to the target and
+  constraints, not prescribe every implementation detail;
 - avoid broad redesign unless this file or the user explicitly requests it;
 - when Codex hands back review findings, fix only the necessary files for the
   critical issue. Do not refactor unrelated files before the issue is validated
@@ -51,6 +57,57 @@ Read these first, in order:
 5. The specific skill being changed under `.agents/skills/<skill>/SKILL.md`
 
 Do not bulk-read every skill. Route narrowly.
+
+The handoff packet should be the live pointer for the next agent. If it is
+fresh and specific, Claude Code should start there instead of scanning the whole
+project. Codex is responsible for keeping that packet directional enough to
+explain what changed, what was intentionally not changed, and what target
+Claude should pursue next.
+
+## 2.1 Planning-Only Skills
+
+Codex may use planning and review skills for project planning, backlog
+ordering, GitHub skill research, or global user-need analysis. These aids are
+Codex-only unless the user explicitly promotes them into the project-local
+modeling workflow.
+
+Rules:
+
+- Do not copy, install, or register planning-only skills into `.agents/skills`
+  just because Codex used them for planning.
+- Do not ask Claude Code to load planning-only skills while it is implementing
+  or optimizing modeling skills.
+- If Codex uses a GitHub-sourced planning skill or external planning framework,
+  record the source and the planning insight in the handoff packet, not in the
+  AI-in-loop modeling skill router.
+- Planning skills may shape the backlog, acceptance criteria, and handoff
+  format; they must not pollute the runtime modeling skill set.
+- For this repo, the modeling default is this file plus the relevant
+  project-local Simulink skills. Global non-modeling skills are ignored unless
+  the user explicitly asks for them.
+
+## 2.2 Human Approval Gate for Claude Plans
+
+When Codex creates a new project-optimization plan for Claude Code, Codex must
+show the plan to the user first and wait for confirmation before writing it into
+`build/reports/agent_handoff/latest_claude_packet.md` as a Claude-directed
+instruction.
+
+Rules:
+
+- Draft the plan for the user in chat first: objective, scope, candidate files,
+  validation, risks, and where Claude Code may choose creatively.
+- Treat the user's confirmation as a human inspection node before Claude Code
+  receives the plan.
+- Only after confirmation should Codex integrate the approved plan into the
+  handoff packet.
+- If the user changes priorities, update the plan and ask for confirmation
+  again before changing Claude's next-task instructions.
+- Codex may still update the handoff immediately for process rules, review
+  findings, file deltas, or safety warnings that prevent Claude from undoing or
+  re-scanning work.
+- The handoff packet should record whether a Claude-directed plan is
+  `draft_pending_user_approval`, `approved_by_user`, or `not_applicable`.
 
 ## 3. Domain Target
 
@@ -165,6 +222,29 @@ Validation:
 - run `goal='sltest'` when time/tooling allows;
 - verify no stale artifacts are consumed.
 
+## 5.1 AI-in-Loop Pattern for Skill Optimization
+
+When Claude Code optimizes the modeling skills library, it should use the
+AI-in-loop idea as the work pattern, even when the task is skill/document/helper
+work rather than a full Simulink model run.
+
+Use this lightweight loop:
+
+1. Define the study or user capability gap.
+2. Select the target skill and read only its `SKILL.md` plus one needed
+   contract/reference file.
+3. State the expected artifact contract before changing code or docs.
+4. Make a focused implementation change.
+5. Run the smallest meaningful validation: static check, helper smoke test,
+   synthetic evidence, or one fast MATLAB run when needed.
+6. Re-read the generated artifact or changed contract from disk.
+7. Update `build/reports/agent_handoff/latest_claude_packet.md` with changed
+   files, validation, artifacts, known gaps, and the next iteration target.
+
+The point is to preserve the closed-loop discipline: every skill improvement
+must have a user-facing purpose, a contract, evidence, and a handoff. It should
+not become a broad file scan or a vague skill rewrite.
+
 ## 6. Efficient Handoff Packet
 
 After each Claude Code work chunk, write exactly one compact handoff packet.
@@ -185,9 +265,18 @@ Use this format:
 Branch:
 Commit(s):
 Task:
+Plan approval:
+- status: draft_pending_user_approval | approved_by_user | not_applicable
+- user approval note:
 
 Changed files:
 - path
+
+Codex review delta:
+- created:
+- modified:
+- deleted:
+- intentionally not touched:
 
 Validation:
 - command/result
@@ -198,8 +287,17 @@ User-visible artifacts:
 Important findings:
 - one-line finding
 
+What Codex did:
+- concrete action
+
+What Codex did not do:
+- concrete non-action
+
 Known gaps / next step:
 - one-line next step
+
+Implementation freedom:
+- what Claude may decide creatively inside the target boundary
 
 Do not review:
 - unrelated paths
@@ -212,6 +310,16 @@ long-term project knowledge.
 If Codex resumes and this packet is missing or stale, Codex should ask Claude
 Code to provide it before reviewing anything broad. The packet should keep
 Codex from spending tokens re-deriving what changed.
+
+When Codex performs a global review, it must update this packet with:
+
+- the files it created, modified, or deleted;
+- the files it observed as in-flight work and deliberately preserved;
+- the decisions it made, the work it did not do, and the next planning target;
+- whether Claude Code should repair, extend, or leave each changed area alone.
+
+This prevents Claude Code from blindly restoring deleted files, undoing Codex
+review edits, or re-scanning the whole repository to infer intent.
 
 ## 7. Codex Review Checklist
 
@@ -243,7 +351,6 @@ When Codex resumes after Claude Code:
 
 ## 9. Token-Saving Rules
 
-- Use `docs/TOKEN_BUDGET_AUDIT.md` as the project skill profile.
 - Prefer this file over chat history.
 - Prefer the latest handoff packet over reading long logs.
 - Prefer `git diff --name-status` before opening files.
@@ -261,3 +368,9 @@ When Codex resumes after Claude Code:
   boundary-case, and test evidence are handled.
 - Claude Code must update `build/reports/agent_handoff/latest_claude_packet.md`
   after every completed work chunk before handing the branch back to Codex.
+- Project-local skills to avoid by default during modeling/review:
+  `skill-creator`, `code-simplifier`; `find-skill` and `document-skills` were
+  removed from this project-local registry.
+- Optional global skills remain installed for other tasks, but do not load
+  document, design, Notion/Slack/Gmail, broad refactor, or skill discovery
+  skills during normal Simulink work.
