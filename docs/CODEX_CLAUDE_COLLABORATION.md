@@ -257,6 +257,13 @@ Use these current package names:
 - `P3-B impedance helper persistent validation`
 - `P4-A IBR frequency-domain evidence intake`
 - `P5-A opt-in research evidence profile`
+- `E1 EMT/switching-level converter modeling`
+- `E2 detailed-average-dynamic-phasor model switching`
+- `F1 analytic FHA and impedance derivation`
+- `F2 multivariable control and cross-regulation tuning`
+- `F3 perturbation and stability boundary scan`
+- `M1 hybrid solver and multirate simulation`
+- `M2 HIL readiness and real-time deployment prep`
 - `D1 VSC/GFL-GFM support and evidence`
 - `D2 MMC/HVDC support and evidence`
 - `D3 storage/battery/BMS support and evidence`
