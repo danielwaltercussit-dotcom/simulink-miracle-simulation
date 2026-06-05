@@ -8,6 +8,8 @@ Codex and Claude Code for `simulink_agent_v1`.
 
 Codex owns global review and repository hygiene:
 
+- review Claude Code changes for bugs, boundary conditions, missing tests,
+  stale artifacts, and unnecessary edits;
 - periodically scan branches and upload/push GitHub state;
 - review the whole skills library from the user's perspective;
 - identify high-impact gaps for power-electronics dominated power-system
@@ -22,7 +24,10 @@ Claude Code owns focused implementation:
 - keep edits local to the relevant skill/script/doc surface;
 - run the smallest meaningful MATLAB or static validation;
 - leave a compact handoff packet for Codex review;
-- avoid broad redesign unless this file or the user explicitly requests it.
+- avoid broad redesign unless this file or the user explicitly requests it;
+- when Codex hands back review findings, fix only the necessary files for the
+  critical issue. Do not refactor unrelated files before the issue is validated
+  and ready to merge.
 
 The user remains the decision owner for major research direction, global
 installation, destructive Git operations, and changes to the read-only lab
@@ -101,54 +106,30 @@ The integration branch already includes these project-local skills:
 - snapshot copying of `latest_ibr_validation_evidence.md/json`;
 - iteration-directory cleanup to avoid stale evidence false positives.
 
+Recent local commits also added:
+
+- optional S5B weak-grid SCR measured evidence via `weakgrid_scr`;
+- optional S8B modal evidence via `modal_analysis`;
+- `lab-model-pattern-miner` as a report-only drift detector for the read-only
+  lab archive and the curated pattern library.
+
 ## 5. High-Value Backlog for Claude Code
 
 Work in this order unless the user changes priorities.
 
-### P1: Attach Weak-Grid Matrix Evidence to AI-in-Loop
+### Completed, Do Not Rebuild: P1/P2
 
-Goal: clear the intentional S10C warning:
+P1 weak-grid SCR loop evidence and P2 lab-model pattern mining are already
+present in local commits on `integration/skills-maturation-2026-06`.
 
-```text
-weak-grid study objective named, but SCR/ESCR matrix evidence is not yet attached
-```
+Claude Code should not reimplement those from scratch. Only make narrow fixes
+if Codex identifies a bug in the current files:
 
-Expected implementation:
-
-- add an optional AI-in-loop stage for weak-grid scenario planning, likely
-  before S5/S6 or before S10C;
-- call `scripts/scenarios/generate_weak_grid_scr_matrix.m`;
-- write `weak_grid_matrix.md/json` in the iteration directory;
-- pass that path into S10C as `WeakGridEvidencePath`;
-- keep the first implementation as a planning artifact, not a costly full
-  simulation sweep.
-
-Validation:
-
-- `checkcode` on changed MATLAB files;
-- one `ai_in_loop_run('goal','smoke','max_iter',1,'fast',true, ...)` run;
-- confirm S10C `missing_count=0` and the weak-grid section becomes PASS when
-  the matrix is generated.
-
-### P2: Lab Model Pattern Miner
-
-Goal: automatically extract compact pattern cards from the read-only lab archive
-so agents stop rediscovering M01-M08 by hand.
-
-Expected implementation:
-
-- create `lab-model-pattern-miner` skill;
-- add a helper that scans `.slx`, `.m`, `.mat` metadata without modifying lab
-  files;
-- write generated indexes under ignored `build/reports/lab_patterns/`;
-- update `docs/MODELING_PATTERN_LIBRARY.md` only after a human-readable diff is
-  reviewed.
-
-Validation:
-
-- run scan on a small subset first;
-- prove it does not write inside the lab archive;
-- report M01-M08 coverage and missing metadata.
+- P1 files: `scripts/loop/ai_in_loop_stage_weakgrid_scr.m`,
+  `scripts/loop/ai_in_loop_stage_modal.m`,
+  `scripts/loop/ai_in_loop_run.m`, and S10C wiring.
+- P2 files: `.agents/skills/lab-model-pattern-miner/` and
+  `scripts/analysis/mine_lab_model_patterns.m`.
 
 ### P3: Impedance / Frequency-Domain Analysis
 
@@ -186,7 +167,8 @@ Validation:
 
 ## 6. Efficient Handoff Packet
 
-After each Claude Code work chunk, write exactly one compact handoff packet:
+After each Claude Code work chunk, write exactly one compact handoff packet.
+This is mandatory before handing the task back to Codex:
 
 ```text
 build/reports/agent_handoff/latest_claude_packet.md
@@ -227,6 +209,10 @@ If a change should persist for future agents, also update the appropriate
 tracked doc or skill contract. Do not rely on the ignored handoff packet for
 long-term project knowledge.
 
+If Codex resumes and this packet is missing or stale, Codex should ask Claude
+Code to provide it before reviewing anything broad. The packet should keep
+Codex from spending tokens re-deriving what changed.
+
 ## 7. Codex Review Checklist
 
 When Codex resumes after Claude Code:
@@ -257,6 +243,7 @@ When Codex resumes after Claude Code:
 
 ## 9. Token-Saving Rules
 
+- Use `docs/TOKEN_BUDGET_AUDIT.md` as the project skill profile.
 - Prefer this file over chat history.
 - Prefer the latest handoff packet over reading long logs.
 - Prefer `git diff --name-status` before opening files.
@@ -265,3 +252,12 @@ When Codex resumes after Claude Code:
 - Use MATLAB helpers and generated reports instead of pasting long logs.
 - Put detailed evidence under `build/reports/`; summarize only the decision in
   chat.
+- Treat global non-modeling skills as disabled in this project unless the user
+  explicitly asks for that capability. Do not load document, design, Notion,
+  Slack/Gmail, skill-discovery, or broad refactor skills during normal Simulink
+  review/implementation.
+- Claude Code handback reminder: do not refactor files; modify only the
+  necessary files for the current issue until Codex confirms the bug,
+  boundary-case, and test evidence are handled.
+- Claude Code must update `build/reports/agent_handoff/latest_claude_packet.md`
+  after every completed work chunk before handing the branch back to Codex.
