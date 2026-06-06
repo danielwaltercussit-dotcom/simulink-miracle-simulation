@@ -1,0 +1,3 @@
+display_name: Device Pack - VSC / GFL-GFM Support and Evidence
+short_description: Connect VSC device assumptions (control mode, grid strength, sync, active/reactive control) to weak-grid, modal, impedance, fault-ride-through, and time-domain validation evidence.
+default_prompt: Assemble or review the support evidence for this VSC device case. Record control mode (GFL/GFM/grid_support), grid strength (SCR/ESCR), synchronization (PLL/VSG/droop/VOC/VSM), active/reactive control, fault case, and the modal/impedance/time-domain artifacts. Report PASS/WARN/MISSING/N/A per dimension, flag any control-mode inconsistency, and do not claim stability, fault-ride-through, or hardware validation from documentation presence alone.
