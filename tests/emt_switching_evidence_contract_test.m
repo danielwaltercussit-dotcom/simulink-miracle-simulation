@@ -10,7 +10,13 @@ function result = emt_switching_evidence_contract_test()
 %     C) undersampled carrier (few samples per carrier) -> WARN with the
 %        undersampled_carrier adequacy flag;
 %     D) dead-time below one fixed step -> WARN with deadtime_below_one_step;
-%     E) too-short waveform -> MISSING.
+%     E) too-short waveform -> MISSING;
+%     F) stale/mismatched sample-time (declared SampleTimeS disagrees with the
+%        actual time grid) -> WARN with the sample_time_mismatch flag, and the
+%        spectrum falls back to the grid step;
+%     G) provenance downgrade (model_backed asserted but provenance is synthetic
+%        / weak) -> model_backed forced false, provenance_downgraded true, and a
+%        proper simulation_output provenance reaches model_backed true.
 %
 %   Package: E1 EMT/switching-level converter modeling. Artifacts written under
 %   build/reports/e1_emt_switching/<case>/. Returns a struct and prints
@@ -25,6 +31,8 @@ checks = iAddCheck(checks, iCaseUndocumented(projectRoot));
 checks = iAddCheck(checks, iCaseUndersampled(projectRoot));
 checks = iAddCheck(checks, iCaseDeadtime(projectRoot));
 checks = iAddCheck(checks, iCaseTooShort(projectRoot));
+checks = iAddCheck(checks, iCaseSampleTimeMismatch(projectRoot));
+checks = iAddCheck(checks, iCaseProvenanceDowngrade(projectRoot));
 
 allPass = all([checks.passed]);
 fprintf('\n=== emt_switching_evidence_contract_test ===\n');
@@ -173,6 +181,85 @@ c.name = 'Case E: too-short waveform -> MISSING';
 c.passed = okMissing && okNoLoc && okFiles;
 c.detail = sprintf('status=%s located=%d files=%d', ...
     s.status, s.fundamental_well_located, okFiles);
+end
+
+
+function c = iCaseSampleTimeMismatch(projectRoot)
+% Waveform is on a 2 us grid, but the caller DECLARES SampleTimeS = 1 us (stale
+% metadata, e.g. copied from a different run). The mismatch must be flagged and
+% the spectrum must fall back to the true grid step, not the declared one.
+ts = 2e-6; t = (0:ts:0.06-ts)';
+f0 = 50; fc = 5000;
+x = sin(2*pi*f0*t) + 0.1*sin(2*pi*fc*t);
+outDir = fullfile(projectRoot, 'build', 'reports', 'e1_emt_switching', 'synthetic_st_mismatch');
+s = summarize_switching_waveform_evidence(t, x, ...
+    'CaseName', 'synthetic_st_mismatch', 'Signal', 'current', ...
+    'FundamentalHz', f0, 'CarrierHz', fc, 'SampleTimeS', 1e-6, ...
+    'ModulationMethod', 'SPWM', 'DeviceLossMode', 'ideal', ...
+    'OutputDir', outDir);
+
+sm        = s.sample_time_mismatch;
+okFlagged = sm.flagged && abs(sm.declared_s - 1e-6) <= 1e-12 && abs(sm.inferred_s - ts) <= 1e-12;
+okRelErr  = sm.rel_error > sm.tol;                        % 0.5 > 0.05
+okUsesGrid= abs(s.sample_time_used_s - ts) <= 1e-12;      % spectrum uses grid
+okAdeqFlag= iHasAll(s.adequacy.flags, {'sample_time_mismatch'});
+okWarn    = strcmp(s.status, 'WARN') && ~s.provisional;   % integrity, not missing
+okLoc     = s.fundamental_well_located && abs(s.spectrum.fundamental_hz - f0) <= 1;
+okFiles   = iArtifactsExist(outDir);
+
+c.name = 'Case F: stale/mismatched sample-time -> WARN + flag, grid fallback';
+c.passed = okFlagged && okRelErr && okUsesGrid && okAdeqFlag && okWarn && okLoc && okFiles;
+c.detail = sprintf(['flagged=%d declared=%.2g grid=%.2g relerr=%.2f used=%.2g ', ...
+    'fund=%.4g status=%s provisional=%d flags={%s} files=%d'], ...
+    sm.flagged, sm.declared_s, sm.inferred_s, sm.rel_error, s.sample_time_used_s, ...
+    s.spectrum.fundamental_hz, s.status, s.provisional, ...
+    strjoin(s.adequacy.flags, ','), okFiles);
+end
+
+
+function c = iCaseProvenanceDowngrade(projectRoot)
+% Same waveform, three provenance assertions:
+%   1) ModelBacked asserted but provenance is synthetic        -> downgrade
+%   2) ModelBacked asserted, source_type=simulation_output,
+%      synthetic=false, identified                              -> model_backed
+%   3) no assertion (default)                                   -> contract_only
+% A synthetic-only run must NEVER reach model_backed=true.
+ts = 2e-6; t = (0:ts:0.06-ts)';
+f0 = 50; fc = 5000;
+x = sin(2*pi*f0*t) + 0.08*sin(2*pi*3*f0*t) + 0.1*sin(2*pi*fc*t);
+common = {'Signal','current','FundamentalHz',f0,'CarrierHz',fc, ...
+    'SampleTimeS',ts,'ModulationMethod','SPWM','DeviceLossMode','ideal'};
+outDir = fullfile(projectRoot, 'build', 'reports', 'e1_emt_switching', 'synthetic_provenance');
+
+% 1) asserted-but-synthetic -> forced false, downgraded true, reasons recorded
+s1 = summarize_switching_waveform_evidence(t, x, common{:}, ...
+    'CaseName','prov_downgrade', 'ModelBacked', true, 'OutputDir', outDir);
+okDown = ~s1.model_backed && s1.provenance_downgraded && ...
+    ~isempty(s1.provenance.downgrade_reasons) && ...
+    strcmp(s1.provenance.evidence_level, 'contract_only');
+
+% 2) proper simulation provenance -> model_backed true, not downgraded
+prov = struct('source_type','simulation_output','source_id','tinyVSC', ...
+    'model_name','tinyVSC','simulated',true,'synthetic',false);
+s2 = summarize_switching_waveform_evidence(t, x, common{:}, ...
+    'CaseName','prov_model_backed', 'ModelBacked', true, 'Provenance', prov, ...
+    'OutputDir', outDir);
+okUp = s2.model_backed && ~s2.provenance_downgraded && ...
+    strcmp(s2.provenance.evidence_level, 'model_backed');
+
+% 3) default (no assertion) -> contract_only, not model_backed, not downgraded
+s3 = summarize_switching_waveform_evidence(t, x, common{:}, ...
+    'CaseName','prov_default', 'OutputDir', outDir);
+okDef = ~s3.model_backed && ~s3.provenance_downgraded && ...
+    strcmp(s3.provenance.evidence_level, 'contract_only');
+
+c.name = 'Case G: provenance downgrade vs genuine model_backed';
+c.passed = okDown && okUp && okDef;
+c.detail = sprintf(['downgrade: mb=%d dg=%d lvl=%s | model: mb=%d lvl=%s | ', ...
+    'default: mb=%d lvl=%s'], ...
+    s1.model_backed, s1.provenance_downgraded, s1.provenance.evidence_level, ...
+    s2.model_backed, s2.provenance.evidence_level, ...
+    s3.model_backed, s3.provenance.evidence_level);
 end
 
 

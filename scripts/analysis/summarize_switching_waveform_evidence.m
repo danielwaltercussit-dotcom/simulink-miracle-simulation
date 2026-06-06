@@ -34,7 +34,7 @@ end
 opts = iParseNameValues(varargin{:});
 [t, x, ts_inferred] = iNormalizeInputs(timeS, waveform);
 
-[provisional, missingReq, sampleTimeUsed, stDocumented] = ...
+[provisional, missingReq, sampleTimeUsed, stDocumented, stMismatch] = ...
     iResolveMetadata(opts, ts_inferred);
 
 summary = struct();
@@ -46,9 +46,12 @@ summary.duration_s = t(end) - t(1);
 summary.inferred_sample_time_s = ts_inferred;
 summary.sample_time_used_s = sampleTimeUsed;
 summary.sample_time_documented = stDocumented;
+summary.sample_time_mismatch = stMismatch;
 summary.metadata = iMetadataStruct(opts, sampleTimeUsed);
 summary.provisional = provisional;
 summary.missing_required = missingReq;
+[summary.provenance, summary.model_backed, summary.provenance_downgraded] = ...
+    iResolveProvenance(opts);
 
 if numel(t) < 8
     summary.status = "MISSING";
@@ -56,7 +59,7 @@ if numel(t) < 8
     summary.carrier_band = iEmptyCarrier("waveform too short to transform");
     summary.ripple = iEmptyRipple("waveform too short");
     summary.adequacy = iAdequacy(opts.CarrierHz, sampleTimeUsed, ...
-        opts.DeadTimeS, opts.FundamentalHz, opts.MaxHarmonic);
+        opts.DeadTimeS, opts.FundamentalHz, opts.MaxHarmonic, stMismatch);
     summary.fundamental_well_located = false;
     summary.limitations = char(opts.LimitationsNote);
     summary.status = char(summary.status);
@@ -72,7 +75,7 @@ end
 carrier = iCarrierBand(fOne, magOne, opts.CarrierHz, spectrum.fundamental_magnitude);
 ripple = iRippleMetric(t, x, opts.FundamentalHz, opts.TransientEventWindowS);
 adequacy = iAdequacy(opts.CarrierHz, sampleTimeUsed, opts.DeadTimeS, ...
-    opts.FundamentalHz, opts.MaxHarmonic);
+    opts.FundamentalHz, opts.MaxHarmonic, stMismatch);
 
 summary.spectrum = spectrum;
 summary.carrier_band = carrier;
@@ -106,6 +109,9 @@ p.addParameter("Units", "", @(x) ischar(x) || isstring(x));
 p.addParameter("BaseValue", NaN, @(x) isnumeric(x) && isscalar(x));
 p.addParameter("SourceModelOrScript", "", @(x) ischar(x) || isstring(x));
 p.addParameter("RelatedAveragedRun", "", @(x) ischar(x) || isstring(x));
+p.addParameter("Provenance", struct(), @(x) isstruct(x));
+p.addParameter("ModelBacked", false, @(x) islogical(x) || (isnumeric(x) && isscalar(x)));
+p.addParameter("SampleTimeMismatchTol", 0.05, @(x) isnumeric(x) && isscalar(x) && x > 0);
 p.addParameter("OutputDir", "", @(x) ischar(x) || isstring(x));
 p.addParameter("LimitationsNote", ...
     "Switching evidence from a supplied waveform; resolves only what the sample rate captures and is not hardware-validated. Confirm with the fidelity decision and averaged/impedance evidence.", ...
@@ -120,6 +126,7 @@ opts.DeviceLossMode = lower(string(opts.DeviceLossMode));
 opts.Units = string(opts.Units);
 opts.SourceModelOrScript = string(opts.SourceModelOrScript);
 opts.RelatedAveragedRun = string(opts.RelatedAveragedRun);
+opts.ModelBacked = logical(opts.ModelBacked);
 opts.OutputDir = string(opts.OutputDir);
 opts.LimitationsNote = string(opts.LimitationsNote);
 if ~ismember(opts.Signal, ["current","voltage","signal"])
@@ -157,10 +164,12 @@ end
 end
 
 
-function [provisional, missingReq, sampleTimeUsed, stDocumented] = iResolveMetadata(opts, tsInferred)
+function [provisional, missingReq, sampleTimeUsed, stDocumented, stMismatch] = iResolveMetadata(opts, tsInferred)
 % Carrier, sample time, and modulation method are the trust-critical metadata.
 % A documented sample time is preferred; otherwise fall back to the inferred
-% grid step but record that it was undocumented.
+% grid step but record that it was undocumented. A documented sample time that
+% disagrees with the actual time grid is stale/mismatched metadata and is
+% reported via stMismatch so the caller can downgrade trust.
 missingReq = {};
 if isnan(opts.CarrierHz) || opts.CarrierHz <= 0
     missingReq{end+1} = 'carrier_hz';
@@ -168,9 +177,21 @@ end
 if strlength(opts.ModulationMethod) == 0
     missingReq{end+1} = 'modulation_method';
 end
+stMismatch = struct("flagged", false, "declared_s", NaN, "inferred_s", tsInferred, ...
+    "rel_error", NaN, "tol", opts.SampleTimeMismatchTol);
 stDocumented = ~isnan(opts.SampleTimeS) && opts.SampleTimeS > 0;
 if stDocumented
     sampleTimeUsed = opts.SampleTimeS;
+    relErr = abs(opts.SampleTimeS - tsInferred) / tsInferred;
+    stMismatch.declared_s = opts.SampleTimeS;
+    stMismatch.rel_error = relErr;
+    if relErr > opts.SampleTimeMismatchTol
+        % The declared step does not match the waveform's own grid. Trust the
+        % grid for the spectrum (so the FFT frequency axis stays correct) but
+        % flag the metadata as stale/mismatched.
+        stMismatch.flagged = true;
+        sampleTimeUsed = tsInferred;
+    end
 else
     missingReq{end+1} = 'sample_time_s';
     sampleTimeUsed = tsInferred;
@@ -344,7 +365,7 @@ r.rms = sqrt(mean(ac.^2));
 end
 
 
-function a = iAdequacy(carrierHz, ts, deadTimeS, fundHz, maxHarmonic)
+function a = iAdequacy(carrierHz, ts, deadTimeS, fundHz, maxHarmonic, stMismatch)
 a = struct();
 a.nyquist_hz = 1 / (2 * ts);
 a.max_harmonic_of_interest_hz = maxHarmonic * fundHz;
@@ -372,7 +393,93 @@ if ~isnan(deadTimeS) && deadTimeS > 0
 else
     a.deadtime_steps = NaN;
 end
+if nargin >= 6 && isstruct(stMismatch) && stMismatch.flagged
+    a.flags{end+1} = 'sample_time_mismatch';
+end
 a.adequate = isempty(a.flags);
+end
+
+
+function [prov, modelBacked, downgraded] = iResolveProvenance(opts)
+% Establish provenance and the final model_backed flag with an explicit
+% downgrade rule. model_backed is true only when the caller both asserts it AND
+% supplies sufficient provenance to back the claim:
+%   - source_type is a model/simulation source (simulation_output | mat_file),
+%   - a model or source identifier is recorded,
+%   - the run is not marked synthetic.
+% Any shortfall forces model_backed=false and records a downgrade reason, so a
+% synthetic or weakly-sourced run can never overclaim model-level evidence.
+prov = iNormalizeProvenance(opts.Provenance, opts.SourceModelOrScript);
+asserted = opts.ModelBacked;
+reasons = {};
+modelSource = ismember(prov.source_type, ["simulation_output", "mat_file"]);
+if ~asserted
+    reasons{end+1} = 'model_backed not asserted by caller';
+end
+if ~modelSource
+    reasons{end+1} = sprintf('source_type "%s" is not a model/simulation source', prov.source_type);
+end
+if strlength(string(prov.source_id)) == 0
+    reasons{end+1} = 'no model/source identifier recorded';
+end
+if prov.synthetic
+    reasons{end+1} = 'run flagged synthetic';
+end
+modelBacked = asserted && modelSource && strlength(string(prov.source_id)) > 0 && ~prov.synthetic;
+downgraded = asserted && ~modelBacked;
+prov.model_backed_asserted = asserted;
+prov.downgrade_reasons = reasons;
+if modelBacked
+    prov.evidence_level = "model_backed";
+elseif modelSource && ~prov.synthetic
+    prov.evidence_level = "model_referenced";
+else
+    prov.evidence_level = "contract_only";
+end
+prov.evidence_level = char(prov.evidence_level);
+end
+
+
+function prov = iNormalizeProvenance(raw, fallbackSource)
+% Coerce a free-form provenance struct into a stable schema. Unknown source
+% types collapse to "synthetic" so an unrecognised tag never reads as a model.
+prov = struct("source_type", "synthetic", "source_id", "", "source_path", "", ...
+    "model_name", "", "simulated", false, "synthetic", true, ...
+    "captured_at", "", "notes", "");
+fn = fieldnames(raw);
+for k = 1:numel(fn)
+    key = lower(fn{k});
+    val = raw.(fn{k});
+    switch key
+        case "source_type";  prov.source_type = lower(string(val));
+        case "source_id";    prov.source_id = string(val);
+        case "source_path";  prov.source_path = string(val);
+        case "model_name";   prov.model_name = string(val);
+        case "simulated";    prov.simulated = logical(val);
+        case "synthetic";    prov.synthetic = logical(val);
+        case "captured_at";  prov.captured_at = string(val);
+        case "notes";        prov.notes = string(val);
+    end
+end
+known = ["simulation_output", "mat_file", "generated", "synthetic", "captured"];
+if ~ismember(prov.source_type, known)
+    prov.source_type = "synthetic";
+end
+if prov.source_type == "synthetic"
+    prov.synthetic = true;
+end
+if strlength(prov.source_id) == 0 && strlength(prov.model_name) > 0
+    prov.source_id = prov.model_name;
+end
+if strlength(prov.source_id) == 0 && strlength(string(fallbackSource)) > 0
+    prov.source_id = string(fallbackSource);
+end
+prov.source_type = char(prov.source_type);
+prov.source_id = char(prov.source_id);
+prov.source_path = char(prov.source_path);
+prov.model_name = char(prov.model_name);
+prov.captured_at = char(prov.captured_at);
+prov.notes = char(prov.notes);
 end
 
 
@@ -449,8 +556,24 @@ if summary.provisional
         strjoin(summary.missing_required, ", "));
     fprintf(fid, "Do not use for harmonic, loss, or protection claims.\n\n");
 end
+if isfield(summary, 'sample_time_mismatch') && summary.sample_time_mismatch.flagged
+    sm = summary.sample_time_mismatch;
+    fprintf(fid, "> **SAMPLE-TIME MISMATCH** - declared %.4g s vs grid %.4g s ", ...
+        sm.declared_s, sm.inferred_s);
+    fprintf(fid, "(%.1f%% > %.1f%% tol). Metadata is stale; spectrum uses the grid step.\n\n", ...
+        100*sm.rel_error, 100*sm.tol);
+end
+if isfield(summary, 'provenance_downgraded') && summary.provenance_downgraded
+    fprintf(fid, "> **PROVENANCE DOWNGRADE** - model_backed asserted but not supported: %s. ", ...
+        strjoin(summary.provenance.downgrade_reasons, "; "));
+    fprintf(fid, "Forced model_backed=false.\n\n");
+end
 fprintf(fid, "Case: `%s`\n", summary.case_name);
 fprintf(fid, "Signal: %s | Status: **%s**\n", summary.signal, summary.status);
+if isfield(summary, 'model_backed')
+    fprintf(fid, "Evidence level: **%s** | model_backed: %d\n", ...
+        summary.provenance.evidence_level, summary.model_backed);
+end
 fprintf(fid, "Samples: %d over %.4g s (sample time %.4g s%s)\n", ...
     summary.n_samples, summary.duration_s, summary.sample_time_used_s, ...
     iDocTag(summary.sample_time_documented));
@@ -476,8 +599,33 @@ iWriteSpectrumSection(fid, summary);
 iWriteCarrierSection(fid, summary.carrier_band);
 iWriteRippleSection(fid, summary.ripple, summary.metadata.device_loss_mode);
 iWriteAdequacySection(fid, summary.adequacy);
+iWriteProvenanceSection(fid, summary);
 
 fprintf(fid, "## Limitations\n\n%s\n", summary.limitations);
+end
+
+
+function iWriteProvenanceSection(fid, summary)
+if ~isfield(summary, 'provenance')
+    return
+end
+p = summary.provenance;
+fprintf(fid, "## Provenance\n\n");
+fprintf(fid, "- evidence level: **%s** | model_backed: %d (asserted: %d)\n", ...
+    p.evidence_level, summary.model_backed, p.model_backed_asserted);
+fprintf(fid, "- source_type: %s | source_id: %s\n", ...
+    iOrDash(p.source_type), iOrDash(p.source_id));
+if ~isempty(p.source_path)
+    fprintf(fid, "- source_path: %s\n", p.source_path);
+end
+if summary.provenance_downgraded
+    fprintf(fid, "- downgrade: %s\n", strjoin(p.downgrade_reasons, "; "));
+end
+if ~strcmp(p.evidence_level, 'model_backed')
+    fprintf(fid, "- NOTE: not model-backed; treat as %s evidence, not a model/hardware validation.\n", ...
+        p.evidence_level);
+end
+fprintf(fid, "\n");
 end
 
 

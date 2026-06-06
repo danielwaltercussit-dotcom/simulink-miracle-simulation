@@ -52,6 +52,32 @@ Adequacy flags:
 - `WARN` undersampled when `samples_per_carrier < 20`
 - `WARN` aliasing risk when the max harmonic of interest exceeds `nyquist_hz`
 - `WARN` unrepresented dead-time when `deadtime_steps < 1` but dead-time > 0
+- `WARN` sample-time mismatch when a documented `sample_time_s` disagrees with
+  the waveform's own median grid step beyond a relative tolerance (default 5%).
+  The metadata is treated as stale; the spectrum uses the grid step, not the
+  declared one, and `sample_time_mismatch` records declared/inferred/rel_error.
+
+## Evidence Provenance and model_backed
+
+Switching evidence carries a provenance block and a single `model_backed` flag
+so a synthetic curve can never be mistaken for a model or hardware result.
+
+- `source_type`: `simulation_output`, `mat_file`, `generated`, `captured`, or
+  `synthetic`. Unknown tags collapse to `synthetic`.
+- `evidence_level`:
+  - `model_backed` - a real simulation/model source, identified, not synthetic;
+  - `model_referenced` - a model source that is not fully substantiated;
+  - `contract_only` - synthetic/generated data that validates the contract only.
+- `model_backed = true` requires ALL of: the caller asserts it, `source_type`
+  is a model source (`simulation_output`/`mat_file`), a `source_id` is recorded,
+  and the run is NOT flagged `synthetic`. Any shortfall forces `model_backed =
+  false` and records `downgrade_reasons` (provenance downgrade).
+- The summarizer is the single authority for this decision; the ingestion
+  helper only asserts the declared source type. A synthetic-only run that
+  asserts `model_backed` is downgraded with an explicit reason, never silently.
+- Hardware-backed evidence is a separate, higher bar: it is NOT implied by
+  `model_backed` and must be supplied as real HIL/hardware capture, not inferred
+  from a simulation.
 
 ## Interpretation Rules
 

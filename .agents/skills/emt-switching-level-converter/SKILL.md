@@ -105,6 +105,42 @@ The helper is pure base-MATLAB (no Signal Processing Toolbox): the spectrum uses
 `fft`, THD sums harmonic bins of the fundamental, and the carrier band is located
 relative to `CarrierHz`. It does NOT run a Simulink model; supply the waveform.
 
+## Evidence Ingestion and Provenance
+
+To attach real provenance, ingest the waveform through the intake helper rather
+than calling the summarizer directly. It accepts a `Simulink.SimulationOutput`,
+a logged-signal struct (`time` + `signals`), a `.mat` artifact path, or a
+generated `(t, x)` struct, and records where the data came from:
+
+```matlab
+summary = ingest_switching_waveform_evidence(simOut, ...
+    "SignalName", "i_load", "CaseName", "vsc_leg_run1", ...
+    "Signal", "current", "FundamentalHz", 50, "CarrierHz", 2000, ...
+    "SampleTimeS", 5e-6, "ModulationMethod", "SPWM", ...
+    "OutputDir", "build/reports/e1_emt_switching/vsc_leg_run1");
+```
+
+`summary.model_backed` is `true` ONLY for an identified, non-synthetic model
+source; synthetic/generated data stays `contract_only`, and an over-asserted
+synthetic source is downgraded with a recorded reason. `model_backed` is not a
+hardware-validation claim. See the contract for the full taxonomy.
+
+For a genuine model-backed run with no private model, build the tiny generic
+half-bridge SPWM leg (programmatic, no saved `.slx`, no lab model) and feed its
+SimulationOutput through the intake helper:
+
+```matlab
+art = build_tiny_switching_example("OutputDir", ...
+    "build/reports/e1_emt_switching/model_backed_tiny_leg");
+summary = ingest_switching_waveform_evidence(art, "Signal","current", ...
+    "FundamentalHz",50, "CarrierHz",2000, "SampleTimeS",5e-6, ...
+    "ModulationMethod","SPWM", "OutputDir", art_dir);
+```
+
+`build_tiny_switching_example` requires Simulink and actually compiles and
+simulates the leg; it is a demonstration source for model-backed evidence, not a
+power-system study model.
+
 ## Output
 
 Write switching evidence under:
