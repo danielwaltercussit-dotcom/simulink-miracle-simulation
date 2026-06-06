@@ -1,0 +1,3 @@
+display_name: EMT / Switching-Level Converter Modeling
+short_description: PWM, dead-time, loss, and switching-harmonic/THD evidence for detailed converter EMT models.
+default_prompt: Decide whether this converter study needs switching-level EMT or an averaged/RMS/phasor model, and if switching-level, summarize the waveform's THD, harmonics, carrier-band content, and discretization adequacy from the required metadata (carrier, sample time, dead-time, modulation, device-loss mode, event window). Do not claim harmonic, loss, protection, or hardware validation when the carrier, sample time, or modulation method is undocumented or the grid undersamples the carrier.
