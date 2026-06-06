@@ -23,6 +23,12 @@ function result = storage_bms_support_contract_test()
 %        same_study=false, handoff_ready=false even though paths are distinct
 %        and the battery layer is otherwise proven: cross-study evidence cannot
 %        be combined into one validated case.
+%     H) battery + DC-link + EMT declare a matching operating_point under one
+%        study_root -> same_operating_condition=true, handoff_ready.
+%     I) DC-link declares a mismatched operating_point (hot, high-SOC, higher
+%        power) -> same_operating_condition=false, handoff_ready=false even
+%        though same_study=true and battery_layer_proven stays true: the screen
+%        is orthogonal to the battery-layer gate.
 %
 %   No Simulink, no toolbox dependency: synthetic descriptors plus tiny real
 %   scratch files through the base-MATLAB helper. Scratch dir is removed at the
@@ -58,6 +64,8 @@ checks = iAddCheck(checks, iCaseProvisional(scratch, battFile, dcFile));
 checks = iAddCheck(checks, iCaseModelButNoBatteryEvidence(scratch, dcFile, emtFile));
 checks = iAddCheck(checks, iCaseSameStudy(scratch, studyA, battA, dcA, emtA));
 checks = iAddCheck(checks, iCaseCrossStudy(scratch, studyA, battA, dcB, emtA));
+checks = iAddCheck(checks, iCaseSameOpCondition(scratch, studyA, battA, dcA, emtA));
+checks = iAddCheck(checks, iCaseMismatchedOpCondition(scratch, studyA, battA, dcA, emtA));
 
 allPass = all([checks.passed]);
 fprintf('\n=== storage_bms_support_contract_test ===\n');
@@ -276,6 +284,78 @@ c.passed = okNotSame && okSepTrue && okProven && okNotHand && okIssue;
 c.detail = sprintf(['same_study=%d separated=%d proven=%d handoff=%d ', ...
     'n_issues=%d'], s.separation.same_study, okSepTrue, okProven, ...
     s.handoff_ready, numel(s.separation.issues));
+end
+
+
+function c = iCaseSameOpCondition(scratch, studyA, battA, dcA, emtA)
+% Battery + DC-link + EMT all declare a matching operating point (same SOC,
+% temperature, power) under one study_root -> same_operating_condition=true and
+% handoff_ready. Distinct from same-study: this checks the operating point, not
+% the path.
+op = struct('soc', 0.5, 'temperature_c', 25, 'p_kw', 200);
+d = struct( ...
+    'case_name', 'same_op_condition', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'study_root', studyA, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battA, 'required', true, 'operating_point', op), ...
+    'dc_link', struct('artifact', dcA, 'required', true, 'operating_point', op), ...
+    'time_domain_validation', struct('artifact', emtA, 'required', true, 'operating_point', op));
+s = summarize_storage_bms_support(d, 'OutputDir', fullfile(scratch, 'same_op'));
+
+oc = s.operating_condition;
+okSameOp  = islogical(oc.same_operating_condition) && oc.same_operating_condition;
+okAnchor  = strcmp(oc.anchor_field, 'battery_evidence');
+okProven  = s.battery_layer_proven;
+okHandoff = s.handoff_ready;
+okNoIssue = isempty(oc.issues);
+
+c.name = 'Case H: matching operating points -> same_operating_condition + handoff';
+c.passed = okSameOp && okAnchor && okProven && okHandoff && okNoIssue;
+c.detail = sprintf('same_op=%d anchor=%s proven=%d handoff=%d n_issues=%d', ...
+    okSameOp, oc.anchor_field, okProven, okHandoff, numel(oc.issues));
+end
+
+
+function c = iCaseMismatchedOpCondition(scratch, studyA, battA, dcA, emtA)
+% Same study_root (same_study stays true) and battery layer proven, but the
+% DC-link run is at a different operating point (hot, high-SOC, higher power)
+% than the battery anchor. same_operating_condition=false must block handoff,
+% while battery_layer_proven stays true (the screen is orthogonal).
+battOp = struct('soc', 0.5, 'temperature_c', 25, 'p_kw', 200);
+dcOp   = struct('soc', 0.9, 'temperature_c', 45, 'p_kw', 250);
+d = struct( ...
+    'case_name', 'mismatched_op_condition', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'study_root', studyA, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battA, 'required', true, 'operating_point', battOp), ...
+    'dc_link', struct('artifact', dcA, 'required', true, 'operating_point', dcOp), ...
+    'time_domain_validation', struct('artifact', emtA, 'required', true, 'operating_point', battOp));
+s = summarize_storage_bms_support(d, 'OutputDir', fullfile(scratch, 'mismatch_op'));
+
+oc = s.operating_condition;
+okNotSameOp = islogical(oc.same_operating_condition) && ~oc.same_operating_condition;
+okSameStudy = islogical(s.separation.same_study) && s.separation.same_study;
+okProven    = s.battery_layer_proven;   % orthogonal: battery layer stays proven
+okNotHand   = ~s.handoff_ready;          % but mismatched op condition blocks
+okIssue     = ~isempty(oc.issues);
+
+c.name = 'Case I: mismatched operating point -> same_operating_condition=false blocks handoff';
+c.passed = okNotSameOp && okSameStudy && okProven && okNotHand && okIssue;
+c.detail = sprintf('same_op=%d same_study=%d proven=%d handoff=%d n_issues=%d', ...
+    s.operating_condition.same_operating_condition, s.separation.same_study, ...
+    okProven, s.handoff_ready, numel(oc.issues));
 end
 
 

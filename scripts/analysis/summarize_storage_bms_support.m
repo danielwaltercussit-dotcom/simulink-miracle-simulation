@@ -32,11 +32,23 @@ function summary = summarize_storage_bms_support(descriptor, varargin)
 %     thermal            struct: .limit_c (scalar) .model (char).
 %     protection         struct: .ov .uv .oc .ot .ut .soc_cutoff (logical-ish).
 %     battery_evidence   struct: .artifact (path) .required (logical)
-%                        .provisional/.indirect (logical).
-%     dc_link            struct: .artifact (path) .required (logical) ...
+%                        .provisional/.indirect (logical)
+%                        .operating_point (struct: .soc .temperature_c .p_kw
+%                        .scr; opt-in same-operating-condition anchor).
+%     dc_link            struct: .artifact (path) .required (logical)
+%                        .operating_point (struct, compared to anchor) ...
 %     modal_evidence     struct: .artifact (path) .required (logical) ...
 %     impedance_evidence struct: .artifact (path) .required (logical) ...
-%     time_domain_validation struct: .artifact (path) .required (logical) ...
+%     time_domain_validation struct: .artifact (path) .required (logical)
+%                        .operating_point (struct, compared to anchor) ...
+%
+%   Name-value options:
+%     OutputDir              char/string. Where to write md/json.
+%     LimitationsNote        char/string. Override the limitations footer.
+%     OpConditionTolerance   struct: .soc .temperature_c .p_kw_rel .scr.
+%                        Overrides same-operating-condition tolerances
+%                        (defaults soc 0.05, temperature_c 5, p_kw_rel 0.05,
+%                        scr 0.2).
 %
 %   See .agents/skills/device-pack-storage-bms/references/
 %       storage-bms-support-contract.md
@@ -55,6 +67,7 @@ prov = iProvisional(d);
 
 dims = iEvaluateDimensions(d, prov.provisional);
 separation = iSeparationScreen(d);
+opCondition = iOperatingConditionScreen(d, opts.OpConditionTolerance);
 batteryProven = iBatteryLayerProven(d, dims, prov.provisional);
 
 summary = struct();
@@ -69,10 +82,11 @@ summary.provisional = prov.provisional;
 summary.missing_documentation = prov.missing;
 summary.dimensions = dims;
 summary.separation = separation;
+summary.operating_condition = opCondition;
 summary.battery_layer_proven = batteryProven;
 summary.status_counts = iCountStatuses(dims);
-summary.handoff_ready = iHandoffReady(dims, separation, batteryProven, ...
-    prov.provisional);
+summary.handoff_ready = iHandoffReady(dims, separation, opCondition, ...
+    batteryProven, prov.provisional);
 summary.limitations = char(opts.LimitationsNote);
 summary.excluded_claims = iExcludedClaims();
 
@@ -92,10 +106,12 @@ p.addParameter("LimitationsNote", ...
      'same-study, not that a physical result is proven. Battery/BMS evidence ' ...
      'is kept separate from generic DC-link converter evidence.'], ...
     @(x) ischar(x) || isstring(x));
+p.addParameter("OpConditionTolerance", struct(), @isstruct);
 p.parse(varargin{:});
 opts = p.Results;
 opts.OutputDir = string(opts.OutputDir);
 opts.LimitationsNote = string(opts.LimitationsNote);
+opts.OpConditionTolerance = iResolveOpTolerance(opts.OpConditionTolerance);
 end
 
 
@@ -484,6 +500,144 @@ tf = startsWith(childCanon, prefix);
 end
 
 
+function tol = iResolveOpTolerance(userTol)
+% Default tolerances for the same-operating-condition screen. Absolute for SOC,
+% temperature, and SCR; relative for power. User struct overrides per field.
+tol = struct('soc', 0.05, 'temperature_c', 5, 'p_kw_rel', 0.05, 'scr', 0.2);
+if ~isstruct(userTol)
+    return
+end
+fn = fieldnames(tol);
+for k = 1:numel(fn)
+    f = fn{k};
+    if isfield(userTol, f) && isnumeric(userTol.(f)) && isscalar(userTol.(f)) ...
+            && isfinite(userTol.(f)) && userTol.(f) >= 0
+        tol.(f) = double(userTol.(f));
+    end
+end
+end
+
+
+function op = iOperatingConditionScreen(d, tol)
+% Same-operating-condition (同工况) screen. Each artifact substruct may declare
+% an operating_point with any of: soc, temperature_c, p_kw, scr. The battery
+% evidence point is the anchor; converter/time-domain points are compared to it
+% within tolerance. This is distinct from the same-study path check: two runs
+% can share a study_root yet be taken at different SOC/temperature/power, which
+% must not be stapled into one validated case.
+%
+% same_operating_condition = [] when fewer than two artifacts declare a point
+% (opt-in; not blocking), true when all comparable fields agree within
+% tolerance, false otherwise (with per-field mismatch issues).
+anchorField = "battery_evidence";
+compareFields = ["dc_link", "time_domain_validation", "modal_evidence", ...
+    "impedance_evidence"];
+
+points = struct('field', {}, 'pt', {});
+allFields = [anchorField, compareFields];
+for k = 1:numel(allFields)
+    pt = iExtractOpPoint(d.(allFields(k)));
+    if ~isempty(fieldnames(pt))
+        points(end+1) = struct('field', char(allFields(k)), 'pt', pt); %#ok<AGROW>
+    end
+end
+
+op = struct();
+op.tolerance = tol;
+op.anchor_field = "";
+op.anchor = struct();
+op.compared = {};
+op.issues = {};
+
+if numel(points) < 2
+    op.same_operating_condition = [];   % not enough declared points
+    return
+end
+
+% Anchor on the battery point when present, else the first declared point.
+anchorIdx = find(strcmp({points.field}, char(anchorField)), 1);
+if isempty(anchorIdx)
+    anchorIdx = 1;
+end
+anchor = points(anchorIdx);
+op.anchor_field = anchor.field;
+op.anchor = anchor.pt;
+
+issues = strings(1, 0);
+compared = strings(1, 0);
+same = true;
+for k = 1:numel(points)
+    if k == anchorIdx
+        continue
+    end
+    compared(end+1) = points(k).field; %#ok<AGROW>
+    mism = iComparePoints(anchor.pt, points(k).pt, tol);
+    for m = 1:numel(mism)
+        same = false;
+        issues(end+1) = sprintf("%s operating point differs from %s: %s", ...
+            points(k).field, anchor.field, mism(m)); %#ok<AGROW>
+    end
+end
+
+op.same_operating_condition = same;
+op.compared = cellstr(compared);
+op.issues = cellstr(issues);
+end
+
+
+function pt = iExtractOpPoint(artStruct)
+% Pull a numeric operating_point substruct (soc, temperature_c, p_kw, scr) from
+% an artifact descriptor. Only finite numeric scalars are kept.
+pt = struct();
+if ~isstruct(artStruct) || ~isfield(artStruct, "operating_point") ...
+        || ~isstruct(artStruct.operating_point)
+    return
+end
+raw = artStruct.operating_point;
+keys = ["soc", "temperature_c", "p_kw", "scr"];
+for k = 1:numel(keys)
+    key = keys(k);
+    if isfield(raw, key) && isnumeric(raw.(key)) && isscalar(raw.(key)) ...
+            && isfinite(raw.(key))
+        pt.(key) = double(raw.(key));
+    end
+end
+end
+
+
+function mism = iComparePoints(anchorPt, otherPt, tol)
+% Return a string array of per-field mismatch descriptions. Only fields present
+% in BOTH points are compared. SOC/temperature/SCR use absolute tolerance;
+% power uses a relative tolerance against the anchor magnitude.
+mism = strings(1, 0);
+if isfield(anchorPt, "soc") && isfield(otherPt, "soc")
+    if abs(anchorPt.soc - otherPt.soc) > tol.soc
+        mism(end+1) = sprintf("soc %.3g vs %.3g (tol %.3g)", ...
+            otherPt.soc, anchorPt.soc, tol.soc);
+    end
+end
+if isfield(anchorPt, "temperature_c") && isfield(otherPt, "temperature_c")
+    if abs(anchorPt.temperature_c - otherPt.temperature_c) > tol.temperature_c
+        mism(end+1) = sprintf("temperature_c %.3g vs %.3g (tol %.3g)", ...
+            otherPt.temperature_c, anchorPt.temperature_c, tol.temperature_c);
+    end
+end
+if isfield(anchorPt, "scr") && isfield(otherPt, "scr")
+    if abs(anchorPt.scr - otherPt.scr) > tol.scr
+        mism(end+1) = sprintf("scr %.3g vs %.3g (tol %.3g)", ...
+            otherPt.scr, anchorPt.scr, tol.scr);
+    end
+end
+if isfield(anchorPt, "p_kw") && isfield(otherPt, "p_kw")
+    ref = max(abs(anchorPt.p_kw), 1e-9);
+    if abs(anchorPt.p_kw - otherPt.p_kw) / ref > tol.p_kw_rel
+        mism(end+1) = sprintf("p_kw %.4g vs %.4g (rel tol %.3g)", ...
+            otherPt.p_kw, anchorPt.p_kw, tol.p_kw_rel);
+    end
+end
+end
+
+
 function tf = iBatteryLayerProven(d, dims, provisional)
 % The battery layer is proven only when the battery model is documented (not a
 % constant DC source) AND the battery_evidence dimension is PASS. Generic
@@ -514,17 +668,25 @@ end
 end
 
 
-function tf = iHandoffReady(dims, separation, batteryProven, provisional)
+function tf = iHandoffReady(dims, separation, opCondition, batteryProven, provisional)
 % Handoff-ready requires: not provisional, no MISSING dimension, battery and
-% DC-link evidence separated, the battery layer proven, and (when a study_root
-% was declared) all evidence same-study. same_study = [] means the check was
-% not requested and does not block; same_study = false blocks.
+% DC-link evidence separated, the battery layer proven, (when a study_root was
+% declared) all evidence same-study, and (when >=2 operating points were
+% declared) all evidence same-operating-condition. A [] same_study or
+% same_operating_condition means the check was not requested and does not block;
+% an explicit false blocks.
 if provisional || ~separation.separated || ~batteryProven
     tf = false;
     return
 end
 if islogical(separation.same_study) && isscalar(separation.same_study) && ...
         ~separation.same_study
+    tf = false;
+    return
+end
+if islogical(opCondition.same_operating_condition) && ...
+        isscalar(opCondition.same_operating_condition) && ...
+        ~opCondition.same_operating_condition
     tf = false;
     return
 end
@@ -630,6 +792,24 @@ end
 fprintf(fid, "- battery_artifact: %s\n", iDisp(sep.battery_artifact));
 fprintf(fid, "- dc_link_artifact: %s\n\n", iDisp(sep.dc_link_artifact));
 
+fprintf(fid, "## Operating-condition consistency\n\n");
+op = summary.operating_condition;
+if isempty(op.same_operating_condition)
+    fprintf(fid, ['- same_operating_condition: N/A (fewer than two artifacts ' ...
+        'declared an operating_point)\n']);
+elseif op.same_operating_condition
+    fprintf(fid, ['- same_operating_condition: all compared evidence agrees ' ...
+        'with the %s anchor within tolerance\n'], iDisp(op.anchor_field));
+else
+    fprintf(fid, ['- same_operating_condition: FALSE - evidence taken at ' ...
+        'differing operating points (anchor: %s)\n'], iDisp(op.anchor_field));
+end
+fprintf(fid, "- anchor_point: %s\n", iFormatOpPoint(op.anchor));
+for k = 1:numel(op.issues)
+    fprintf(fid, "- WARN: %s\n", op.issues{k});
+end
+fprintf(fid, "\n");
+
 fprintf(fid, "## Excluded claims\n\n");
 for k = 1:numel(summary.excluded_claims)
     fprintf(fid, "- %s\n", summary.excluded_claims{k});
@@ -662,6 +842,29 @@ if isempty(c)
 else
     s = strjoin(c, ", ");
 end
+end
+
+
+function s = iFormatOpPoint(pt)
+% One-line rendering of an operating_point struct (soc/temperature_c/p_kw/scr).
+if ~isstruct(pt) || isempty(fieldnames(pt))
+    s = "_(none declared)_";
+    return
+end
+parts = strings(1, 0);
+if isfield(pt, "soc")
+    parts(end+1) = sprintf("soc=%.3g", pt.soc);
+end
+if isfield(pt, "temperature_c")
+    parts(end+1) = sprintf("T=%.3gC", pt.temperature_c);
+end
+if isfield(pt, "p_kw")
+    parts(end+1) = sprintf("P=%.4gkW", pt.p_kw);
+end
+if isfield(pt, "scr")
+    parts(end+1) = sprintf("SCR=%.3g", pt.scr);
+end
+s = strjoin(cellstr(parts), ", ");
 end
 
 
