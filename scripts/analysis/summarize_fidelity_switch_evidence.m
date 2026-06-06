@@ -181,7 +181,6 @@ switch key
 end
 end
 
-
 function d = iDirection(fromRank, toRank)
 if isnan(fromRank) || isnan(toRank)
     d = 'unknown';

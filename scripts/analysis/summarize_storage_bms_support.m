@@ -80,8 +80,6 @@ if strlength(opts.OutputDir) > 0
     iWriteOutputs(opts.OutputDir, summary);
 end
 end
-
-
 function opts = iParseNameValues(varargin)
 p = inputParser;
 p.addParameter("OutputDir", "", @(x) ischar(x) || isstring(x));
