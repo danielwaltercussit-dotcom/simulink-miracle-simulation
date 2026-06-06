@@ -108,7 +108,7 @@ actual evidence ingestion or small non-private runnable model probes.
 
 ## Draft Next-Round Order
 
-This plan is `draft_pending_user_approval`.
+Plan approval: `approved_by_user` on 2026-06-06.
 
 1. Recover every package into a dedicated worktree and commit package-local
    files on the assigned branch.
