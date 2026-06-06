@@ -392,6 +392,23 @@ When Codex resumes after Claude Code:
 
 - Prefer staying on `integration/skills-maturation-2026-06` for skill-library
   maturation unless the user requests a separate branch.
+- Parallel Claude Code packages must use dedicated worktrees. The primary
+  `simulink_agent_v1` working directory is the Codex review/staging workspace
+  and must not be used by multiple Claude conversations that repeatedly switch
+  branches.
+- Use the stable worktree shape
+  `C:\Users\jonas\Desktop\simulink_agent_v1__<package-slug>`.
+- Before editing, Claude Code must record `git rev-parse --abbrev-ref HEAD` and
+  `git status --short --branch` in its branch packet. If the branch changes
+  unexpectedly, stop instead of continuing in the shared tree.
+- A parallel package is not ready for Codex review until its owned files are
+  committed on its assigned branch. Leaving all deliverables untracked in the
+  primary worktree is an invalid handoff.
+- Stage package files by explicit path. Never use `git add -A` or `git add .`
+  while sibling-package files are visible.
+- The branch-specific packet is the authoritative parallel-work record:
+  `build/reports/agent_handoff/<package_slug>_claude_packet.md`. Keep it under
+  120 lines. `latest_claude_packet.md` is only the compact global index.
 - Commit focused changes with messages like:
   - `feat(loop): attach weak-grid matrix evidence`
   - `feat(skill): add lab model pattern miner`
@@ -420,6 +437,9 @@ When Codex resumes after Claude Code:
   boundary-case, and test evidence are handled.
 - Claude Code must update `build/reports/agent_handoff/latest_claude_packet.md`
   after every completed work chunk before handing the branch back to Codex.
+- In parallel work, Claude Code must update its branch-specific packet and may
+  update `latest_claude_packet.md` only as a compact index entry. Do not append
+  full package plans or test transcripts to the latest packet.
 - Project-local skills to avoid by default during modeling/review:
   `skill-creator`, `code-simplifier`; `find-skill` and `document-skills` were
   removed from this project-local registry.
