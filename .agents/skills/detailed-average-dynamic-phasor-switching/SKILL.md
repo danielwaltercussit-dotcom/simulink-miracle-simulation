@@ -52,6 +52,43 @@ Before a switch is `pass`, record all of:
 Any missing field, an unrecognized fidelity name, or a time-step ratio that
 contradicts the switch direction forces `provisional` status.
 
+## Average -> Switching State Mapping + Runnable Prototype
+
+Two package helpers move this skill from contract-only toward model-backed
+evidence:
+
+- `map_average_to_switching_state` - given averaged-model states (inductor
+  current, duty, Vdc, carrier frequency) it computes the switching-model initial
+  conditions: the inductor current carries over as a shared state, the carrier
+  phase is a declared free initialization (default 0), and the instantaneous
+  switch state `q0` is reconstructed from the duty vs the carrier. It reports a
+  continuity residual (averaged output vs one-carrier-cycle mean of the
+  reconstructed switched output). This is a consistency check only:
+  `model_validation_status` is always `not_run` here.
+- `run_fidelity_switch_prototype` - builds a minimal, non-private
+  averaged-vs-switching RL model (half-bridge: Pulse Generator vs Constant
+  `Vdc*duty`, each into `1/(L s + R)`) in memory and ACTUALLY simulates it,
+  returning the steady-state mean currents and their relative error. If Simulink
+  is unavailable it returns `ran=false` and never fabricates a measured pass.
+
+Typical model-backed loop:
+
+```matlab
+proto = run_fidelity_switch_prototype("CaseName","c1","Vdc",100,"Duty",0.4);
+s = summarize_fidelity_switch_evidence( ...
+    "CaseName","c1","FromFidelity","switching_emt","ToFidelity","averaged_emt", ...
+    ... documented fields ..., ...
+    "MeasuredErrorValue",proto.rel_error,"MeasuredErrorBound",1e-2, ...
+    "ErrorMetricDefinition","|mean(i_sw)-i_avg|/i_avg, last 1/3 of sim", ...
+    "ComparedFromRunId","switching_ode4","ComparedToRunId","averaged_ode4", ...
+    "SameStudyArtifactPaths",string(proto.json_path),"SameStudyRoot",<study dir>);
+% overall_status reaches "measured_pass" only because proto actually ran.
+```
+
+The dynamic-phasor view is the analytic bridge: for a slowly varying duty the
+load current is a phasor `I(t)` obeying `dI/dt = (-R/L + j*w0)*(-I) + Vdc*D/L`.
+The prototype's averaged branch is the zero-ripple limit of that phasor.
+
 ## Documented vs Measured Equivalence
 
 The skill reports two independent axes and never conflates them:

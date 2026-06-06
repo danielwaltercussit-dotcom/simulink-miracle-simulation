@@ -82,6 +82,48 @@ fidelities:
   every artifact exists on disk under the study root.
 - `fail` - all fields present and verifiable, but numeric error > bound.
 
+## Average -> Switching State Mapping
+
+`map_average_to_switching_state` records how averaged states seed a switching
+model and whether that mapping is internally consistent.
+
+Inputs: inductor_current_a, duty (0..1), vdc_v, carrier_freq_hz, optional
+carrier_phase (default 0).
+
+Outputs: switching initial conditions (inductor_current_a carried over,
+carrier_phase declared, reconstructed switch_state_q0), the one-carrier-cycle
+reconstructed mean output, and a continuity residual.
+
+- continuity_residual_abs = |Vdc*duty - mean(reconstructed switched output)|
+- continuity_residual_rel = residual_abs / |Vdc*duty|
+- contract_status = `consistent` when required fields are present, duty is in
+  [0,1], and continuity_residual_rel <= residual_tol; otherwise `provisional`.
+- model_validation_status is ALWAYS `not_run` for this helper. A small residual
+  proves the mapping is self-consistent, NOT that a simulation stays continuous.
+
+## Runnable Prototype (model-backed)
+
+`run_fidelity_switch_prototype` builds a minimal averaged-vs-switching RL model
+in memory and actually simulates it.
+
+- ran = true only if Simulink built and simulated the model in this session.
+- rel_error = |mean(i_sw) - i_avg| / |i_avg| over the steady-state window.
+- model_validation_status: `ran` on success, `failed` on a sim error,
+  `not_run` if never attempted. On failure rel_error stays NaN; it can never
+  become a measured pass.
+
+Feed proto.rel_error + proto.json_path into the measured-equivalence fields to
+obtain overall_status=`measured_pass` ONLY when the simulation actually ran and
+the error is within bound.
+
+## Three Separated Verdicts
+
+- contract consistency: documented_status / mapping contract_status. Metadata is
+  complete and self-consistent. NOT a model result.
+- model-backed: measured_status=`pass` / overall_status=`measured_pass`,
+  reached only from an actual simulation within bound plus same-study artifacts.
+- hardware-backed: NOT provided by this package. Never assert it from software.
+
 ## Status (combined)
 
 - `documented_status`: `pass` | `provisional` (see required fields above and the
