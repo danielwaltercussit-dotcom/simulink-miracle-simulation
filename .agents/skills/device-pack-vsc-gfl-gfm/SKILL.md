@@ -112,6 +112,46 @@ Simulink model; supply the assumptions and artifact pointers. When a path is
 given for an artifact, the file must exist on disk or the dimension is
 `MISSING`.
 
+## Same-Iteration Evidence Composer
+
+When the artifacts (weak-grid SCR/ESCR, modal, impedance, time-domain) already
+exist from a specific study iteration, use the composer instead of hand-wiring
+paths. It accepts an artifact ONLY when it lives under the current iteration
+directory and rejects files from other iterations as stale, so a prior run's
+evidence cannot silently back the current case:
+
+```matlab
+comp = compose_vsc_gfl_gfm_evidence(d, currentIterationDir, ...
+    "WeakGridScrPath", scrPath, "ModalPath", modalPath, ...
+    "ImpedancePath", zPath, "TimeDomainPath", emtPath, ...
+    "OutputDir", "build/reports/d1_vsc_gfl_gfm/<case>/composed");
+```
+
+Each artifact is classified `used` (same-iteration, fed to the support helper),
+`stale` (exists but under another iteration dir, rejected), `missing` (path
+supplied but file absent), or `not_set`. Rejected artifacts never reach the
+helper, so they cannot produce a `PASS`. The same-iteration test canonicalizes
+paths and uses a trailing-separator guard so a sibling like `iter2` does not
+false-match `iter`. Same-iteration acceptance is bookkeeping, not model-backed
+proof of the artifact's own claim.
+
+## GFL/GFM Comparison Completeness
+
+Before routing a GFL-vs-GFM pair to `gfl-gfm-control-comparison`, check the pair
+is a complete, fair comparison:
+
+```matlab
+report = compare_vsc_gfl_gfm_completeness(caseGfl, caseGfm, ...
+    "SharedAxes", ["network","dispatch","disturbance","observables"], ...
+    "OutputDir", "build/reports/d1_vsc_gfl_gfm/<case>/comparison");
+```
+
+A pair is `comparison_complete` only when (1) it covers exactly one GFL and one
+GFM device, (2) each case is individually handoff-ready, and (3) the fairness
+axes match across both cases unless a difference is listed in both cases'
+`justified_differences`. Completeness is the precondition for a fair study, not
+a performance verdict; the checker runs no model.
+
 ## Output
 
 Write VSC support summaries under:
@@ -120,6 +160,8 @@ Write VSC support summaries under:
 build/reports/d1_vsc_gfl_gfm/<case>/
   vsc_gfl_gfm_support.md
   vsc_gfl_gfm_support.json
+  composed/vsc_evidence_composition.md         (composer)
+  comparison/vsc_gfl_gfm_comparison_completeness.md  (comparison checker)
 ```
 
 Read `references/vsc-support-contract.md` before changing dimensions, status

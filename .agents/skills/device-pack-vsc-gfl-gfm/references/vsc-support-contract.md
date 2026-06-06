@@ -75,6 +75,39 @@ For a VSC device case to be handoff-ready:
 - the fault-ride-through and time-domain dimensions are backed by same-study
   artifacts (not downgraded WARN).
 
+## Same-Iteration Evidence Rule
+
+When composing a case from existing artifact files (weak-grid SCR/ESCR, modal,
+impedance, time-domain), an artifact is admissible only when it belongs to the
+current study iteration:
+
+- An artifact path is same-iteration iff its canonical absolute path equals, or
+  is a child of, the canonical current iteration directory. The child test uses
+  a trailing separator so a sibling directory whose name is a string prefix
+  (e.g. `iter2` vs `iter`) does not false-match.
+- `used`: file exists and is same-iteration; it feeds the support helper.
+- `stale`: file exists but lives under another iteration; rejected, never fed
+  to the helper, so it cannot produce a `PASS`.
+- `missing`: a path was supplied but the file is absent; rejected.
+- `not_set`: no path supplied; the dimension is `N/A` downstream.
+
+Same-iteration acceptance is bookkeeping that an artifact belongs to this
+iteration, not a model-backed or hardware-backed proof of its own claim.
+
+## GFL/GFM Comparison Completeness
+
+A GFL-vs-GFM comparison is `comparison_complete` only when:
+
+- the pair covers exactly one `GFL` and one `GFM` device (not two of one mode,
+  not `grid_support`);
+- each case is individually handoff-ready (see Minimum Handoff Bar); and
+- the fairness axes (`network`, `dispatch`, `disturbance`, `observables`) are
+  present and equal across both cases, unless an axis is listed in BOTH cases'
+  `justified_differences`.
+
+Completeness is the precondition for routing to `gfl-gfm-control-comparison`; it
+is not a performance verdict and runs no model.
+
 ## Interpretation Rules
 
 - A `PASS` records documentation or pointer presence, never a proven physical
