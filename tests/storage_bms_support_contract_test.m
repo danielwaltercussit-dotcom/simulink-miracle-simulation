@@ -1,0 +1,252 @@
+function result = storage_bms_support_contract_test()
+%STORAGE_BMS_SUPPORT_CONTRACT_TEST Contract test for the D3 storage helper.
+%   Exercises summarize_storage_bms_support on synthetic descriptors. The
+%   defining assertion is the battery/BMS-vs-generic-DC-link separation: a
+%   constant-DC-source converter run must NOT count as battery validation.
+%
+%   Cases:
+%     A) Fully documented BESS, distinct battery + DC-link artifacts ->
+%        battery_layer_proven, separated, handoff_ready, no MISSING.
+%     B) DC-link only (constant_dc_source, battery_evidence required+absent) ->
+%        battery_model MISSING, battery_evidence MISSING,
+%        battery_layer_proven=false: generic DC-link evidence does not prove
+%        the battery layer.
+%     C) Shared artifact reused for battery and dc_link -> separated=false, a
+%        separation WARN is raised.
+%     D) Provisional case (no rated energy/power, no mode) -> artifact PASS is
+%        downgraded to WARN; not handoff_ready.
+%     E) Documented battery model but battery_evidence MISSING ->
+%        battery_layer_proven=false even though the model is named.
+%
+%   No Simulink, no toolbox dependency: synthetic descriptors plus tiny real
+%   scratch files through the base-MATLAB helper. Scratch dir is removed at the
+%   end of the run so no stale artifact can produce a false PASS later.
+
+projectRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(projectRoot, 'scripts', 'analysis'));
+
+scratch = fullfile(projectRoot, 'build', 'reports', 'd3_storage_bms', ...
+    'contract_test_scratch');
+iResetDir(scratch);
+closer = onCleanup(@() iRemoveDir(scratch));
+
+% Real artifact files the descriptors point at.
+battFile = iTouch(fullfile(scratch, 'battery_evidence.json'));
+dcFile   = iTouch(fullfile(scratch, 'dc_link_evidence.json'));
+emtFile  = iTouch(fullfile(scratch, 'emt_run.json'));
+
+checks = struct([]);
+checks = iAddCheck(checks, iCaseDocumented(scratch, battFile, dcFile, emtFile));
+checks = iAddCheck(checks, iCaseDcLinkOnly(scratch, dcFile, emtFile));
+checks = iAddCheck(checks, iCaseSharedArtifact(scratch, dcFile, emtFile));
+checks = iAddCheck(checks, iCaseProvisional(scratch, battFile, dcFile));
+checks = iAddCheck(checks, iCaseModelButNoBatteryEvidence(scratch, dcFile, emtFile));
+
+allPass = all([checks.passed]);
+fprintf('\n=== storage_bms_support_contract_test ===\n');
+for k = 1:numel(checks)
+    fprintf('[%s] %s\n', iTag(checks(k).passed), checks(k).name);
+    if ~isempty(checks(k).detail)
+        fprintf('       %s\n', checks(k).detail);
+    end
+end
+fprintf('Overall: %s (%d/%d)\n', iTag(allPass), sum([checks.passed]), numel(checks));
+
+result = struct('passed', allPass, 'checks', checks);
+end
+
+
+function c = iCaseDocumented(scratch, battFile, dcFile, emtFile)
+% Fully documented BESS with distinct battery + DC-link artifacts.
+d = struct( ...
+    'case_name', 'bess_documented', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'rated_power_kw', 250, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battFile, 'required', true), ...
+    'dc_link', struct('artifact', dcFile, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtFile, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', ...
+    fullfile(scratch, 'bess_documented'));
+
+okProven   = s.battery_layer_proven;
+okSep      = s.separation.separated;
+okHandoff  = s.handoff_ready;
+okNoMiss   = s.status_counts.MISSING == 0;
+okBattDim  = strcmp(iDimStatus(s, 'battery_evidence'), 'PASS');
+okFiles    = iArtifactsExist(fullfile(scratch, 'bess_documented'));
+
+c.name = 'Case A: documented BESS, distinct artifacts -> proven + handoff_ready';
+c.passed = okProven && okSep && okHandoff && okNoMiss && okBattDim && okFiles;
+c.detail = sprintf(['battery_proven=%d separated=%d handoff=%d MISSING=%d ', ...
+    'battery_dim=%s files=%d'], okProven, okSep, okHandoff, ...
+    s.status_counts.MISSING, iDimStatus(s, 'battery_evidence'), okFiles);
+end
+
+
+function c = iCaseDcLinkOnly(scratch, dcFile, emtFile)
+% Constant DC source, battery evidence required but absent: the defining check.
+% Generic DC-link evidence must NOT prove the battery layer.
+d = struct( ...
+    'case_name', 'dc_link_only', ...
+    'battery_model', 'constant_dc_source', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'pcs_volt_var', ...
+    'rated_power_kw', 250, ...
+    'battery_evidence', struct('required', true), ...
+    'dc_link', struct('artifact', dcFile, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtFile, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', ...
+    fullfile(scratch, 'dc_link_only'));
+
+okModelMiss = strcmp(iDimStatus(s, 'battery_model'), 'MISSING');
+okBattMiss  = strcmp(iDimStatus(s, 'battery_evidence'), 'MISSING');
+okDcOk      = any(strcmp(iDimStatus(s, 'dc_link'), {'PASS', 'WARN'}));
+okNotProven = ~s.battery_layer_proven;
+okNotHand   = ~s.handoff_ready;
+
+c.name = 'Case B: DC-link only -> battery MISSING, layer NOT proven';
+c.passed = okModelMiss && okBattMiss && okDcOk && okNotProven && okNotHand;
+c.detail = sprintf(['battery_model=%s battery_evidence=%s dc_link=%s ', ...
+    'proven=%d handoff=%d'], iDimStatus(s, 'battery_model'), ...
+    iDimStatus(s, 'battery_evidence'), iDimStatus(s, 'dc_link'), ...
+    s.battery_layer_proven, s.handoff_ready);
+end
+
+
+function c = iCaseSharedArtifact(scratch, dcFile, emtFile)
+% Same artifact reused for battery and DC-link: separation must fail with WARN.
+d = struct( ...
+    'case_name', 'shared_artifact', ...
+    'battery_model', 'shepherd', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'peak_shaving', ...
+    'rated_energy_kwh', 100, ...
+    'battery_evidence', struct('artifact', dcFile, 'required', true), ...
+    'dc_link', struct('artifact', dcFile, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtFile, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', ...
+    fullfile(scratch, 'shared_artifact'));
+
+okNotSep   = ~s.separation.separated;
+okIssue    = ~isempty(s.separation.issues);
+okNotHand  = ~s.handoff_ready;
+
+c.name = 'Case C: shared artifact -> separated=false + WARN';
+c.passed = okNotSep && okIssue && okNotHand;
+c.detail = sprintf('separated=%d n_issues=%d handoff=%d', ...
+    s.separation.separated, numel(s.separation.issues), s.handoff_ready);
+end
+
+
+function c = iCaseProvisional(scratch, battFile, dcFile)
+% No rated energy/power and no grid-support mode -> provisional; artifact PASS
+% downgraded to WARN.
+d = struct( ...
+    'case_name', 'provisional_case', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'planned', ...
+    'battery_evidence', struct('artifact', battFile, 'required', true), ...
+    'dc_link', struct('artifact', dcFile, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', ...
+    fullfile(scratch, 'provisional_case'));
+
+okProv     = s.provisional;
+okBattWarn = strcmp(iDimStatus(s, 'battery_evidence'), 'WARN');
+okNotProven = ~s.battery_layer_proven;
+okNotHand  = ~s.handoff_ready;
+okMissList = any(strcmp(s.missing_documentation, 'rated_energy_or_power')) && ...
+    any(strcmp(s.missing_documentation, 'grid_support_mode'));
+
+c.name = 'Case D: provisional -> artifact PASS downgraded to WARN';
+c.passed = okProv && okBattWarn && okNotProven && okNotHand && okMissList;
+c.detail = sprintf(['provisional=%d battery_evidence=%s proven=%d handoff=%d ', ...
+    'missing={%s}'], s.provisional, iDimStatus(s, 'battery_evidence'), ...
+    s.battery_layer_proven, s.handoff_ready, strjoin(s.missing_documentation, ','));
+end
+
+
+function c = iCaseModelButNoBatteryEvidence(scratch, dcFile, emtFile)
+% Battery model named, but battery_evidence missing: model alone does not prove
+% the battery layer.
+d = struct( ...
+    'case_name', 'model_no_evidence', ...
+    'battery_model', 'electrochemical', ...
+    'evidence_source', 'analytic', ...
+    'grid_support_mode', 'arbitrage', ...
+    'rated_energy_kwh', 200, ...
+    'battery_evidence', struct('required', true), ...
+    'dc_link', struct('artifact', dcFile, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtFile, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', ...
+    fullfile(scratch, 'model_no_evidence'));
+
+okModelPass = strcmp(iDimStatus(s, 'battery_model'), 'PASS');
+okBattMiss  = strcmp(iDimStatus(s, 'battery_evidence'), 'MISSING');
+okNotProven = ~s.battery_layer_proven;
+
+c.name = 'Case E: model named but no battery evidence -> NOT proven';
+c.passed = okModelPass && okBattMiss && okNotProven;
+c.detail = sprintf('battery_model=%s battery_evidence=%s proven=%d', ...
+    iDimStatus(s, 'battery_model'), iDimStatus(s, 'battery_evidence'), ...
+    s.battery_layer_proven);
+end
+
+
+function status = iDimStatus(summary, name)
+status = '';
+for k = 1:numel(summary.dimensions)
+    if strcmp(summary.dimensions(k).name, name)
+        status = summary.dimensions(k).status;
+        return
+    end
+end
+end
+
+
+function tf = iArtifactsExist(outDir)
+tf = isfile(fullfile(outDir, 'storage_bms_support.md')) && ...
+     isfile(fullfile(outDir, 'storage_bms_support.json'));
+end
+
+
+function path = iTouch(path)
+fid = fopen(path, 'w');
+if fid < 0
+    error('StorageBmsTest:CannotTouch', 'Cannot create %s', path);
+end
+fprintf(fid, '{"synthetic":true}\n');
+fclose(fid);
+end
+
+
+function iResetDir(d)
+iRemoveDir(d);
+mkdir(d);
+end
+
+
+function iRemoveDir(d)
+if isfolder(d)
+    rmdir(d, 's');
+end
+end
+
+
+function checks = iAddCheck(checks, c)
+if isempty(checks)
+    checks = c;
+else
+    checks(end+1) = c;
+end
+end
+
+
+function t = iTag(passed)
+if passed; t = 'PASS'; else; t = 'FAIL'; end
+end
