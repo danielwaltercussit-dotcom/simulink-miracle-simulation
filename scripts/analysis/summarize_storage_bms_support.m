@@ -107,6 +107,7 @@ d.evidence_source = lower(iCharField(descriptor, "evidence_source", "synthetic")
 d.grid_support_mode = iModeField(descriptor);
 d.rated_energy_kwh = iNumField(descriptor, "rated_energy_kwh");
 d.rated_power_kw = iNumField(descriptor, "rated_power_kw");
+d.study_root = iCharField(descriptor, "study_root", "");
 d.soc_soh = iSubStruct(descriptor, "soc_soh");
 d.thermal = iSubStruct(descriptor, "thermal");
 d.protection = iSubStruct(descriptor, "protection");
@@ -396,6 +397,13 @@ function separation = iSeparationScreen(d)
 % DC-link converter evidence. A single shared artifact cannot prove both
 % layers. separated = true only when the two pointers are distinct (or one is
 % explicitly absent). Reusing one path for both => WARN, separated = false.
+%
+% Same-study check: distinct paths are necessary but not sufficient. If a
+% study_root is declared, every present evidence artifact must resolve under
+% that root, so a battery run from one study cannot be stapled to a DC-link run
+% from a different study and called a validated BESS. same_study is N/A (empty)
+% when no study_root is declared; it never substitutes for the battery-layer
+% gate, which stays independent.
 battPath = iCharField(d.battery_evidence, "artifact", "");
 dcPath = iCharField(d.dc_link, "artifact", "");
 
@@ -409,11 +417,70 @@ else
     separated = true;
 end
 
+[sameStudy, studyIssues] = iSameStudyScreen(d);
+issues = [issues, studyIssues];
+
 separation = struct();
 separation.separated = separated;
+separation.study_root = char(d.study_root);
+separation.same_study = sameStudy;       % true | false | [] (not requested)
 separation.battery_artifact = char(battPath);
 separation.dc_link_artifact = char(dcPath);
 separation.issues = cellstr(issues);
+end
+
+
+function [sameStudy, issues] = iSameStudyScreen(d)
+% When study_root is declared, every present artifact path must canonicalize
+% under it. Returns sameStudy = [] when no study_root is declared (the check is
+% not requested), true when all present artifacts are under the root, and false
+% otherwise (with a per-artifact issue listed).
+issues = strings(1, 0);
+root = strtrim(d.study_root);
+if isempty(root)
+    sameStudy = [];   % not requested
+    return
+end
+
+rootCanon = iCanonPath(root);
+fields = ["battery_evidence", "dc_link", "modal_evidence", ...
+    "impedance_evidence", "time_domain_validation"];
+sameStudy = true;
+for k = 1:numel(fields)
+    p = iCharField(d.(fields(k)), "artifact", "");
+    if isempty(p)
+        continue
+    end
+    if ~iIsUnderRoot(iCanonPath(p), rootCanon)
+        sameStudy = false;
+        issues(end+1) = sprintf(...
+            "%s artifact is outside study_root; cross-study evidence cannot " + ...
+            "be combined into one validated case", fields(k)); %#ok<AGROW>
+    end
+end
+end
+
+
+function c = iCanonPath(p)
+% Normalize a path for prefix comparison: backslashes to forward slashes, lower
+% case (Windows is case-insensitive), strip a trailing slash. Pure string work;
+% does not require the file to exist.
+c = lower(strrep(char(p), '\', '/'));
+if numel(c) > 1 && endsWith(c, '/')
+    c = c(1:end-1);
+end
+end
+
+
+function tf = iIsUnderRoot(childCanon, rootCanon)
+% True when childCanon == rootCanon or sits beneath it on a path boundary, so
+% ".../study10" does not match ".../study1".
+if strcmp(childCanon, rootCanon)
+    tf = true;
+    return
+end
+prefix = [rootCanon, '/'];
+tf = startsWith(childCanon, prefix);
 end
 
 
@@ -449,8 +516,15 @@ end
 
 function tf = iHandoffReady(dims, separation, batteryProven, provisional)
 % Handoff-ready requires: not provisional, no MISSING dimension, battery and
-% DC-link evidence separated, and the battery layer proven.
+% DC-link evidence separated, the battery layer proven, and (when a study_root
+% was declared) all evidence same-study. same_study = [] means the check was
+% not requested and does not block; same_study = false blocks.
 if provisional || ~separation.separated || ~batteryProven
+    tf = false;
+    return
+end
+if islogical(separation.same_study) && isscalar(separation.same_study) && ...
+        ~separation.same_study
     tf = false;
     return
 end
@@ -540,10 +614,18 @@ sep = summary.separation;
 if sep.separated
     fprintf(fid, "- separated: battery/BMS evidence is distinct from DC-link ");
     fprintf(fid, "converter evidence\n");
+end
+if isempty(sep.same_study)
+    fprintf(fid, "- same_study: N/A (no study_root declared)\n");
+elseif sep.same_study
+    fprintf(fid, "- same_study: all evidence resolves under study_root `%s`\n", ...
+        sep.study_root);
 else
-    for k = 1:numel(sep.issues)
-        fprintf(fid, "- WARN: %s\n", sep.issues{k});
-    end
+    fprintf(fid, "- same_study: FALSE - cross-study evidence under study_root `%s`\n", ...
+        sep.study_root);
+end
+for k = 1:numel(sep.issues)
+    fprintf(fid, "- WARN: %s\n", sep.issues{k});
 end
 fprintf(fid, "- battery_artifact: %s\n", iDisp(sep.battery_artifact));
 fprintf(fid, "- dc_link_artifact: %s\n\n", iDisp(sep.dc_link_artifact));

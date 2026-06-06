@@ -19,6 +19,8 @@ Record:
 - DC-link topology (e.g. `single_stage_grid_side`, `two_stage_dcdc_plus_grid`)
 - grid-support mode (see below)
 - related time-domain run or required follow-up run
+- optional `study_root`: a directory all this case's evidence artifacts must
+  live under, enabling the same-study check (see below)
 
 ## Grid-Support Modes
 
@@ -82,6 +84,27 @@ This is the package's defining check and must not be relaxed.
   constant DC source) AND `battery_evidence` is PASS. Generic DC-link evidence
   never sets this true.
 
+## Same-Study Rule
+
+Distinct artifact paths are necessary but not sufficient. Two unrelated runs —
+a battery characterization from one study and a DC-link converter run from
+another — have distinct paths yet must not be combined into one validated BESS
+case.
+
+- Declare an optional `study_root` (a directory path) on the descriptor.
+- When `study_root` is declared, every present evidence artifact
+  (`battery_evidence`, `dc_link`, `modal_evidence`, `impedance_evidence`,
+  `time_domain_validation`) must canonicalize under that root. The match is on a
+  path boundary, so `.../study1` does not match `.../study10`.
+- `separation.same_study` is `true` (all present artifacts under the root),
+  `false` (at least one outside, with a per-artifact WARN), or empty/`[]` when no
+  `study_root` is declared (the check was not requested).
+- `same_study = false` blocks `handoff_ready`. An empty `same_study` does not
+  block: the check is opt-in.
+- This is orthogonal to the battery-layer gate. Same-study never lets generic
+  DC-link evidence prove the battery, and the battery-layer gate never waives the
+  same-study requirement.
+
 ## Provisional Rule
 
 A case is provisional until its identity is pinned: battery model documented
@@ -94,8 +117,8 @@ The provisional banner lists the missing identity fields.
 
 - `status_counts`: PASS / WARN / MISSING / N/A tallies.
 - `handoff_ready` is true only when: not provisional, no MISSING dimension,
-  battery and DC-link evidence are separated, and `battery_layer_proven` is
-  true.
+  battery and DC-link evidence are separated, `battery_layer_proven` is true,
+  and (when `study_root` is declared) `same_study` is true.
 
 ## Interpretation Rules
 

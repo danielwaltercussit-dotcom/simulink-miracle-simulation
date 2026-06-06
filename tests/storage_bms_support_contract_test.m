@@ -17,6 +17,12 @@ function result = storage_bms_support_contract_test()
 %        downgraded to WARN; not handoff_ready.
 %     E) Documented battery model but battery_evidence MISSING ->
 %        battery_layer_proven=false even though the model is named.
+%     F) study_root declared, battery + DC-link artifacts both under it ->
+%        same_study=true, handoff_ready (distinct AND same-study).
+%     G) study_root declared, DC-link artifact from a DIFFERENT study ->
+%        same_study=false, handoff_ready=false even though paths are distinct
+%        and the battery layer is otherwise proven: cross-study evidence cannot
+%        be combined into one validated case.
 %
 %   No Simulink, no toolbox dependency: synthetic descriptors plus tiny real
 %   scratch files through the base-MATLAB helper. Scratch dir is removed at the
@@ -35,12 +41,23 @@ battFile = iTouch(fullfile(scratch, 'battery_evidence.json'));
 dcFile   = iTouch(fullfile(scratch, 'dc_link_evidence.json'));
 emtFile  = iTouch(fullfile(scratch, 'emt_run.json'));
 
+% Study-scoped fixtures for the same-study check: studyA holds a self-consistent
+% battery+DC-link+EMT set; studyB holds a foreign DC-link run from another study.
+studyA = fullfile(scratch, 'studyA');
+studyB = fullfile(scratch, 'studyB');
+battA  = iTouch(fullfile(studyA, 'battery.json'));
+dcA    = iTouch(fullfile(studyA, 'dc_link.json'));
+emtA   = iTouch(fullfile(studyA, 'emt.json'));
+dcB    = iTouch(fullfile(studyB, 'dc_link.json'));
+
 checks = struct([]);
 checks = iAddCheck(checks, iCaseDocumented(scratch, battFile, dcFile, emtFile));
 checks = iAddCheck(checks, iCaseDcLinkOnly(scratch, dcFile, emtFile));
 checks = iAddCheck(checks, iCaseSharedArtifact(scratch, dcFile, emtFile));
 checks = iAddCheck(checks, iCaseProvisional(scratch, battFile, dcFile));
 checks = iAddCheck(checks, iCaseModelButNoBatteryEvidence(scratch, dcFile, emtFile));
+checks = iAddCheck(checks, iCaseSameStudy(scratch, studyA, battA, dcA, emtA));
+checks = iAddCheck(checks, iCaseCrossStudy(scratch, studyA, battA, dcB, emtA));
 
 allPass = all([checks.passed]);
 fprintf('\n=== storage_bms_support_contract_test ===\n');
@@ -198,6 +215,70 @@ c.detail = sprintf('battery_model=%s battery_evidence=%s proven=%d', ...
 end
 
 
+function c = iCaseSameStudy(scratch, studyA, battA, dcA, emtA)
+% study_root declared; battery + DC-link + EMT all live under studyA.
+% Distinct AND same-study -> same_study=true, handoff_ready.
+d = struct( ...
+    'case_name', 'same_study', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'study_root', studyA, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battA, 'required', true), ...
+    'dc_link', struct('artifact', dcA, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtA, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', fullfile(scratch, 'same_study'));
+
+okSame    = islogical(s.separation.same_study) && s.separation.same_study;
+okSep     = s.separation.separated;
+okProven  = s.battery_layer_proven;
+okHandoff = s.handoff_ready;
+
+c.name = 'Case F: study_root, all evidence same-study -> handoff_ready';
+c.passed = okSame && okSep && okProven && okHandoff;
+c.detail = sprintf('same_study=%d separated=%d proven=%d handoff=%d', ...
+    okSame, okSep, okProven, okHandoff);
+end
+
+
+function c = iCaseCrossStudy(scratch, studyA, battA, dcB, emtA)
+% study_root = studyA, but the DC-link artifact comes from studyB. Paths are
+% distinct (separated stays true) and the battery layer is otherwise proven,
+% yet cross-study evidence must NOT be combined: same_study=false blocks
+% handoff_ready.
+d = struct( ...
+    'case_name', 'cross_study', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'study_root', studyA, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battA, 'required', true), ...
+    'dc_link', struct('artifact', dcB, 'required', true), ...
+    'time_domain_validation', struct('artifact', emtA, 'required', true));
+s = summarize_storage_bms_support(d, 'OutputDir', fullfile(scratch, 'cross_study'));
+
+okNotSame  = islogical(s.separation.same_study) && ~s.separation.same_study;
+okSepTrue  = s.separation.separated;          % distinct paths -> still separated
+okProven   = s.battery_layer_proven;          % battery layer otherwise proven
+okNotHand  = ~s.handoff_ready;                % but cross-study blocks handoff
+okIssue    = ~isempty(s.separation.issues);
+
+c.name = 'Case G: cross-study DC-link -> same_study=false blocks handoff';
+c.passed = okNotSame && okSepTrue && okProven && okNotHand && okIssue;
+c.detail = sprintf(['same_study=%d separated=%d proven=%d handoff=%d ', ...
+    'n_issues=%d'], s.separation.same_study, okSepTrue, okProven, ...
+    s.handoff_ready, numel(s.separation.issues));
+end
+
+
 function status = iDimStatus(summary, name)
 status = '';
 for k = 1:numel(summary.dimensions)
@@ -216,6 +297,10 @@ end
 
 
 function path = iTouch(path)
+parent = fileparts(path);
+if ~isempty(parent) && ~isfolder(parent)
+    mkdir(parent);
+end
 fid = fopen(path, 'w');
 if fid < 0
     error('StorageBmsTest:CannotTouch', 'Cannot create %s', path);
