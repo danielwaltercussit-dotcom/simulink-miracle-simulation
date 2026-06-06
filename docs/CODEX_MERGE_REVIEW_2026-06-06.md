@@ -21,10 +21,8 @@ also reviewed and merged:
 - `codex/d1-vsc-gfl-gfm`
 - `codex/d2-mmc-hvdc`
 - `codex/f2-control-cross-regulation`
-
-`codex/m1-hybrid-solver-multirate` was not merged because it had no task commit.
-Its draft files remain untracked in the original desktop workspace and were not
-deleted or modified.
+- recovered `codex/m1-hybrid-solver-multirate` draft files into the integration
+  branch after Codex fixed the model-matched test anchor and reran validation
 
 ## Review Gates
 
@@ -49,12 +47,11 @@ deleted or modified.
 | F1 FHA/impedance | PASS 9/9 |
 | F2 cross-regulation tuning | PASS 10/10 |
 | F3 stability boundary scan | PASS 8/8 |
+| M1 hybrid solver/multirate | PASS 10/10 + real tiny-model simulation |
 | M2 HIL readiness | PASS 5/5 |
 
 ## Remaining Boundaries
 
-- M1 remains unmerged and requires recovery into its assigned branch before
-  review.
 - D3, E2, F1, F2, F3, and M2 remain primarily contract/data-evidence
   capabilities; they do not by themselves prove a physical plant or hardware
   result.
