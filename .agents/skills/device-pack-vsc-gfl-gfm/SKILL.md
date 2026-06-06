@@ -152,6 +152,40 @@ axes match across both cases unless a difference is listed in both cases'
 `justified_differences`. Completeness is the precondition for a fair study, not
 a performance verdict; the checker runs no model.
 
+## Weak-Grid Delay-Sensitivity + Asymmetric-Fault Benchmark
+
+To benchmark a GFL device against a GFM device under one shared weak-grid
+condition set, with a delay-sensitivity axis and a required asymmetric-fault
+contract, use the benchmark helper:
+
+```matlab
+b = summarize_vsc_weakgrid_delay_benchmark(gflCase, gfmCase, conditions, ...
+    "DelayCases", delaySweep, "AsymmetricFaults", asymRecords, ...
+    "F2EvidencePath", f2, "F3EvidencePath", f3, "M1EvidencePath", m1, ...
+    "OutputDir", "build/reports/d1_vsc_gfl_gfm/<case>/benchmark");
+```
+
+- **Parity gate**: the benchmark rejects the comparison when `operating_point`,
+  `grid_strength` (SCR/ESCR), `solver` (type + step), or `declared_delays`
+  differ between the two cases, unless the differing axis is named in
+  `conditions.justified_differences`. A documented-but-unjustified mismatch sets
+  `contract_status=blocked` rather than averaging incomparable runs.
+- **Delay sensitivity**: needs >=2 distinct total-delay points to be a sweep. A
+  delay claim is only `model_backed` when F2 phase-margin/delay evidence and M1
+  solver/delay evidence are both supplied same-study (consumes their paths; does
+  not edit those packages).
+- **Asymmetric fault**: at least one asymmetric-fault or voltage-unbalance
+  record is REQUIRED (type, negative-sequence handling, unbalance factor,
+  optional artifact). A label without an artifact file is `WARN`, not `PASS`.
+- **Outcome classification**: `physical_instability` (F3 boundary evidence only),
+  `numerical_pseudo_instability` (M1 solver/delay evidence only), `mixed` (both),
+  or `insufficient_evidence` (neither). It reflects which evidence chains were
+  supplied, never a proven root cause.
+- **Status separation**: `contract_status` (modes/parity/sweep/asym) and
+  `model_validation_status` (both cases' same-study time-domain artifacts +
+  model-backed delay sweep + F3) are reported independently. A complete contract
+  is never model-backed on its own.
+
 ## Output
 
 Write VSC support summaries under:
@@ -160,8 +194,9 @@ Write VSC support summaries under:
 build/reports/d1_vsc_gfl_gfm/<case>/
   vsc_gfl_gfm_support.md
   vsc_gfl_gfm_support.json
-  composed/vsc_evidence_composition.md         (composer)
+  composed/vsc_evidence_composition.md               (composer)
   comparison/vsc_gfl_gfm_comparison_completeness.md  (comparison checker)
+  benchmark/vsc_weakgrid_delay_benchmark.md          (delay/asym benchmark)
 ```
 
 Read `references/vsc-support-contract.md` before changing dimensions, status
