@@ -54,6 +54,48 @@ Define exactly one scalar metric per sample and a direction:
 The signed distance to the threshold is the boundary-crossing indicator. An
 undocumented metric name, threshold, or direction makes the scan provisional.
 
+## Joint Boundary Curve (Ts / delay / SCR / control)
+
+A per-axis boundary answers "what is the critical value of one parameter?". A
+coupled converter study usually needs the *curve*: how the critical value of one
+parameter moves as a second parameter changes (e.g. critical current-loop `Kp`
+as a function of sample time `Ts`, with computational delay coupled to `Ts`).
+
+Request it on a deterministic grid scan with two axis names:
+
+- `JointPrimaryAxis`: the parameter whose critical value you want (e.g. `kp`).
+- `JointConditioningAxis`: the parameter it is plotted against (e.g. `Ts`).
+
+For each level of the conditioning axis, the helper holds that level fixed,
+finds the first pass/fail crossing along the primary axis, and reports the locus
+plus a monotone-trend classification (`increasing` / `decreasing` /
+`non-monotone` / `insufficient`). Slices where the primary axis never crosses
+(all-pass or all-fail) are reported honestly, not forced to a number. The curve
+requires a grid scan; on a Monte-Carlo scan it is marked
+requested-but-unavailable rather than fabricated.
+
+Typical Ts/delay/control result: critical `Kp` *decreases* as `Ts` (and the
+delay samples that scale with it) increase, because added loop delay erodes
+phase margin. Couple delay to Ts inside the metric callback so the scan reflects
+the real dependency.
+
+## Evidence Tiers (do not conflate)
+
+State which tier a boundary belongs to; never promote a lower tier:
+
+1. **contract-consistency** - metadata and pass/fail bookkeeping are complete and
+   internally consistent. No physics asserted.
+2. **analytic / illustrative** - a transparent closed-form metric (e.g.
+   `dt_loop_stability_metric`, a discrete current loop) produced the samples.
+   Real coupling, but a teaching model, NOT a validated converter.
+3. **model-backed** - the per-sample metric came from an actual Simulink/Simscape
+   `load`/`update`/`sim` of the studied model. Requires real model runs.
+4. **hardware-backed** - HIL / bench measurement. Not produced by this skill.
+
+`dt_loop_stability_metric` is tier 2. It does NOT capture PLL-driven weak-grid
+(low-SCR) instability; in it SCR only rescales series inductance, so treat the
+SCR axis as illustrative until a model-backed PLL+grid metric replaces it.
+
 ## Workflow
 
 1. State the study question and the single pass/fail metric (with units and
@@ -104,15 +146,47 @@ a linear/nearest zero-crossing of the pass indicator; duplicate grid levels are
 collapsed with a worst-case (min pass-indicator) rule so one failing sample at a
 level marks that level failing. It does not run a Simulink sweep; supply data.
 
+### Executable runner
+
+When you have a metric *callback* instead of precomputed samples, use the
+runner. It generates grid or seeded Monte-Carlo samples, evaluates the callback,
+optionally refines near a detected boundary, and delegates the summary:
+
+```matlab
+Ts0 = 50e-6;
+metricFcn = @(p) dt_loop_stability_metric( ...
+    "Ts", p(1), "Kp", p(2), "Ki", 50, "SCR", 3, ...
+    "DelaySamples", 1 + floor(p(1)/Ts0));   % delay coupled to Ts
+params = struct("name",{'Ts','kp'}, "min",{50e-6,1}, "max",{300e-6,14}, ...
+    "levels",{6,14});
+out = run_stability_boundary_scan(metricFcn, params, ...
+    "ScanType","grid", "MetricName","closed_loop_margin", ...
+    "PassThreshold",0, "PassDirection","above", "Units","dimensionless", ...
+    "OperatingPoint","illustrative GFL current loop, Ts-coupled delay", ...
+    "JointPrimaryAxis","kp", "JointConditioningAxis","Ts", ...
+    "OutputDir","build/reports/f3_boundary_scan/joint_ts_kp");
+```
+
+Runner guarantees: a deterministic callback gives reproducible grid runs; a
+fixed `RandomSeed` gives reproducible Monte-Carlo runs (a local `RandStream`
+never disturbs the global stream); a throwing callback is recorded in
+`failed_runs` (excluded, not treated as unstable); and projected evaluations
+over `MaxEvaluations` (default 200) error unless `AllowLargeScan=true`, keeping
+expensive project-wide sweeps opt-in. `dt_loop_stability_metric` is the tier-2
+illustrative metric (see Evidence Tiers); swap in a model-backed callback to
+reach tier 3.
+
 ## Output
 
 Write boundary-scan reports under:
 
 ```text
 build/reports/f3_boundary_scan/<case>/
-  stability_boundary_summary.md
+  stability_boundary_summary.md     # includes the joint boundary curve when requested
   stability_boundary_summary.json
   scan_samples.csv
+  scan_run.json                     # runner only: eval counts, seed, refine config
+  failed_runs.csv                   # runner only: failed-callback diagnostics
 ```
 
 Keep these artifacts separate from P3/P4 impedance reports under

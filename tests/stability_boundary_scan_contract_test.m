@@ -24,6 +24,16 @@ function result = stability_boundary_scan_contract_test()
 %     H) opt-in cost guard: a projected evaluation count over MaxEvaluations
 %        errors unless AllowLargeScan=true.
 %
+%   Then exercises the joint Ts/delay/SCR/control capability:
+%     I) dt_loop_stability_metric monotonicity: margin decreases as Ts, delay
+%        samples, and Kp increase (analytic/illustrative metric, not a model);
+%     J) joint Ts x Kp boundary curve via the runner + summary JointBoundary:
+%        critical Kp decreases as Ts increases (the coupling the package
+%        targets), trend classified 'decreasing', and the curve is rendered to
+%        the markdown artifact;
+%     K) joint-boundary guard: a Monte-Carlo (non-grid) scan marks the joint
+%        boundary requested-but-unavailable instead of fabricating a curve.
+%
 %   No Simulink, no toolbox dependency: pure synthetic data through the
 %   base-MATLAB helper. Returns a struct and prints PASS/FAIL per check.
 %   Artifacts written under build/reports/f3_boundary_scan/<case>/ and the
@@ -42,6 +52,9 @@ checks = iAddCheck(checks, iCaseRunnerGridRefine(projectRoot));
 checks = iAddCheck(checks, iCaseRunnerSeed(projectRoot));
 checks = iAddCheck(checks, iCaseRunnerFailedRuns(projectRoot));
 checks = iAddCheck(checks, iCaseRunnerOptInGuard(projectRoot));
+checks = iAddCheck(checks, iCaseMetricMonotonic(projectRoot));
+checks = iAddCheck(checks, iCaseJointTsKp(projectRoot));
+checks = iAddCheck(checks, iCaseJointGuardNonGrid(projectRoot));
 
 allPass = all([checks.passed]);
 fprintf('\n=== stability_boundary_scan_contract_test ===\n');
@@ -355,6 +368,125 @@ if p(1) < 2
     error('BoundaryScanTest:WeakGrid', 'synthetic convergence failure at scr=%.3g', p(1));
 end
 m = 0.02 * p(1) - 0.01;
+end
+
+
+function c = iCaseMetricMonotonic(projectRoot) %#ok<INUSD>
+% The analytic/illustrative metric must weaken (margin down) as Ts, delay,
+% and Kp increase. This is contract-consistency of the metric, NOT a model run.
+f = @dt_loop_stability_metric;
+base = f('Ts', 100e-6, 'DelaySamples', 1, 'Kp', 6, 'Ki', 50, 'SCR', 3);
+bigTs = f('Ts', 300e-6, 'DelaySamples', 1, 'Kp', 6, 'Ki', 50, 'SCR', 3);
+moreDelay = f('Ts', 100e-6, 'DelaySamples', 4, 'Kp', 6, 'Ki', 50, 'SCR', 3);
+moreKp = f('Ts', 100e-6, 'DelaySamples', 1, 'Kp', 12, 'Ki', 50, 'SCR', 3);
+
+okTs    = bigTs < base;
+okDelay = moreDelay < base;
+okKp    = moreKp < base;
+okScalar = isscalar(base) && isfinite(base);
+
+c.name = 'Case I: dt metric weakens with Ts, delay, Kp (analytic, not a model)';
+c.passed = okTs && okDelay && okKp && okScalar;
+c.detail = sprintf(['base=%.4f bigTs=%.4f(<:%d) moreDelay=%.4f(<:%d) ', ...
+    'moreKp=%.4f(<:%d)'], ...
+    base, bigTs, okTs, moreDelay, okDelay, moreKp, okKp);
+end
+
+
+function c = iCaseJointTsKp(projectRoot)
+% Joint Ts x Kp scan through the runner using the analytic metric. The joint
+% boundary curve must show critical Kp DECREASING as Ts increases - the
+% Ts/delay/control coupling this package targets. Delay is coupled to Ts
+% (nd grows with Ts) inside the callback, exercising the joint dependency.
+Ts0 = 50e-6;
+metricFcn = @(p) dt_loop_stability_metric( ...
+    'Ts', p(1), 'Kp', p(2), 'Ki', 50, 'SCR', 3, ...
+    'DelaySamples', 1 + floor(p(1) / Ts0));   % more delay samples at larger Ts
+params = struct( ...
+    'name',   {'Ts','kp'}, ...
+    'min',    {50e-6, 1}, ...
+    'max',    {300e-6, 14}, ...
+    'levels', {6, 14});
+outDir = fullfile(projectRoot, 'build', 'reports', 'f3_boundary_scan', 'joint_ts_kp');
+
+out = run_stability_boundary_scan(metricFcn, params, ...
+    'CaseName', 'joint_ts_kp', 'ScanType', 'grid', ...
+    'MetricName', 'closed_loop_margin', 'PassThreshold', 0.0, ...
+    'PassDirection', 'above', 'Units', 'dimensionless', ...
+    'OperatingPoint', 'illustrative GFL current loop, Ts-coupled delay', ...
+    'BoundaryInterpMethod', 'linear', 'Refine', false, ...
+    'MaxEvaluations', 200, ...
+    'JointPrimaryAxis', 'kp', 'JointConditioningAxis', 'Ts', ...
+    'OutputDir', outDir);
+
+jb = out.summary.joint_boundary;
+okReq   = jb.requested && jb.available;
+okTrend = strcmp(jb.trend, 'decreasing');
+% Critical Kp at the smallest Ts must exceed that at the largest Ts.
+critByTs = iCriticalByConditioning(jb);
+okSpread = size(critByTs,1) >= 2 && critByTs(1,2) > critByTs(end,2);
+okMd     = iMarkdownHasJoint(outDir);
+
+c.name = 'Case J: joint Ts x Kp curve, critical Kp falls as Ts rises';
+c.passed = okReq && okTrend && okSpread && okMd;
+c.detail = sprintf(['available=%d trend=%s nPts=%d critKp@minTs=%.3g ', ...
+    'critKp@maxTs=%.3g md=%d'], ...
+    jb.available, jb.trend, jb.n_points, ...
+    critByTs(1,2), critByTs(end,2), okMd);
+end
+
+
+function c = iCaseJointGuardNonGrid(projectRoot)
+% Joint boundary requested on a Monte-Carlo scan must be reported
+% requested-but-unavailable, never fabricated.
+metricFcn = @(p) dt_loop_stability_metric('Ts', p(1), 'Kp', p(2), 'SCR', 3);
+params = struct('name', {'Ts','kp'}, 'min', {50e-6, 1}, 'max', {300e-6, 14});
+outDir = fullfile(projectRoot, 'build', 'reports', 'f3_boundary_scan', 'joint_guard_mc');
+
+out = run_stability_boundary_scan(metricFcn, params, ...
+    'CaseName', 'joint_guard_mc', 'ScanType', 'montecarlo', ...
+    'SampleCount', 40, 'RandomSeed', 11, ...
+    'MetricName', 'closed_loop_margin', 'PassThreshold', 0.0, ...
+    'PassDirection', 'above', 'Units', 'dimensionless', ...
+    'OperatingPoint', 'illustrative GFL current loop, MC', ...
+    'JointPrimaryAxis', 'kp', 'JointConditioningAxis', 'Ts', ...
+    'OutputDir', outDir);
+
+jb = out.summary.joint_boundary;
+okReq = jb.requested;
+okUnavail = ~jb.available;
+okNote = contains(jb.note, 'grid');
+
+c.name = 'Case K: joint curve guarded off for non-grid (Monte-Carlo) scan';
+c.passed = okReq && okUnavail && okNote;
+c.detail = sprintf('requested=%d available=%d (want 0) note="%s"', ...
+    jb.requested, jb.available, jb.note);
+end
+
+
+function critByTs = iCriticalByConditioning(jb)
+% Rows [conditioning_value, critical_value] for slices with a finite boundary,
+% sorted by conditioning value.
+cv = [jb.points.conditioning_value];
+kv = [jb.points.critical_value];
+ok = isfinite(cv) & isfinite(kv);
+M = [cv(ok)', kv(ok)'];
+if isempty(M)
+    critByTs = nan(1, 2);
+    return
+end
+critByTs = sortrows(M, 1);
+end
+
+
+function tf = iMarkdownHasJoint(outDir)
+mdPath = fullfile(outDir, 'stability_boundary_summary.md');
+if ~isfile(mdPath)
+    tf = false;
+    return
+end
+txt = fileread(mdPath);
+tf = contains(txt, 'Joint boundary curve');
 end
 
 
