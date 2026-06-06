@@ -36,6 +36,9 @@ sections = iAdd(sections, iCheckDcLink(ev));
 sections = iAdd(sections, iCheckAcFault(ev));
 sections = iAdd(sections, iCheckDcFault(ev));
 sections = iAdd(sections, iCheckArmEnergy(ev));
+sections = iAdd(sections, iCheckFaultEvidence(ev));
+sections = iAdd(sections, iCheckLossAccounting(ev));
+sections = iAdd(sections, iCheckLineDecoupling(ev));
 sections = iAdd(sections, iCheckTimeDomainLink(ev));
 
 statuses = string({sections.status});
@@ -123,9 +126,13 @@ strFields = ["case_name" "source_model_or_script" "station_topology" ...
     "submodule_type" "model_fidelity" "control_mode" "modulation" ...
     "capacitor_voltage_balancing" "circulating_current_control" ...
     "dc_link_dynamics" "ac_fault_handling" "dc_fault_handling" ...
-    "related_time_domain_run"];
+    "related_time_domain_run" ...
+    "fault_type" "fault_location" "fault_protection_action" ...
+    "loss_model" "decoupling_method" "dc_line_model"];
 numFields = ["n_submodules_per_arm" "submodule_capacitance_F" ...
-    "arm_inductance_H" "rated_power_MW" "dc_voltage_kV" "ac_voltage_kV"];
+    "arm_inductance_H" "rated_power_MW" "dc_voltage_kV" "ac_voltage_kV" ...
+    "fault_clearing_time_ms" "fault_peak_current_pu" ...
+    "converter_efficiency_pct" "total_loss_MW" "coupling_residual_pct"];
 ev = struct();
 for k = 1:numel(strFields)
     name = strFields(k);
@@ -137,7 +144,7 @@ for k = 1:numel(strFields)
 end
 % Identity strings keep original case for readability.
 for name = ["case_name" "source_model_or_script" "dc_link_dynamics" ...
-        "related_time_domain_run"]
+        "related_time_domain_run" "fault_location"]
     if isfield(evidence, name) && ~isempty(evidence.(name))
         ev.(name) = char(string(evidence.(name)));
     end
@@ -150,6 +157,16 @@ for k = 1:numel(numFields)
     else
         ev.(name) = NaN;
     end
+end
+% Logical fields: NaN means "absent", true/false when supplied.
+if isfield(evidence, "fault_survived") && ~isempty(evidence.fault_survived) && ...
+        (islogical(evidence.fault_survived) || isnumeric(evidence.fault_survived)) && ...
+        isscalar(evidence.fault_survived)
+    ev.fault_survived = logical(evidence.fault_survived);
+    ev.has_fault_survived = true;
+else
+    ev.fault_survived = false;
+    ev.has_fault_survived = false;
 end
 end
 
@@ -421,6 +438,158 @@ if iHas(ev, "related_time_domain_run")
 else
     s = iSection("time_domain_link", "MISSING", ...
         "related_time_domain_run absent; package is provisional until a model run is linked", struct());
+end
+end
+
+
+function tf = iFaultStudyPresent(ev)
+% A fault study is "supplied" if any fault_* field is present.
+tf = iHas(ev,"fault_type") || iHas(ev,"fault_location") || ...
+    iHas(ev,"fault_protection_action") || iHas(ev,"fault_clearing_time_ms") || ...
+    iHas(ev,"fault_peak_current_pu") || ev.has_fault_survived;
+end
+
+
+function s = iCheckFaultEvidence(ev)
+% Cross-check 6: fault evidence vs submodule type, survival, and plausibility.
+if ~iFaultStudyPresent(ev)
+    s = iSection("fault_evidence", "N/A", ...
+        "no fault study supplied (fault_* fields absent)", struct());
+    return
+end
+required = ["fault_type" "fault_location" "fault_protection_action" ...
+    "fault_clearing_time_ms" "fault_peak_current_pu"];
+[ok, missing] = iAllPresent(ev, required);
+if ~ok || ~ev.has_fault_survived
+    if ~ev.has_fault_survived; missing{end+1} = 'fault_survived'; end
+    s = iSection("fault_evidence", "MISSING", ...
+        sprintf("fault study supplied but incomplete: %s", strjoin(missing, ", ")), ...
+        struct("missing_required", {missing}));
+    return
+end
+ft = ev.fault_type; pa = ev.fault_protection_action;
+ftOk = iInSet(ft, {'ac_3ph','ac_slg','dc_pole_pole','dc_pole_ground'});
+isDcFault = iInSet(ft, {'dc_pole_pole','dc_pole_ground'});
+detail = struct("fault_type", ft, "protection_action", pa, ...
+    "clearing_time_ms", ev.fault_clearing_time_ms, ...
+    "peak_current_pu", ev.fault_peak_current_pu, "survived", ev.fault_survived);
+if ~ftOk
+    s = iWarn("fault_evidence", "advisory", ...
+        sprintf("unrecognized fault_type '%s'", ft), detail);
+elseif isDcFault && ev.fault_survived && strcmp(pa, 'converter_blocking') && ...
+        strcmp(ev.submodule_type, 'half_bridge')
+    s = iWarn("fault_evidence", "blocking", ...
+        ['DC fault reported survived via converter_blocking on a half_bridge ' ...
+        'station; half-bridge cannot interrupt DC fault current (see dc_fault)'], detail);
+elseif ev.fault_peak_current_pu > 15
+    s = iWarn("fault_evidence", "advisory", ...
+        sprintf("peak fault current %.1f pu is implausibly high without a model-backed transient", ...
+        ev.fault_peak_current_pu), detail);
+elseif ev.fault_clearing_time_ms > 200 && ev.fault_survived
+    s = iWarn("fault_evidence", "advisory", ...
+        sprintf("clearing %.0f ms with survived=true is slow; confirm with a transient run", ...
+        ev.fault_clearing_time_ms), detail);
+else
+    s = iSection("fault_evidence", "PASS", ...
+        sprintf("%s @ %s, %s, clear %.0f ms, peak %.1f pu, survived=%d", ...
+        ft, ev.fault_location, pa, ev.fault_clearing_time_ms, ...
+        ev.fault_peak_current_pu, ev.fault_survived), detail);
+end
+end
+
+
+function s = iCheckLossAccounting(ev)
+% Cross-check 7: loss model vs fidelity, and efficiency/loss energy balance.
+if ~iHas(ev, "loss_model")
+    s = iSection("loss_accounting", "N/A", ...
+        "no loss_model supplied", struct());
+    return
+end
+lm = ev.loss_model;
+if ~iInSet(lm, {'none','conduction_only','conduction_switching','datasheet_curve','averaged_na'})
+    s = iWarn("loss_accounting", "advisory", ...
+        sprintf("unrecognized loss_model '%s'", lm), struct());
+    return
+end
+averaged = iIsAveraged(ev);
+detail = struct("loss_model", lm, "converter_efficiency_pct", ev.converter_efficiency_pct, ...
+    "total_loss_MW", ev.total_loss_MW);
+% Fidelity contradiction: switching-level loss detail on an averaged/RMS model.
+if averaged && iInSet(lm, {'conduction_switching','datasheet_curve'})
+    s = iWarn("loss_accounting", "blocking", ...
+        sprintf("%s loss detail claimed on %s model; switching-loss detail needs switching/arm fidelity", ...
+        lm, ev.model_fidelity), detail);
+    return
+end
+% Energy-balance and efficiency-band advisory checks (only if values given).
+notes = strings(0);
+sev = "";
+if iHas(ev, "converter_efficiency_pct")
+    eff = ev.converter_efficiency_pct;
+    if eff < 95 || eff > 99.9
+        sev = "advisory";
+        notes(end+1) = sprintf("efficiency %.2f%% outside typical HVDC MMC [95,99.9]", eff);
+    end
+    if iHas(ev, "total_loss_MW") && iHas(ev, "rated_power_MW") && ev.rated_power_MW > 0
+        expected = (1 - eff/100) * ev.rated_power_MW;
+        if expected > 0
+            relMis = abs(ev.total_loss_MW - expected) / expected;
+            detail.expected_loss_MW = expected;
+            detail.loss_rel_mismatch = relMis;
+            if relMis > 0.25
+                sev = "advisory";
+                notes(end+1) = sprintf("total_loss_MW %.3g vs expected %.3g (%.0f%% mismatch)", ...
+                    ev.total_loss_MW, expected, relMis*100);
+            end
+        end
+    end
+end
+if sev == "advisory"
+    s = iWarn("loss_accounting", "advisory", char(strjoin(notes, "; ")), detail);
+else
+    s = iSection("loss_accounting", "PASS", ...
+        sprintf("loss_model=%s, efficiency=%.4g%%", lm, ev.converter_efficiency_pct), detail);
+end
+end
+
+
+function s = iCheckLineDecoupling(ev)
+% Cross-check 8: line/arm decoupling vs DC-line model and residual.
+if ~iHas(ev, "decoupling_method")
+    s = iSection("line_decoupling", "N/A", ...
+        "no decoupling_method supplied", struct());
+    return
+end
+dm = ev.decoupling_method;
+if ~iInSet(dm, {'arm_averaged_decoupled','dq_decoupled','sequence_decoupled','none'})
+    s = iWarn("line_decoupling", "advisory", ...
+        sprintf("unrecognized decoupling_method '%s'", dm), struct());
+    return
+end
+detail = struct("decoupling_method", dm, "dc_line_model", ev.dc_line_model, ...
+    "coupling_residual_pct", ev.coupling_residual_pct);
+notes = strings(0);
+flag = false;
+if strcmp(dm, 'none')
+    flag = true;
+    notes(end+1) = "no decoupling declared (decoupling_method=none)";
+end
+if iHas(ev, "dc_line_model") && strcmp(ev.dc_line_model, 'stiff_source') && ...
+        iFaultStudyPresent(ev) && iInSet(ev.fault_type, {'dc_pole_pole','dc_pole_ground'})
+    flag = true;
+    notes(end+1) = "stiff_source DC line cannot carry DC-line fault/cable transient evidence";
+end
+if iHas(ev, "coupling_residual_pct") && ev.coupling_residual_pct > 10 && ~strcmp(dm, 'none')
+    flag = true;
+    notes(end+1) = sprintf("coupling residual %.1f%% > 10%% despite %s", ...
+        ev.coupling_residual_pct, dm);
+end
+if flag
+    s = iWarn("line_decoupling", "advisory", char(strjoin(notes, "; ")), detail);
+else
+    s = iSection("line_decoupling", "PASS", ...
+        sprintf("%s, dc_line=%s, residual=%.3g%%", dm, ev.dc_line_model, ...
+        ev.coupling_residual_pct), detail);
 end
 end
 

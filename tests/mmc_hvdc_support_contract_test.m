@@ -37,6 +37,10 @@ checks = iAddCheck(checks, iCaseAdvisoryDoesNotBlock(projectRoot));
 checks = iAddCheck(checks, iCaseModelProbeFailed(projectRoot));
 checks = iAddCheck(checks, iCaseMissingRequired(projectRoot));
 checks = iAddCheck(checks, iCaseFullBridgeDcBlockPass(projectRoot));
+checks = iAddCheck(checks, iCaseFaultEvidencePass(projectRoot));
+checks = iAddCheck(checks, iCaseFaultDcBlockingBlocks(projectRoot));
+checks = iAddCheck(checks, iCaseLossFidelityBlocks(projectRoot));
+checks = iAddCheck(checks, iCaseDecouplingAdvisory(projectRoot));
 
 allPass = all([checks.passed]);
 fprintf('\n=== mmc_hvdc_support_contract_test ===\n');
@@ -291,6 +295,126 @@ c.passed = okPass && okContract && okReady && okFiles;
 c.detail = sprintf('dc_fault=%s contract=%s ready=%d submodule=%s artifacts=%d', ...
     iStatusOf(s,'dc_fault'), s.contract_status, s.handoff_ready, ...
     ev.submodule_type, okFiles);
+end
+
+
+function c = iCaseFaultEvidencePass(projectRoot)
+% A complete fault study on a full-bridge station with consistent protection
+% and plausible numbers -> fault_evidence PASS, still handoff-ready with probe.
+ev = iBaseEvidence();
+ev.case_name = 'd2_fault_pass';
+ev.submodule_type = 'full_bridge';
+ev.dc_fault_handling = 'converter_blocking';
+ev.fault_type = 'dc_pole_ground';
+ev.fault_location = 'dc_terminal';
+ev.fault_protection_action = 'converter_blocking';
+ev.fault_clearing_time_ms = 5;
+ev.fault_peak_current_pu = 3.2;
+ev.fault_survived = true;
+outDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', ev.case_name);
+s = summarize_mmc_hvdc_support(ev, 'ModelProbe', iPassingProbe(), 'OutputDir', outDir);
+
+okFault    = strcmp(iStatusOf(s, 'fault_evidence'), 'PASS');
+okContract = strcmp(s.contract_status, 'PASS');
+okReady    = s.handoff_ready;
+okFiles    = iArtifactsExist(outDir);
+
+c.name = 'Case I: complete full-bridge fault study -> fault_evidence PASS';
+c.passed = okFault && okContract && okReady && okFiles;
+c.detail = sprintf('fault_evidence=%s contract=%s ready=%d artifacts=%d', ...
+    iStatusOf(s,'fault_evidence'), s.contract_status, s.handoff_ready, okFiles);
+end
+
+
+function c = iCaseFaultDcBlockingBlocks(projectRoot)
+% Negative: half-bridge station reports a DC fault SURVIVED via converter
+% blocking -> fault_evidence blocking WARN -> contract BLOCKED, NOT ready,
+% even with a passing model probe.
+ev = iBaseEvidence();   % half_bridge by default
+ev.case_name = 'd2_fault_halfbridge_block';
+ev.fault_type = 'dc_pole_pole';
+ev.fault_location = 'dc_terminal';
+ev.fault_protection_action = 'converter_blocking';
+ev.fault_clearing_time_ms = 4;
+ev.fault_peak_current_pu = 6;
+ev.fault_survived = true;
+outDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', ev.case_name);
+s = summarize_mmc_hvdc_support(ev, 'ModelProbe', iPassingProbe(), 'OutputDir', outDir);
+
+okWarn     = strcmp(iStatusOf(s, 'fault_evidence'), 'WARN');
+okBlocking = strcmp(iSeverityOf(s, 'fault_evidence'), 'blocking');
+okContract = strcmp(s.contract_status, 'BLOCKED');
+okNotReady = ~s.handoff_ready;
+okFiles    = iArtifactsExist(outDir);
+
+c.name = 'Case J: half-bridge DC fault survived via blocking -> BLOCKED';
+c.passed = okWarn && okBlocking && okContract && okNotReady && okFiles;
+c.detail = sprintf('fault_evidence=%s/%s contract=%s ready=%d (want 0) artifacts=%d', ...
+    iStatusOf(s,'fault_evidence'), iSeverityOf(s,'fault_evidence'), ...
+    s.contract_status, s.handoff_ready, okFiles);
+end
+
+
+function c = iCaseLossFidelityBlocks(projectRoot)
+% Negative: arm-averaged model claiming conduction_switching loss detail ->
+% loss_accounting blocking WARN -> contract BLOCKED, NOT ready.
+% Use averaged_na modulation/balancing so the ONLY blocking flag is the loss
+% fidelity contradiction (keeps the assertion sharp).
+ev = iBaseEvidence();
+ev.case_name = 'd2_loss_fidelity_block';
+ev.model_fidelity = 'arm_averaged';
+ev.modulation = 'averaged_na';
+ev.capacitor_voltage_balancing = 'averaged_na';
+ev.circulating_current_control = 'averaged_na';
+ev.loss_model = 'conduction_switching';
+ev.converter_efficiency_pct = 99;
+outDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', ev.case_name);
+s = summarize_mmc_hvdc_support(ev, 'ModelProbe', iPassingProbe(), 'OutputDir', outDir);
+
+okWarn     = strcmp(iStatusOf(s, 'loss_accounting'), 'WARN');
+okBlocking = strcmp(iSeverityOf(s, 'loss_accounting'), 'blocking');
+okContract = strcmp(s.contract_status, 'BLOCKED');
+okNotReady = ~s.handoff_ready;
+okFiles    = iArtifactsExist(outDir);
+
+c.name = 'Case K: averaged model + switching losses -> BLOCKED';
+c.passed = okWarn && okBlocking && okContract && okNotReady && okFiles;
+c.detail = sprintf('loss_accounting=%s/%s contract=%s ready=%d (want 0) artifacts=%d', ...
+    iStatusOf(s,'loss_accounting'), iSeverityOf(s,'loss_accounting'), ...
+    s.contract_status, s.handoff_ready, okFiles);
+end
+
+
+function c = iCaseDecouplingAdvisory(projectRoot)
+% A stiff_source DC line under a DC fault study -> line_decoupling advisory
+% WARN, but advisory does NOT block: still handoff-ready with a passing probe.
+ev = iBaseEvidence();
+ev.case_name = 'd2_decoupling_advisory';
+ev.submodule_type = 'full_bridge';
+ev.dc_fault_handling = 'converter_blocking';
+ev.fault_type = 'dc_pole_pole';
+ev.fault_location = 'dc_terminal';
+ev.fault_protection_action = 'converter_blocking';
+ev.fault_clearing_time_ms = 5;
+ev.fault_peak_current_pu = 4;
+ev.fault_survived = true;
+ev.decoupling_method = 'dq_decoupled';
+ev.dc_line_model = 'stiff_source';      % cannot carry DC-fault transient
+ev.coupling_residual_pct = 2;
+outDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', ev.case_name);
+s = summarize_mmc_hvdc_support(ev, 'ModelProbe', iPassingProbe(), 'OutputDir', outDir);
+
+okWarn     = strcmp(iStatusOf(s, 'line_decoupling'), 'WARN');
+okAdvisory = strcmp(iSeverityOf(s, 'line_decoupling'), 'advisory');
+okNoBlock  = s.n_warn_blocking == 0;
+okReady    = s.handoff_ready;            % advisory does not block
+okFiles    = iArtifactsExist(outDir);
+
+c.name = 'Case L: stiff_source line under DC fault -> advisory, STILL ready';
+c.passed = okWarn && okAdvisory && okNoBlock && okReady && okFiles;
+c.detail = sprintf('line_decoupling=%s/%s n_block=%d ready=%d (want 1) artifacts=%d', ...
+    iStatusOf(s,'line_decoupling'), iSeverityOf(s,'line_decoupling'), ...
+    s.n_warn_blocking, s.handoff_ready, okFiles);
 end
 
 

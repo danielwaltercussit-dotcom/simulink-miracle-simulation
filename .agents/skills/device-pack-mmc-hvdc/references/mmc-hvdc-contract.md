@@ -30,6 +30,32 @@ provisional):
   `ride_through`, or `none`
 - `related_time_domain_run` or a required follow-up run
 
+### Fault-evidence fields (required only when a fault study is supplied)
+
+A fault study is optional; when any `fault_*` field is present, these become
+required for the `fault_evidence` section:
+
+- `fault_type`: `ac_3ph`, `ac_slg`, `dc_pole_pole`, or `dc_pole_ground`
+- `fault_location`: free text (e.g. `dc_terminal`, `ac_pcc`, `mid_cable`)
+- `fault_protection_action`: reuses the fault-handling vocabulary
+  (`converter_blocking`, `dc_breaker`, `ac_breaker_clearing`, `ride_through`,
+  `trip`, `block_and_restart`, `none`)
+- `fault_clearing_time_ms` (>0), `fault_peak_current_pu` (>0)
+- `fault_survived` (logical): did the station ride through / clear the fault
+
+### Loss-accounting fields (required only when `loss_model` is supplied)
+
+- `loss_model`: `none`, `conduction_only`, `conduction_switching`,
+  `datasheet_curve`, or `averaged_na`
+- `converter_efficiency_pct` (0-100), `total_loss_MW` (>=0)
+
+### Line/arm-decoupling fields (required only when `decoupling_method` is supplied)
+
+- `decoupling_method`: `arm_averaged_decoupled`, `dq_decoupled`,
+  `sequence_decoupled`, or `none`
+- `dc_line_model`: `lumped_pi`, `distributed`, `cable_freq_dep`, or `stiff_source`
+- `coupling_residual_pct` (>=0): residual cross-coupling after decoupling
+
 ## Evidence Status
 
 Reuse the project-wide per-section labels (see
@@ -96,6 +122,30 @@ when no field is `MISSING`.
    `energy_per_mva_kJ = E / rated_power_MW`. An `advisory` WARN outside
    [10, 80] kJ/MVA; report the value either way. This is a plausibility screen,
    not a design rule, so it does not block handoff on its own.
+6. Fault evidence vs submodule type and survival. A DC fault
+   (`dc_pole_pole`/`dc_pole_ground`) reported as `fault_survived=true` through
+   `fault_protection_action=converter_blocking` on a `half_bridge` station is a
+   `blocking` WARN (same physics as cross-check 1: half-bridge cannot interrupt
+   DC fault current). A `fault_peak_current_pu` above 15 pu is an `advisory`
+   WARN (implausible without a model-backed transient). A `fault_clearing_time_ms`
+   above 200 ms with `fault_survived=true` is an `advisory` WARN (slow clearing
+   rarely survives). Otherwise PASS.
+7. Loss accounting vs fidelity and energy balance. `loss_model` of
+   `conduction_switching` or `datasheet_curve` on an `rms`/`energy_averaged`
+   model is a `blocking` WARN (switching-loss detail the fidelity cannot
+   produce). `converter_efficiency_pct` outside [95, 99.9] for an HVDC MMC
+   station is an `advisory` WARN. If both `converter_efficiency_pct` and
+   `total_loss_MW` are given, check `total_loss_MW` against
+   `(1 - eff/100) * rated_power_MW`; a relative mismatch above 25% is an
+   `advisory` WARN. Otherwise PASS.
+8. Line/arm decoupling vs DC-line model. A `stiff_source` DC line cannot carry
+   DC-line fault or cable-transient evidence: if a `dc_pole_*` fault study is
+   present with `dc_line_model=stiff_source`, the decoupling section is an
+   `advisory` WARN (the line dynamics that matter are absent). A
+   `coupling_residual_pct` above 10% with `decoupling_method` other than `none`
+   is an `advisory` WARN (decoupling claimed but residual is large).
+   `decoupling_method=none` is an `advisory` WARN (no decoupling declared).
+   Otherwise PASS.
 
 ## Interpretation Rules
 

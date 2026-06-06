@@ -47,7 +47,18 @@ evidence.
    and DC-link dynamics (DC-voltage control, DC capacitor/cable model, droop).
 5. State AC-fault ride-through and DC-fault handling, and cross-check DC-fault
    handling against submodule type.
-6. Summarize with `summarize_mmc_hvdc_support`, then attach time-domain,
+6. Optionally attach advanced evidence; each is N/A until its fields are
+   supplied, then required-complete:
+   - fault study (`fault_type`, `fault_location`, `fault_protection_action`,
+     `fault_clearing_time_ms`, `fault_peak_current_pu`, `fault_survived`) —
+     cross-checked against submodule type and plausibility;
+   - loss accounting (`loss_model`, `converter_efficiency_pct`, `total_loss_MW`)
+     — switching-loss detail on an averaged/RMS model is a blocking contradiction;
+     efficiency band and loss/efficiency energy balance are advisory;
+   - line/arm decoupling (`decoupling_method`, `dc_line_model`,
+     `coupling_residual_pct`) — a stiff_source DC line cannot carry DC-fault
+     transient evidence; large residual or no decoupling is advisory.
+7. Summarize with `summarize_mmc_hvdc_support`, then attach time-domain,
    modal, and impedance evidence. Confirm a runnable model by load/update/sim;
    never claim MMC validation from text alone.
 
