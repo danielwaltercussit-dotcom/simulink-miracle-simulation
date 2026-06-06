@@ -1,0 +1,3 @@
+display_name: Hybrid Solver / Multirate Simulation
+short_description: Contract-checked solver and multirate step plan for cross-time-scale converter simulations.
+default_prompt: Build or review a multirate solver plan for this cross-time-scale converter model. Justify every step size against the fastest switching/control event and the slowest electromechanical mode, set the rate-transition and algebraic-loop policy, and emit stiffness and step-ratio warnings. Do not claim a validated cross-time-scale result when the fastest event or slowest mode is undocumented, and do not convert a large or private model to multirate form to satisfy the plan.
