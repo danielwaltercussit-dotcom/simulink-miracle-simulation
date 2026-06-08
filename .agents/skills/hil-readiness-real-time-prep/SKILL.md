@@ -21,19 +21,27 @@ Results are labeled `software_readiness_only` and `real_time_deployable=false`
 unless the manifest supplies real HIL hardware evidence (a logged real-time run
 with no overruns). Never upgrade a software check to a hardware claim.
 
-## Three-Status Headline
+## Status Axes (kept separate on purpose)
 
-The helper deliberately separates three ideas so a complete contract is never
-mistaken for a deployable model (this is the M1/D2 review lesson):
+The helper deliberately separates these ideas so a complete contract - or a
+model that merely compiles - is never mistaken for a deployable model (the
+M1/D2 review lesson):
 
 - `contract_status`: `PASS` | `WARN` | `MISSING` - manifest completeness and
   internal consistency.
+- `model_validation_status`: `not_model_backed` | `model_backed` -
+  `model_backed` only when the readiness facts were read from a real *compiled*
+  model (see Model-backed path). It is NOT a codegen or hardware claim.
 - `readiness_class`: `software_readiness_only` | `hardware_backed` - only
   `hardware_backed` when real HIL evidence is attached.
 - `handoff_ready`: true only when no **blocking** finding remains. Non-blocking
   WARNs (I/O placeholders, single-rate assumption, latency not yet computed)
   are allowed to carry forward.
 - `real_time_deployable`: true only when `handoff_ready` AND `hardware_backed`.
+
+These are independent: a model can be `model_backed` (solver/step/rates read
+from a compile) yet still `contract_status=MISSING` (e.g. codegen support not
+verified) - the right honest combination, not a contradiction.
 
 ## The Seven Checks
 
@@ -83,6 +91,46 @@ summary = summarize_hil_readiness(manifest, ...
 
 The helper is pure base-MATLAB (no toolbox dependency). It does not run a model;
 supply the metadata.
+
+## Model-backed path
+
+When a real model exists, use the adapter instead of hand-writing a manifest. It
+loads + `update`s (compiles) the model, optionally simulates it, reads the
+solver / fixed step / compiled discrete rates / continuous-state count from the
+*compiled* model, then calls the same status engine:
+
+```matlab
+cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+addpath("scripts/analysis")
+info = hil_build_demo_rt_model("rt");   % tiny synthetic demo under build/
+summary = hil_readiness_from_model(info.path, ...
+    "FastestEventS", 100e-6, ...        % shortest PHYSICAL event to resolve
+    "OutputDir", "build/reports/m2_hil_readiness/model_backed/rt");
+% summary.model_validation_status -> "model_backed"
+% summary.real_time_deployable    -> false (no HIL evidence)
+```
+
+What model-backed does and does NOT mean:
+
+- DOES: solver type, fixed step, discrete rates, and continuous-state count are
+  read from a model that actually compiled (and optionally simulated). This is
+  the `model_backed` status.
+- Does NOT: prove the model generates code, and does NOT prove it runs in real
+  time on hardware. The honesty ladder is: config metadata < compile < host
+  simulation < codegen build < hardware run. The adapter reaches "host
+  simulation" at most.
+
+Caller-supplied, because a compile cannot reveal them:
+
+- `FastestEventS`: the shortest physical event the target must resolve (PWM
+  carrier, switch event). Omitted => `fixed_step_feasibility` reports it
+  undocumented rather than guessing.
+- `CpuCores` / `StepBudgetS`: latency-budget inputs. Per-partition compute time
+  is not measurable by a software probe, so `latency_budget` stays MISSING
+  (non-blocking) on a pure model-backed run.
+
+Build a deliberately non-real-time model for negative testing with
+`hil_build_demo_rt_model("nonrt")` (variable-step + a continuous Integrator).
 
 ## Output
 
