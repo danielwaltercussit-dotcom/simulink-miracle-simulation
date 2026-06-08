@@ -141,6 +141,43 @@ summary = ingest_switching_waveform_evidence(art, "Signal","current", ...
 simulates the leg; it is a demonstration source for model-backed evidence, not a
 power-system study model.
 
+## Initializable Model, Dead-Time, Device Loss, Thermal
+
+`build_tiny_switching_example` is initializable and exercises switching-level
+non-idealities so their evidence is MODEL-BACKED, not asserted:
+
+```matlab
+art = build_tiny_switching_example("Ron", 0.05, "Vf", 1.0, ...
+    "DeadTimeS", 15e-6, "InitialCurrent", 0, "SampleTimeS", 5e-6, ...
+    "OutputDir", "build/reports/e1_emt_switching/model_backed_tiny_leg");
+% art.conduction_loss_w, art.device_loss_mode, art.params.dead_time_steps
+```
+
+- `InitialCurrent` seeds the load current (verifiable at t=0).
+- `DeadTimeS` is quantised to whole fixed steps; a dead-time that resolves
+  (>= one step) actually distorts the waveform via current-polarity-dependent
+  freewheeling. A sub-step dead-time reports `dead_time_steps = 0` and must not
+  be claimed as a represented dead-time effect.
+- `Ron`/`Vf` give a non-ideal conduction drop; the per-step conduction power
+  `Ron*i^2 + Vf*|i|` is logged so `conduction_loss_w` comes from the run. With
+  `Ron = Vf = 0` the leg is ideal and loss is reported N/A, never 0 W.
+
+Summarize device-loss and thermal evidence with per-metric evidence levels:
+
+```matlab
+summary = summarize_device_loss_thermal_evidence( ...
+    "CaseName", "tiny_leg_loss", "DeviceLossMode", art.device_loss_mode, ...
+    "ConductionLossW", art.conduction_loss_w, "ConductionLossSource", "model", ...
+    "ThermalRthCtoA", 0.5, "ThermalCth", 2.0, "AmbientC", 40, ...
+    "OutputDir", "build/reports/e1_emt_switching/model_backed_tiny_leg");
+```
+
+Each metric (conduction, switching, total, thermal) carries its own
+`contract_only` / `model_referenced` / `model_backed` / `hardware_backed` level;
+total loss takes the weakest contributing level. A junction temperature from an
+Rth/Cth network is a modelling estimate and is capped at `model_backed` — it is
+NEVER hardware-backed without measured temperature data.
+
 ## Output
 
 Write switching evidence under:

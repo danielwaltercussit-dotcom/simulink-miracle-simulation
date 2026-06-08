@@ -103,6 +103,31 @@ so a synthetic curve can never be mistaken for a model or hardware result.
 - `MISSING` waveform supplied but empty/too short to transform.
 - `N/A` a metric that does not apply to the supplied signal/loss mode.
 
+## Device-Loss and Thermal Evidence
+
+Loss and thermal evidence (`summarize_device_loss_thermal_evidence`) is reported
+per metric, each with its own evidence level:
+
+- conduction loss: `model_backed` only when integrated from an actual non-ideal
+  model run; `contract_only` for a declared placeholder; N/A for an ideal device.
+- switching loss: an estimate from per-event energy x counted event rate is
+  `model_referenced`, not `model_backed`; absent inputs leave it `not_assessed`
+  (it does not penalise the status).
+- total loss: takes the WEAKEST contributing evidence level.
+- thermal rise: a first-order Tj = Ta + P*Rth (with tau = Rth*Cth when Cth is
+  given) is a modelling estimate. It inherits the loss level but is CAPPED at
+  `model_backed`; a junction temperature is never `hardware_backed` without
+  measured temperature data.
+
+Rules:
+
+- An ideal device (`Ron = Vf = 0`) yields loss and thermal N/A, never 0 W / 0 C.
+- A model-backed dead-time effect requires `dead_time_steps >= 1`; below one
+  fixed step the dead-time is reported but not claimed as represented.
+- Contract-pass, model-validation-pass, and hardware-validation-pass are
+  distinct: a green contract test does not imply a model ran, and a model run
+  does not imply hardware behaviour.
+
 ## Relation To Other Evidence
 
 - Fidelity: `model-fidelity-selector` decides whether switching-level EMT is
