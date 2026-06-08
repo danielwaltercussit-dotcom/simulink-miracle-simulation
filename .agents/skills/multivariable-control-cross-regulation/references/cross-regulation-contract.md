@@ -17,6 +17,9 @@ result from an undocumented gain tweak.
   singular-value interaction metric
 - optional `time_domain` struct linking a measured/simulated disturbance run
   (see "Time-Domain Link and Evidence Tiers")
+- optional `delays` struct (control-path latency inventory) and `delay_cases`
+  struct array (declared delay scenarios) to enable delay-aware margins
+  (see "Delay Inventory and Phase Loss" and "Delay-Case Comparison")
 
 ### Per loop
 
@@ -106,10 +109,56 @@ Evidence tier (reported as `evidence_tier`):
 - `margin_only_unverified`: margins improved on paper but no model-backed run;
 - `regression`: any loop margin worsened;
 - `claimed_unverified`: gains changed but no before/after margin evidence;
+- `supported`: before/after margins improved AND the run is model-backed;
+- `margin_only_unverified`: margins improved on paper but no model-backed run;
+- `regression`: any loop margin worsened;
+- `claimed_unverified`: gains changed but no before/after margin evidence;
+- `pseudo_improvement_numeric_delay`: apparent margin gain is attributable to
+  reduced NUMERIC delay with unchanged gains (a modelling artifact);
+- `blocked_undocumented_delay_change`: a delay changed across cases without
+  documentation;
 - `no_change`: nothing measurable to report.
 
-Only `supported` may be described as a tuning improvement. A documented gain
-change is never, by itself, an improvement.
+The two delay states have the HIGHEST precedence: they block any improvement
+claim even if margins and a model-backed run are present. Only `supported` may
+be described as a tuning improvement. A documented gain change is never, by
+itself, an improvement; neither is removing a numerical delay.
+
+## Delay Inventory and Phase Loss
+
+`delays.sources` is a struct array; each source has `name`, `seconds`, `kind`
+(`numeric` for control computation, sample, ZOH, Rate Transition, Unit Delay,
+Memory; `physical` for transport/plant), and an optional `block`. The helper:
+
+- sums `total_s`, `numeric_s`, and `physical_s` separately;
+- at each evaluation frequency (explicit `delays.eval_freqs_hz`, else the
+  maximum documented loop bandwidth target) reports the phase loss of a pure
+  transport delay, `phase_loss_deg = 360 * f * tau`, split into numeric and
+  physical contributions;
+- per loop, subtracts the phase loss at the loop crossover
+  (`bandwidth_target_hz`) from the after phase margin to give
+  `phase_margin_delay_adjusted_deg`.
+
+Numeric vs physical separation is the point: a margin restored by deleting a
+numerical delay is not a physical improvement.
+
+## Delay-Case Comparison
+
+`delay_cases` is a struct array of declared scenarios; the first is the
+baseline. Each case has `numeric_delay_s`, `physical_delay_s`,
+`phase_margin_deg`, `gains_changed_vs_baseline`, and `documented`. Per
+non-baseline case the helper reports `dpm_deg`, `dnumeric_s`, `dphysical_s`,
+and a verdict:
+
+- `pseudo_improvement_numeric_delay`: `dpm > 0` AND numeric delay decreased AND
+  gains unchanged;
+- `margin_gain_with_gain_change`: `dpm > 0` with a documented gain change;
+- `margin_loss`: `dpm < 0`;
+- `no_margin_change`: otherwise.
+
+`undocumented_delay_change` is set on any case whose delay differs from baseline
+without `documented = true`. Either `any_pseudo_improvement` or
+`any_undocumented_delay_change` blocks the top-level improvement claim.
 
 ## Margin Classification
 

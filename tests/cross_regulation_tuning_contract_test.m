@@ -34,6 +34,10 @@ checks = struct([]);
 [c, d] = iCaseImprovementSupported(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
 [c, d] = iCaseImprovementUnverified(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
 [c, d] = iCaseRegression(projectRoot);   checks = iAddCheck(checks, c); scratch{end+1} = d;
+[c, d] = iCaseDelayPhaseLoss(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
+[c, d] = iCasePseudoImprovement(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
+[c, d] = iCaseUndocumentedDelayChange(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
+[c, d] = iCaseLegitDelayImprovement(projectRoot); checks = iAddCheck(checks, c); scratch{end+1} = d;
 
 allPass = all([checks.passed]);
 fprintf('\n=== cross_regulation_tuning_contract_test ===\n');
@@ -288,6 +292,130 @@ c.name = 'Case J: a loop margin worsens -> regression, not improvement';
 c.passed = okStatus && okWorse && okNotImp && okFiles;
 c.detail = sprintf('status=%s(want regression) n_worsened=%d margin_improved=%d artifacts=%d', ...
     s.improvement.status, s.margin_comparison.n_worsened, s.improvement.margin_improved, okFiles);
+end
+
+
+function [c, outDir] = iCaseDelayPhaseLoss(projectRoot)
+% A documented delay inventory erodes the delay-adjusted phase margin by
+% 360*f*tau at the loop crossover. 200us total at 300Hz -> 21.6 deg loss.
+tuning = iBaseCoupledTuning();
+tuning.delays = struct();
+tuning.delays.sources = struct( ...
+    'name', {'computation','pwm_zoh','unit_delay'}, ...
+    'seconds', {1.0e-4, 5.0e-5, 5.0e-5}, ...
+    'kind', {'numeric','numeric','numeric'}, ...
+    'block', {'MATLAB Fcn','ZOH','Unit Delay'});
+outDir = iOutDir(projectRoot, 'doc_delay_phaseloss');
+s = summarize_cross_regulation_tuning(tuning, ...
+    'CaseName', 'doc_delay_phaseloss', 'OutputDir', outDir);
+
+dly = s.delays;
+okDoc   = dly.documented && dly.n_sources == 3;
+okTotal = abs(dly.total_s - 2.0e-4) < 1e-12 && abs(dly.numeric_s - 2.0e-4) < 1e-12;
+% Expected phase loss at 300 Hz crossover = 360*300*2e-4 = 21.6 deg.
+L1 = s.loops(1);
+okLoss  = abs(L1.delay_phase_loss_deg - 21.6) < 1e-6;
+okAdj   = abs(L1.phase_margin_delay_adjusted_deg - (52 - 21.6)) < 1e-6;
+okFiles = iArtifactsExist(outDir);
+
+c.name = 'Case K: delay inventory -> phase loss erodes delay-adjusted PM';
+c.passed = okDoc && okTotal && okLoss && okAdj && okFiles;
+c.detail = sprintf('total=%.4gus loss@300Hz=%.4gdeg(want 21.6) PMadj=%.4g(want 30.4) artifacts=%d', ...
+    1e6*dly.total_s, L1.delay_phase_loss_deg, L1.phase_margin_delay_adjusted_deg, okFiles);
+end
+
+
+function [c, outDir] = iCasePseudoImprovement(projectRoot)
+% Two delay cases: baseline has a numerical Unit Delay; the "improved" case
+% removes it (numeric delay down) with gains unchanged. The PM gain is a
+% numerical artifact -> improvement blocked as pseudo_improvement.
+tuning = iBaseCoupledTuning();
+tuning.delay_cases = struct( ...
+    'name', {'with_unit_delay','unit_delay_removed'}, ...
+    'numeric_delay_s', {2.0e-4, 5.0e-5}, ...
+    'physical_delay_s', {0, 0}, ...
+    'phase_margin_deg', {30, 52}, ...
+    'gains_changed_vs_baseline', {false, false}, ...
+    'documented', {true, true});
+outDir = iOutDir(projectRoot, 'doc_pseudo_improve');
+s = summarize_cross_regulation_tuning(tuning, ...
+    'CaseName', 'doc_pseudo_improve', 'OutputDir', outDir);
+
+dc = s.delay_cases;
+okFlag   = dc.any_pseudo_improvement;
+okCase   = strcmp(dc.cases(2).verdict, 'pseudo_improvement_numeric_delay');
+okStatus = strcmp(s.improvement.status, 'pseudo_improvement_numeric_delay');
+okFiles  = iArtifactsExist(outDir);
+
+c.name = 'Case L: numeric-delay removal -> pseudo_improvement, blocked';
+c.passed = okFlag && okCase && okStatus && okFiles;
+c.detail = sprintf('any_pseudo=%d case2=%s status=%s(want pseudo_improvement_numeric_delay) artifacts=%d', ...
+    okFlag, dc.cases(2).verdict, s.improvement.status, okFiles);
+end
+
+
+function [c, outDir] = iCaseUndocumentedDelayChange(projectRoot)
+% A delay changes across cases but the case is not documented -> improvement
+% blocked as blocked_undocumented_delay_change (highest precedence).
+tuning = iBaseCoupledTuning();
+tuning.delay_cases = struct( ...
+    'name', {'baseline','tweaked'}, ...
+    'numeric_delay_s', {1.0e-4, 1.0e-4}, ...
+    'physical_delay_s', {0, 5.0e-5}, ...
+    'phase_margin_deg', {45, 50}, ...
+    'gains_changed_vs_baseline', {false, false}, ...
+    'documented', {true, false});
+outDir = iOutDir(projectRoot, 'doc_undoc_delay');
+s = summarize_cross_regulation_tuning(tuning, ...
+    'CaseName', 'doc_undoc_delay', 'OutputDir', outDir);
+
+dc = s.delay_cases;
+okFlag   = dc.any_undocumented_delay_change;
+okStatus = strcmp(s.improvement.status, 'blocked_undocumented_delay_change');
+okFiles  = iArtifactsExist(outDir);
+
+c.name = 'Case M: undocumented delay change -> improvement blocked';
+c.passed = okFlag && okStatus && okFiles;
+c.detail = sprintf('any_undoc=%d status=%s(want blocked_undocumented_delay_change) artifacts=%d', ...
+    okFlag, s.improvement.status, okFiles);
+end
+
+
+function [c, outDir] = iCaseLegitDelayImprovement(projectRoot)
+% A documented case with an actual gain change and a model-backed run: a real
+% margin gain that is NOT a numeric-delay artifact (numeric delay unchanged,
+% gains changed) must NOT be blocked -> improvement supported.
+outDir = iOutDir(projectRoot, 'doc_legit_delay');
+artifact = iWriteFakeArtifact(outDir, 'dist_run.json');
+
+tuning = iBaseCoupledTuning();
+tuning.loops(1).phase_margin_before_deg = 38;
+tuning.loops(1).phase_margin_after_deg = 52;
+tuning.loops(2).phase_margin_before_deg = 40;
+tuning.loops(2).phase_margin_after_deg = 50;
+tuning.time_domain = struct('artifact_path', artifact, 'source', 'simulation', ...
+    'disturbance', 'grid dip', 'settling_time_s', 0.012);
+tuning.delay_cases = struct( ...
+    'name', {'baseline','retuned'}, ...
+    'numeric_delay_s', {1.0e-4, 1.0e-4}, ...
+    'physical_delay_s', {0, 0}, ...
+    'phase_margin_deg', {38, 52}, ...
+    'gains_changed_vs_baseline', {false, true}, ...
+    'documented', {true, true});
+s = summarize_cross_regulation_tuning(tuning, ...
+    'CaseName', 'doc_legit_delay', ...
+    'CurrentIterationDir', outDir, 'OutputDir', outDir);
+
+okNotPseudo = ~s.improvement.pseudo_improvement;
+okNotUndoc  = ~s.improvement.undocumented_delay_change;
+okStatus    = strcmp(s.improvement.status, 'supported');
+okFiles     = iArtifactsExist(outDir);
+
+c.name = 'Case N: documented gain change + model-backed -> supported (not delay-blocked)';
+c.passed = okNotPseudo && okNotUndoc && okStatus && okFiles;
+c.detail = sprintf('pseudo=%d undoc=%d status=%s(want supported) artifacts=%d', ...
+    s.improvement.pseudo_improvement, s.improvement.undocumented_delay_change, ...
+    s.improvement.status, okFiles);
 end
 
 

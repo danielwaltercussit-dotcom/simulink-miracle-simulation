@@ -29,6 +29,17 @@ function summary = summarize_cross_regulation_tuning(tuning, varargin)
 %           source          "simulation" | "measurement" | "synthetic"
 %           disturbance     char/string, the disturbance applied
 %           settling_time_s / overshoot_pct / peak_coupling  measured metrics
+%       .delays             optional struct describing the control-path latency:
+%           sources         struct array, each {name, seconds, kind, block}:
+%               kind        "numeric" (Unit Delay/Memory/ZOH/Rate Transition/
+%                           sample/computation) | "physical" (transport, plant)
+%           eval_freqs_hz   frequencies (crossover/resonance) for phase loss
+%         Phase loss of a pure transport delay tau at f is 360*f*tau degrees.
+%       .delay_cases        optional struct array comparing declared delay
+%                           scenarios (e.g. no_delay, declared_physical,
+%                           artificial_numeric):
+%           name, numeric_delay_s, physical_delay_s, phase_margin_deg,
+%           gains_changed_vs_baseline (logical), documented (logical)
 %       .operating_point    char/string (load, SCR/ESCR, control mode)
 %       .control_frame      "dq" | "sequence" | "abc" | other
 %       .model_path         char/string
@@ -71,8 +82,11 @@ loops = iNormalizeLoops(tuning);
 loops = iAssessLoops(loops, opts);
 coupling = iAssessCoupling(tuning, loops, opts);
 interaction = iAssessInteraction(tuning, loops, opts);
+delays = iAssessDelays(tuning, loops, opts);
+loops = iApplyDelayToLoops(loops, delays);
+delayCases = iAssessDelayCases(tuning, opts);
 timeDomain = iAssessTimeDomain(tuning, opts);
-improvement = iAssessImprovement(loops, timeDomain);
+improvement = iAssessImprovement(loops, timeDomain, delayCases);
 [caseMissing, loopMissing] = iCollectMissing(tuning, loops, coupling);
 missing = [caseMissing, loopMissing];
 
@@ -86,6 +100,8 @@ summary.n_loops = numel(loops);
 summary.loops = loops;
 summary.coupling = coupling;
 summary.interaction = interaction;
+summary.delays = delays;
+summary.delay_cases = delayCases;
 summary.disturbance_channels = iCollectDisturbances(loops);
 summary.margin_assessment = iMarginAssessment(loops, opts);
 summary.margin_comparison = iMarginComparison(loops);
@@ -445,6 +461,180 @@ if tf; t = "ill-conditioned"; else; t = "well-conditioned"; end
 end
 
 
+function delays = iAssessDelays(tuning, loops, ~)
+% Control-path latency inventory. Each source has a name, seconds, and a kind:
+% "numeric" (control computation, sample, ZOH, Rate Transition, Unit Delay,
+% Memory) or "physical" (transport/plant). Phase loss of a pure transport delay
+% tau at frequency f is 360*f*tau degrees. We sum numeric and physical latency
+% separately so a margin gained by deleting NUMERIC delay (a modelling
+% artifact) is distinguishable from a real plant transport delay.
+delays = struct("documented", false, "n_sources", 0, "sources", iEmptyDelaySrcArray(), ...
+    "total_s", 0, "numeric_s", 0, "physical_s", 0, ...
+    "eval_freqs_hz", [], "phase_loss", iEmptyPhaseLossArray(), ...
+    "default_crossover_hz", NaN, "note", "");
+% Default crossover for per-loop adjustment = max documented bandwidth target.
+bw = [loops.bandwidth_target_hz];
+bw = bw(~isnan(bw) & bw > 0);
+if ~isempty(bw); delays.default_crossover_hz = max(bw); end
+
+if ~isfield(tuning, "delays") || isempty(tuning.delays)
+    delays.note = 'no delay inventory supplied; margins are delay-unaware';
+    return
+end
+d = tuning.delays;
+src = iEmptyDelaySrcArray();
+if isfield(d, "sources") && ~isempty(d.sources)
+    raw = d.sources;
+    items = repmat(iEmptyDelaySrc(), 1, numel(raw));
+    for k = 1:numel(raw)
+        e = iEmptyDelaySrc();
+        e.name = iGetStr(raw(k), "name", sprintf("delay_%d", k));
+        e.seconds = iGetNum(raw(k), "seconds");
+        e.kind = lower(iGetStr(raw(k), "kind", "numeric"));
+        if ~any(strcmp(e.kind, {'numeric','physical'}))
+            e.kind = "numeric";
+        end
+        e.block = iGetStr(raw(k), "block", "");
+        items(k) = e;
+    end
+    src = items;
+end
+delays.documented = ~isempty(src);
+delays.sources = src;
+delays.n_sources = numel(src);
+secs = [src.seconds];
+secs(isnan(secs)) = 0;
+delays.total_s = sum(secs);
+isNum = strcmp({src.kind}, "numeric");
+delays.numeric_s = sum(secs(isNum));
+delays.physical_s = sum(secs(~isNum));
+
+% Evaluation frequencies: explicit list, else default crossover.
+if isfield(d, "eval_freqs_hz") && ~isempty(d.eval_freqs_hz) && isnumeric(d.eval_freqs_hz)
+    ef = double(d.eval_freqs_hz(:)).';
+elseif ~isnan(delays.default_crossover_hz)
+    ef = delays.default_crossover_hz;
+else
+    ef = [];
+end
+delays.eval_freqs_hz = ef;
+delays.phase_loss = iPhaseLossAt(ef, delays.total_s, delays.numeric_s, delays.physical_s);
+
+if delays.documented
+    delays.note = sprintf(['%d delay source(s): total %.4g us (numeric %.4g us, ' ...
+        'physical %.4g us)'], delays.n_sources, 1e6*delays.total_s, ...
+        1e6*delays.numeric_s, 1e6*delays.physical_s);
+else
+    delays.note = 'delays struct present but no sources parsed';
+end
+end
+
+
+function pl = iPhaseLossAt(freqs, totalS, numericS, physicalS)
+% Phase loss (deg) = 360 * f * tau for a pure transport delay.
+pl = iEmptyPhaseLossArray();
+if isempty(freqs); return; end
+items = repmat(iEmptyPhaseLoss(), 1, numel(freqs));
+for k = 1:numel(freqs)
+    f = freqs(k);
+    e = iEmptyPhaseLoss();
+    e.freq_hz = f;
+    e.total_deg = 360 * f * totalS;
+    e.numeric_deg = 360 * f * numericS;
+    e.physical_deg = 360 * f * physicalS;
+    items(k) = e;
+end
+pl = items;
+end
+
+
+function loops = iApplyDelayToLoops(loops, delays)
+% Subtract the phase loss at each loop's crossover (bandwidth_target_hz) from
+% its after-phase-margin to get a delay-adjusted phase margin. Numeric vs
+% physical contributions are tracked separately so a "stabilization" that is
+% really numeric-delay removal is visible.
+for k = 1:numel(loops)
+    L = loops(k);
+    pmAfter = iCoalesce(L.phase_margin_deg, L.phase_margin_after_deg);
+    fco = L.bandwidth_target_hz;
+    if delays.documented && ~isnan(fco) && fco > 0
+        L.delay_phase_loss_deg = 360 * fco * delays.total_s;
+        L.delay_phase_loss_numeric_deg = 360 * fco * delays.numeric_s;
+        L.delay_phase_loss_physical_deg = 360 * fco * delays.physical_s;
+        if ~isnan(pmAfter)
+            L.phase_margin_delay_adjusted_deg = pmAfter - L.delay_phase_loss_deg;
+        end
+    end
+    loops(k) = L;
+end
+end
+
+
+function dc = iAssessDelayCases(tuning, ~)
+% Compare declared delay scenarios against the first (baseline) case. The point
+% is to separate a REAL controller improvement from apparent stabilization that
+% is only an artefact of changing numerical delay. For each non-baseline case:
+%   dPM = phase_margin - baseline.phase_margin
+%   pseudo_improvement = dPM>0 AND numeric delay decreased AND gains unchanged
+%   undocumented_delay_change = a delay differs but the case is not documented
+dc = struct("documented", false, "n_cases", 0, "baseline_name", "", ...
+    "cases", iEmptyDelayCaseArray(), "any_pseudo_improvement", false, ...
+    "any_undocumented_delay_change", false, "note", "");
+if ~isfield(tuning, "delay_cases") || isempty(tuning.delay_cases)
+    dc.note = 'no delay cases supplied; cross-delay comparison not performed';
+    return
+end
+raw = tuning.delay_cases;
+n = numel(raw);
+items = repmat(iEmptyDelayCase(), 1, n);
+for k = 1:n
+    e = iEmptyDelayCase();
+    e.name = iGetStr(raw(k), "name", sprintf("case_%d", k));
+    e.numeric_delay_s = iCoalesce(iGetNum(raw(k), "numeric_delay_s"), 0);
+    e.physical_delay_s = iCoalesce(iGetNum(raw(k), "physical_delay_s"), 0);
+    e.total_delay_s = e.numeric_delay_s + e.physical_delay_s;
+    e.phase_margin_deg = iGetNum(raw(k), "phase_margin_deg");
+    e.gains_changed_vs_baseline = iGetLogical(raw(k), "gains_changed_vs_baseline", false);
+    e.documented = iGetLogical(raw(k), "documented", false);
+    items(k) = e;
+end
+base = items(1);
+items(1).is_baseline = true;
+items(1).verdict = "baseline";
+for k = 2:n
+    e = items(k);
+    e.dpm_deg = iSub(e.phase_margin_deg, base.phase_margin_deg);
+    e.dnumeric_s = e.numeric_delay_s - base.numeric_delay_s;
+    e.dphysical_s = e.physical_delay_s - base.physical_delay_s;
+    delayChanged = abs(e.dnumeric_s) > 0 || abs(e.dphysical_s) > 0;
+    if delayChanged && ~e.documented
+        e.undocumented_delay_change = true;
+    end
+    pmUp = ~isnan(e.dpm_deg) && e.dpm_deg > 0;
+    numericDown = e.dnumeric_s < 0;
+    if pmUp && numericDown && ~e.gains_changed_vs_baseline
+        e.pseudo_improvement = true;
+        e.verdict = "pseudo_improvement_numeric_delay";
+    elseif pmUp && e.gains_changed_vs_baseline
+        e.verdict = "margin_gain_with_gain_change";
+    elseif ~isnan(e.dpm_deg) && e.dpm_deg < 0
+        e.verdict = "margin_loss";
+    else
+        e.verdict = "no_margin_change";
+    end
+    items(k) = e;
+end
+dc.documented = true;
+dc.n_cases = n;
+dc.baseline_name = base.name;
+dc.cases = items;
+dc.any_pseudo_improvement = any([items.pseudo_improvement]);
+dc.any_undocumented_delay_change = any([items.undocumented_delay_change]);
+dc.note = sprintf('%d delay case(s) vs baseline "%s"; pseudo_improvement=%d, undocumented_delay_change=%d', ...
+    n, base.name, dc.any_pseudo_improvement, dc.any_undocumented_delay_change);
+end
+
+
 function td = iAssessTimeDomain(tuning, opts)
 % Link to a measured/simulated time-domain disturbance run. The artifact's
 % existence on disk and its source decide the evidence tier; a same-iteration
@@ -541,20 +731,31 @@ end
 end
 
 
-function imp = iAssessImprovement(loops, timeDomain)
+function imp = iAssessImprovement(loops, timeDomain, delayCases)
 % The improvement GATE. A retune is a SUPPORTED improvement only when measured
 % before/after margins improve AND a model-backed time-domain artifact backs it.
-% A documented gain change without that evidence is "claimed_unverified" - it is
-% never silently reported as an improvement.
+% Delay guards have the HIGHEST precedence: an undocumented delay change, or an
+% apparent margin gain that is really numeric-delay removal, blocks any
+% improvement claim. A documented gain change without margin evidence is
+% "claimed_unverified". Nothing here is ever silently called an improvement.
 mc = iMarginComparison(loops);
 imp = struct("status", "no_change", "margin_improved", false, ...
     "time_domain_backed", false, "n_improved", mc.n_improved, ...
-    "n_worsened", mc.n_worsened, "note", "");
+    "n_worsened", mc.n_worsened, "pseudo_improvement", false, ...
+    "undocumented_delay_change", false, "note", "");
 anyGainChange = any([loops.gain_changed]);
 imp.margin_improved = mc.n_improved > 0 && mc.n_worsened == 0;
 imp.time_domain_backed = timeDomain.model_backed;
+imp.pseudo_improvement = delayCases.any_pseudo_improvement;
+imp.undocumented_delay_change = delayCases.any_undocumented_delay_change;
 
-if mc.n_worsened > 0
+if imp.undocumented_delay_change
+    imp.status = "blocked_undocumented_delay_change";
+    imp.note = 'a delay changed across cases without documentation; improvement claim blocked';
+elseif imp.pseudo_improvement
+    imp.status = "pseudo_improvement_numeric_delay";
+    imp.note = 'apparent margin gain is attributable to reduced numeric delay, not a controller change';
+elseif mc.n_worsened > 0
     imp.status = "regression";
     imp.note = 'at least one loop margin worsened; not an improvement';
 elseif imp.margin_improved && imp.time_domain_backed
@@ -779,9 +980,58 @@ L = struct( ...
     "phase_margin_before_deg",NaN, "phase_margin_after_deg",NaN, ...
     "gain_margin_before_db",NaN, "gain_margin_after_db",NaN, ...
     "damping_before",NaN, "damping_after",NaN, ...
+    "delay_phase_loss_deg",NaN, "delay_phase_loss_numeric_deg",NaN, ...
+    "delay_phase_loss_physical_deg",NaN, "phase_margin_delay_adjusted_deg",NaN, ...
     "margin_class","unknown", "has_margin",false, ...
     "disturbance_channels",strings(1,0), "rationale","", "has_rationale",false, ...
     "gain_changed",false, "loop_missing",strings(1,0), "status","provisional");
+end
+
+
+function e = iEmptyDelaySrc()
+e = struct("name","", "seconds",NaN, "kind","numeric", "block","");
+end
+
+
+function arr = iEmptyDelaySrcArray()
+arr = iEmptyDelaySrc();
+arr = arr([]);
+end
+
+
+function e = iEmptyPhaseLoss()
+e = struct("freq_hz",NaN, "total_deg",NaN, "numeric_deg",NaN, "physical_deg",NaN);
+end
+
+
+function arr = iEmptyPhaseLossArray()
+arr = iEmptyPhaseLoss();
+arr = arr([]);
+end
+
+
+function e = iEmptyDelayCase()
+e = struct("name","", "numeric_delay_s",NaN, "physical_delay_s",NaN, ...
+    "total_delay_s",NaN, "phase_margin_deg",NaN, ...
+    "gains_changed_vs_baseline",false, "documented",false, ...
+    "is_baseline",false, "dpm_deg",NaN, "dnumeric_s",NaN, "dphysical_s",NaN, ...
+    "pseudo_improvement",false, "undocumented_delay_change",false, ...
+    "verdict","");
+end
+
+
+function arr = iEmptyDelayCaseArray()
+arr = iEmptyDelayCase();
+arr = arr([]);
+end
+
+
+function d = iSub(a, b)
+if isnan(a) || isnan(b)
+    d = NaN;
+else
+    d = a - b;
+end
 end
 
 
@@ -942,10 +1192,69 @@ else
 end
 
 imp = summary.improvement;
+dly = summary.delays;
+fprintf(fid, "## Delay inventory (latency / phase loss)\n\n");
+if ~dly.documented
+    fprintf(fid, "- %s\n\n", dly.note);
+else
+    fprintf(fid, "| Source | Kind | Delay us | Block |\n");
+    fprintf(fid, "|---|---|---:|---|\n");
+    for k = 1:numel(dly.sources)
+        ds = dly.sources(k);
+        fprintf(fid, "| %s | %s | %.4g | %s |\n", ds.name, ds.kind, ...
+            1e6*ds.seconds, iDash(ds.block));
+    end
+    fprintf(fid, "\n- total: %.4g us (numeric %.4g us, physical %.4g us)\n", ...
+        1e6*dly.total_s, 1e6*dly.numeric_s, 1e6*dly.physical_s);
+    if ~isempty(dly.phase_loss)
+        fprintf(fid, "- phase loss (deg) = 360*f*tau:\n");
+        for k = 1:numel(dly.phase_loss)
+            pl = dly.phase_loss(k);
+            fprintf(fid, "  - %.4g Hz: total %.3g deg (numeric %.3g, physical %.3g)\n", ...
+                pl.freq_hz, pl.total_deg, pl.numeric_deg, pl.physical_deg);
+        end
+    end
+    fprintf(fid, "\n");
+    % Per-loop delay-adjusted phase margin, when computed.
+    hasAdj = any(~isnan([summary.loops.phase_margin_delay_adjusted_deg]));
+    if hasAdj
+        fprintf(fid, "| Loop | PM after deg | delay loss deg | PM delay-adj deg |\n");
+        fprintf(fid, "|---|---:|---:|---:|\n");
+        for k = 1:numel(summary.loops)
+            L = summary.loops(k);
+            pmAfter = L.phase_margin_after_deg;
+            if isnan(pmAfter); pmAfter = L.phase_margin_deg; end
+            fprintf(fid, "| %s | %s | %s | %s |\n", L.name, iNum(pmAfter), ...
+                iNum(L.delay_phase_loss_deg), iNum(L.phase_margin_delay_adjusted_deg));
+        end
+        fprintf(fid, "\n");
+    end
+end
+
+dc = summary.delay_cases;
+fprintf(fid, "## Delay-case comparison\n\n");
+if ~dc.documented
+    fprintf(fid, "- %s\n\n", dc.note);
+else
+    fprintf(fid, "Baseline: `%s`\n\n", dc.baseline_name);
+    fprintf(fid, "| Case | num us | phys us | PM deg | dPM | gains chg | doc | Verdict |\n");
+    fprintf(fid, "|---|---:|---:|---:|---:|:--:|:--:|---|\n");
+    for k = 1:numel(dc.cases)
+        e = dc.cases(k);
+        fprintf(fid, "| %s | %.4g | %.4g | %s | %s | %d | %d | %s |\n", ...
+            e.name, 1e6*e.numeric_delay_s, 1e6*e.physical_delay_s, ...
+            iNum(e.phase_margin_deg), iNum(e.dpm_deg), ...
+            e.gains_changed_vs_baseline, e.documented, e.verdict);
+    end
+    fprintf(fid, "\n- %s\n\n", dc.note);
+end
+
 fprintf(fid, "## Improvement verdict\n\n");
 fprintf(fid, "- status: **%s**\n", upper(strrep(imp.status, "_", " ")));
 fprintf(fid, "- margin improved: %d | time-domain backed: %d | evidence tier: %s\n", ...
     imp.margin_improved, imp.time_domain_backed, summary.evidence_tier);
+fprintf(fid, "- pseudo-improvement (numeric delay): %d | undocumented delay change: %d\n", ...
+    imp.pseudo_improvement, imp.undocumented_delay_change);
 fprintf(fid, "- %s\n\n", imp.note);
 
 fprintf(fid, "## Disturbance channels\n\n");
