@@ -6,13 +6,20 @@ Speedgoat-style deployment.
 
 ## Scope And Honesty Boundary
 
-- This is a **software-readiness** contract. It runs on metadata, not on a
-  running model, and never on hardware.
+- This contract covers software-side readiness. It has two entry points: a
+  contract-only path (`summarize_hil_readiness`, runs on a hand-supplied
+  manifest, never touches a model) and a model-backed path
+  (`hil_readiness_from_model`, compiles/simulates a real model and reads facts
+  from it). Neither path runs on real-time hardware.
 - A `PASS` contract means the manifest is complete and internally consistent and
   no blocking risk remains - i.e. it is reasonable to *attempt* real-time
   bring-up. It is not proof of real-time execution.
 - `real_time_deployable` is true only when a real HIL run log (no overruns) is
   attached via `hardware_evidence`. Do not claim hardware validation otherwise.
+- The four status axes are independent and must not be collapsed:
+  `contract_status` (manifest quality), `model_validation_status`
+  (`not_model_backed` | `model_backed`), `readiness_class`
+  (`software_readiness_only` | `hardware_backed`), and `real_time_deployable`.
 
 ## Required Manifest Metadata
 
@@ -46,7 +53,41 @@ Per check: `PASS` | `WARN` | `MISSING` | `N/A`, plus a `blocking` flag.
 - `readiness_class` = `hardware_backed` only when `hardware_evidence.supplied`
   is true, an `artifact_path` is set, and `overruns` is false; else
   `software_readiness_only`.
+- `model_validation_status` = `model_backed` only when `model_provenance` is
+  present AND `model_provenance.compiled_ok` is true (the model actually
+  compiled); else `not_model_backed`. Default on a hand-supplied manifest is
+  `not_model_backed`.
 - `real_time_deployable` = `handoff_ready` AND `hardware_backed`.
+
+## Model-Backed Evidence
+
+The model-backed path (`hil_readiness_from_model`) attaches a `model_provenance`
+struct to the manifest with: `is_model_backed`, `model`, `update_ok`,
+`compiled_ok`, `simulated`, `n_continuous_states`, `n_discrete_states`,
+`discrete_rates_s`, and any error strings. The status engine reads it to set
+`model_validation_status`.
+
+Honesty ladder (each rung is strictly stronger than the one before):
+
+1. config metadata - a hand-supplied manifest only.
+2. compile - `compiled_ok=true`; solver/step/rates/states are real. This is the
+   bar for `model_backed`.
+3. host simulation - `simulated=true`; the model runs on the host. Still not a
+   timing guarantee.
+4. codegen build - NOT performed by this skill; `codegen_target_supported` stays
+   undocumented (MISSING) unless asserted out of band.
+5. hardware run - a real HIL log; the only path to `hardware_backed` and
+   `real_time_deployable`.
+
+Facts a compile cannot reveal, so the caller must supply them (never fake from
+the model):
+
+- `fastest_event_s` - the fastest discrete rate equals the fixed step, so it
+  cannot stand in for the physical event the target must resolve. Caller-only;
+  NaN => feasibility reports it undocumented.
+- per-partition `compute_s` - not measurable by a software probe, so
+  `latency_budget` is MISSING (non-blocking) on a pure model-backed run. Host
+  simulation time is NOT target latency; do not substitute it.
 
 ## Check Rules
 

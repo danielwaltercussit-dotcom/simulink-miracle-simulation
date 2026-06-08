@@ -85,6 +85,20 @@ else
     readinessClass = "software_readiness_only";
 end
 
+% --- model validation status: independent of contract and hardware ---
+% model_backed means solver/step/rate/state facts were read from a real
+% compiled model (provenance present AND the model compiled). It is NOT a
+% codegen or hardware claim - those remain separate. Default not_model_backed
+% so a hand-supplied (contract-only) manifest is never mislabeled.
+mp = m.model_provenance;
+modelBacked = isstruct(mp) && isfield(mp, "is_model_backed") && mp.is_model_backed && ...
+    isfield(mp, "compiled_ok") && mp.compiled_ok;
+if modelBacked
+    modelValidationStatus = "model_backed";
+else
+    modelValidationStatus = "not_model_backed";
+end
+
 % handoff_ready: safe to carry to hardware bring-up. The `blocking` set already
 % captures every veto: blocking WARNs (wrong solver, unbroken algebraic loop,
 % unsupported blocks, failed codegen target, an actual latency overrun) AND
@@ -103,6 +117,8 @@ summary.generated_at = char(datetime("now", "Format", "yyyy-MM-dd HH:mm:ss"));
 summary.checks = checks;
 summary.contract_status = char(contractStatus);
 summary.readiness_class = char(readinessClass);
+summary.model_validation_status = char(modelValidationStatus);
+summary.model_provenance = mp;
 summary.handoff_ready = handoffReady;
 summary.real_time_deployable = realTimeDeployable;
 summary.blocking_findings = blocking;
@@ -193,6 +209,12 @@ if isfield(m, "hardware_evidence") && isstruct(m.hardware_evidence)
     end
 end
 m.hardware_evidence = hw;
+
+% model provenance: present only on model-backed runs (the adapter sets it).
+% Default to a not-model-backed marker so contract-only manifests are honest.
+if ~isfield(m, "model_provenance") || ~isstruct(m.model_provenance)
+    m.model_provenance = struct("is_model_backed", false);
+end
 end
 
 
@@ -224,15 +246,23 @@ end
 % ---------------------------------------------------------------- check 1
 function c = iCheckFixedStep(m)
 name = "fixed_step_feasibility";
-if strlength(string(m.solver_type)) == 0 || isnan(m.fixed_step_s)
+% Precedence matters: a variable-step model legitimately has NO fixed step, so
+% "wrong solver type" must be judged before "fixed_step_s is NaN". Only a model
+% that claims fixed-step yet omits the step value is MISSING.
+if strlength(string(m.solver_type)) == 0
     c = iMakeCheck(name, "MISSING", true, ...
-        "solver_type and fixed_step_s required for real-time feasibility");
+        "solver_type undocumented; required for real-time feasibility");
     return
 end
 if string(m.solver_type) ~= "fixed_step"
     c = iMakeCheck(name, "WARN", true, sprintf( ...
         "solver_type=%s; real-time targets need a fixed-step solver", ...
         string(m.solver_type)));
+    return
+end
+if isnan(m.fixed_step_s)
+    c = iMakeCheck(name, "MISSING", true, ...
+        "fixed-step solver but fixed_step_s undocumented");
     return
 end
 if m.fixed_step_s <= 0
@@ -447,6 +477,7 @@ fprintf(fid, "Generated: %s\n\n", summary.generated_at);
 fprintf(fid, "## Readiness headline\n\n");
 fprintf(fid, "- contract_status: **%s**\n", summary.contract_status);
 fprintf(fid, "- readiness_class: **%s**\n", summary.readiness_class);
+fprintf(fid, "- model_validation_status: **%s**\n", summary.model_validation_status);
 fprintf(fid, "- handoff_ready: **%d**\n", summary.handoff_ready);
 fprintf(fid, "- real_time_deployable: **%d**\n", summary.real_time_deployable);
 if strcmp(summary.readiness_class, "software_readiness_only")
