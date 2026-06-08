@@ -114,6 +114,48 @@ The helper must never emit a hardware-backed grade. A simulated-injection or
 even a bench small-signal sweep is not HIL/field validation; that distinction is
 deliberate and the limitations note states it.
 
+## Bound Verification (verify_fha_dynamic_phasor_bounds)
+
+Mathematical certification that a stated approximation error bound holds. This
+is a separate, lower-cost evidence layer than data comparison and is strictly
+distinct from model/hardware validation.
+
+Spec types and the provable fact each re-checks numerically:
+
+- `harmonic_series` — FHA fundamental-only truncation. Reports THD and
+  retained-power fraction; verifies the time-domain sup-norm bound
+  `|e(t)| <= sum_{k>1}|a_k|` (triangle inequality) against a dense
+  reconstruction of the dropped harmonics.
+- `dynamic_phasor` — generalized averaging `x(t)=sum_k X_k e^{jk ws t}`.
+  Verifies narrowband validity (`fs/B >= NarrowbandRatioMin` AND `2B < fs`, so
+  adjacent carrier sidebands do not overlap) and the Parseval truncation
+  identity `rms_error == sqrt(sum_{|k|>K}|X_k|^2)` on a sampled carrier period.
+- `frequency_response_pair` — sup, relative sup, L2, per-band, and
+  validity-band-restricted relative error vs a reference, graded against
+  `SupTolRel`/`L2TolRel` inside the FHA band.
+
+Evidence grade (separate machine from the comparison grade):
+
+- `contract_only` — provisional (undocumented operating point/units/bound).
+- `math_verified` — the provable bound was numerically re-checked and holds.
+- `math_verification_failed` — numeric quantity violates the bound, OR a
+  dynamic-phasor case fails narrowband validity. Honest negative, not an error.
+
+## Strict Evidence-Grade Separation
+
+These layers must never be conflated in any F1 report or handoff:
+
+1. contract consistency — metadata present and internally consistent.
+2. math_verified — a provable error bound numerically re-checked (this helper).
+3. data_backed — analytic model matches measured/simulated data in-band
+   (`compare_fha_measured_impedance`).
+4. model_validated — an actual Simulink/Simscape load/update/simulate agrees.
+   F1 does NOT produce this; it is out of scope for the analytic helpers.
+5. hardware_validated — HIL/field evidence. Never produced by F1.
+
+A higher grade is never implied by a lower one. F1 helpers top out at
+math_verified / data_backed and must say so.
+
 ## Relation To Other Evidence
 
 - P3 `impedance-frequency-analysis`: derive `Z(jw)` here, then summarize the
