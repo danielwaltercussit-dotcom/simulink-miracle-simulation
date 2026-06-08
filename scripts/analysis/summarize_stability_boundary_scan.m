@@ -64,6 +64,7 @@ summary.pass_fraction = nnz(isPass) / numel(isPass);
 summary.generated_at = char(datetime("now","Format","yyyy-MM-dd HH:mm:ss"));
 summary.parameters = iParameterSummary(X, paramNames, opts);
 summary.boundary = iBoundaryEstimate(X, g, paramNames, opts.BoundaryInterpMethod);
+summary.joint_boundary = iJointBoundary(X, g, paramNames, opts);
 [summary.provisional, summary.missing_required, summary.warnings] = ...
     iProvisionalScreen(summary, opts);
 summary.limitations = char(opts.LimitationsNote);
@@ -89,6 +90,8 @@ p.addParameter("RandomSeed", NaN, @(x) isnumeric(x) && isscalar(x));
 p.addParameter("DeclaredSampleCount", NaN, @(x) isnumeric(x) && isscalar(x));
 p.addParameter("OutputDir", "", @(x) ischar(x) || isstring(x));
 p.addParameter("EvidenceSource", "synthetic", @(x) ischar(x) || isstring(x));
+p.addParameter("JointPrimaryAxis", "", @(x) ischar(x) || isstring(x));
+p.addParameter("JointConditioningAxis", "", @(x) ischar(x) || isstring(x));
 p.addParameter("OperatingPoint", "", @(x) ischar(x) || isstring(x));
 p.addParameter("Units", "", @(x) ischar(x) || isstring(x));
 p.addParameter("RelatedTimeDomainRun", "", @(x) ischar(x) || isstring(x));
@@ -105,6 +108,8 @@ opts.PassDirection = lower(string(opts.PassDirection));
 opts.BoundaryInterpMethod = lower(string(opts.BoundaryInterpMethod));
 opts.OutputDir = string(opts.OutputDir);
 opts.EvidenceSource = string(opts.EvidenceSource);
+opts.JointPrimaryAxis = string(opts.JointPrimaryAxis);
+opts.JointConditioningAxis = string(opts.JointConditioningAxis);
 opts.OperatingPoint = string(opts.OperatingPoint);
 opts.Units = string(opts.Units);
 opts.RelatedTimeDomainRun = string(opts.RelatedTimeDomainRun);
@@ -234,22 +239,7 @@ if numel(xu) < 2
     return
 end
 
-crossings = [];
-for k = 1:numel(xu)-1
-    if sign(gu(k)) ~= sign(gu(k+1)) && ~(gu(k) == 0 && gu(k+1) == 0)
-        if method == "linear" && (gu(k+1) ~= gu(k))
-            t = gu(k) / (gu(k) - gu(k+1));
-            xc = xu(k) + t * (xu(k+1) - xu(k));
-        else
-            if abs(gu(k)) <= abs(gu(k+1))
-                xc = xu(k);
-            else
-                xc = xu(k+1);
-            end
-        end
-        crossings(end+1) = xc; %#ok<AGROW>
-    end
-end
+crossings = iAllCrossings(xu, gu, method);
 
 ax.crossing_count = numel(crossings);
 if ~isempty(crossings)
@@ -268,6 +258,141 @@ else
         ax.note = 'all levels fail on this axis (no boundary in range)';
     end
 end
+end
+
+
+function crossings = iAllCrossings(xu, gu, method)
+% Zero-crossings of the pass indicator gu over sorted unique levels xu.
+% Shared by per-axis and joint-boundary extraction.
+crossings = [];
+for k = 1:numel(xu)-1
+    if sign(gu(k)) ~= sign(gu(k+1)) && ~(gu(k) == 0 && gu(k+1) == 0)
+        if method == "linear" && (gu(k+1) ~= gu(k))
+            t = gu(k) / (gu(k) - gu(k+1));
+            xc = xu(k) + t * (xu(k+1) - xu(k));
+        else
+            if abs(gu(k)) <= abs(gu(k+1))
+                xc = xu(k);
+            else
+                xc = xu(k+1);
+            end
+        end
+        crossings(end+1) = xc; %#ok<AGROW>
+    end
+end
+end
+
+
+function jb = iJointBoundary(X, g, paramNames, opts)
+% Opt-in joint boundary CURVE: critical value of a primary axis as a function
+% of a conditioning axis, on a factorial grid. For each distinct level of the
+% conditioning axis, hold it fixed, sort the primary-axis samples in that
+% slice, and find the first pass/fail crossing of the primary axis. The locus
+% of (conditioning level, critical primary value) is the joint boundary curve.
+jb = struct("requested", false, "available", false, ...
+    "primary_axis", "", "conditioning_axis", "", "method", "", ...
+    "points", iEmptyJointPoint(), "trend", "n/a", "n_points", 0, "note", "");
+
+pName = opts.JointPrimaryAxis;
+cName = opts.JointConditioningAxis;
+if strlength(pName) == 0 && strlength(cName) == 0
+    jb.note = 'joint boundary not requested';
+    return
+end
+jb.requested = true;
+jb.primary_axis = char(pName);
+jb.conditioning_axis = char(cName);
+jb.method = char(opts.BoundaryInterpMethod);
+
+pIdx = find(paramNames == pName, 1);
+cIdx = find(paramNames == cName, 1);
+if isempty(pIdx) || isempty(cIdx) || pIdx == cIdx
+    jb.note = 'joint axes must be two distinct scanned parameter names';
+    return
+end
+if opts.ScanType ~= "grid"
+    jb.note = 'joint boundary curve requires a deterministic grid scan';
+    return
+end
+
+cLevels = unique(X(:, cIdx));
+pts = iEmptyJointPoint();
+np = 0;
+for k = 1:numel(cLevels)
+    inSlice = X(:, cIdx) == cLevels(k);
+    xp = X(inSlice, pIdx);
+    gp = g(inSlice);
+    [xu, ~, ic] = unique(xp);
+    if numel(xu) < 2
+        continue
+    end
+    gu = accumarray(ic, gp, [], @min);
+    crossings = iAllCrossings(xu, gu, opts.BoundaryInterpMethod);
+    np = np + 1;
+    pt = iScalarJointPoint();
+    pt.conditioning_value = cLevels(k);
+    pt.n_levels = numel(xu);
+    if ~isempty(crossings)
+        pt.has_boundary = true;
+        pt.critical_value = crossings(1);
+    else
+        pt.has_boundary = false;
+        pt.critical_value = NaN;
+        if all(gu >= 0)
+            pt.note = 'all primary levels pass in this slice';
+        else
+            pt.note = 'all primary levels fail in this slice';
+        end
+    end
+    pts(np) = pt;
+end
+
+if np == 0
+    jb.note = 'no conditioning slice had >=2 primary levels to bracket';
+    return
+end
+jb.available = true;
+jb.points = pts;
+jb.n_points = np;
+jb.trend = iClassifyTrend([pts.conditioning_value], [pts.critical_value]);
+jb.note = sprintf(['critical %s vs %s across %d slices; trend=%s ' ...
+    '(curve interpolated from grid, not a proven margin)'], ...
+    jb.primary_axis, jb.conditioning_axis, np, jb.trend);
+end
+
+
+function trend = iClassifyTrend(condVals, critVals)
+% Monotone trend of critical primary value vs conditioning value, using only
+% slices that actually produced a finite boundary.
+ok = isfinite(condVals) & isfinite(critVals);
+c = condVals(ok);
+v = critVals(ok);
+if numel(v) < 2
+    trend = 'insufficient';
+    return
+end
+[~, order] = sort(c);
+dv = diff(v(order));
+tol = 1e-9 * max(1, max(abs(v)));
+if all(dv <= tol)
+    trend = 'decreasing';
+elseif all(dv >= -tol)
+    trend = 'increasing';
+else
+    trend = 'non-monotone';
+end
+end
+
+
+function p = iEmptyJointPoint()
+p = iScalarJointPoint();
+p = p([]);
+end
+
+
+function p = iScalarJointPoint()
+p = struct("conditioning_value",0, "critical_value",0, ...
+    "has_boundary",false, "n_levels",0, "note","");
 end
 
 
@@ -418,6 +543,32 @@ for j = 1:numel(summary.boundary.axes)
         ax.parameter, iYesNo(ax.has_boundary), bv, ax.crossing_count, ax.note);
 end
 fprintf(fid, "\n");
+
+jb = summary.joint_boundary;
+if jb.requested
+    fprintf(fid, "## Joint boundary curve\n\n");
+    if jb.available
+        fprintf(fid, "Critical `%s` vs `%s` (trend: **%s**)\n\n", ...
+            jb.primary_axis, jb.conditioning_axis, jb.trend);
+        fprintf(fid, "| %s | Critical %s | Boundary? | Levels | Note |\n", ...
+            jb.conditioning_axis, jb.primary_axis);
+        fprintf(fid, "|---:|---:|:--:|---:|---|\n");
+        for k = 1:numel(jb.points)
+            pt = jb.points(k);
+            if pt.has_boundary
+                cv = sprintf("%.5g", pt.critical_value);
+            else
+                cv = "-";
+            end
+            fprintf(fid, "| %.5g | %s | %s | %d | %s |\n", ...
+                pt.conditioning_value, cv, iYesNo(pt.has_boundary), ...
+                pt.n_levels, pt.note);
+        end
+        fprintf(fid, "\n_%s_\n\n", jb.note);
+    else
+        fprintf(fid, "_Requested but unavailable: %s_\n\n", jb.note);
+    end
+end
 
 if ~isempty(summary.warnings)
     fprintf(fid, "## Warnings\n\n");

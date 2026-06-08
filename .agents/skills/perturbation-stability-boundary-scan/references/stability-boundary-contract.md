@@ -56,6 +56,42 @@ Rules:
 - A `linear` crossing interpolates the zero of `g` between bracketing levels; a
   `nearest` crossing snaps to the bracketing level with the smaller `|g|`.
 
+## Joint Boundary Curve
+
+An opt-in joint boundary reports the critical value of a primary axis as a
+function of a conditioning axis (e.g. critical `Kp` vs `Ts`). Required:
+
+- `JointPrimaryAxis` and `JointConditioningAxis` must name two distinct scanned
+  parameters.
+- It requires a deterministic `grid` scan; on a Monte-Carlo scan the joint
+  boundary is marked requested-but-unavailable and never fabricated.
+- Each conditioning slice reports: conditioning value, critical primary value
+  (or none), a has-boundary flag, the level count, and a note.
+- A monotone trend (`increasing` / `decreasing` / `non-monotone` /
+  `insufficient`) is classified only from slices that produced a finite
+  boundary.
+- All-pass / all-fail slices are reported as such, not coerced to a number.
+- The curve is interpolated from the grid; it is not a proven margin. Couple
+  physically dependent parameters inside the metric (e.g. delay samples that
+  scale with `Ts`) so the curve reflects the real dependency.
+
+## Evidence Tiers
+
+Every reported boundary must declare its tier; never promote a lower tier to a
+higher one in prose or status:
+
+1. `contract-consistency` - metadata + pass/fail bookkeeping complete; no physics
+   asserted.
+2. `analytic` / illustrative - a transparent closed-form metric produced the
+   samples (e.g. `dt_loop_stability_metric`, a discrete current loop). Real
+   coupling, teaching model, NOT a validated converter.
+3. `model-backed` - per-sample metric came from an actual Simulink/Simscape
+   `load`/`update`/`sim` of the studied model.
+4. `hardware-backed` - HIL / bench measurement. Not produced by this skill.
+
+`dt_loop_stability_metric` is tier 2 and does NOT model PLL weak-grid (low-SCR)
+instability; its SCR axis only rescales series inductance and is illustrative.
+
 ## Interpretation Rules
 
 - A boundary is an interpolation of the supplied pass/fail samples, not a proven
