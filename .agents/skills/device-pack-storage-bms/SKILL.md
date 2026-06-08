@@ -92,8 +92,10 @@ descriptor = struct( ...
     "soc_soh", struct("soc_window", [0.2 0.9], "soh", 0.95), ...
     "thermal", struct("limit_c", 45, "model", "lumped_RC"), ...
     "protection", struct("ov", 1, "uv", 1, "oc", 1, "ot", 1), ...
-    "battery_evidence", struct("artifact", "build/reports/.../batt.json", "required", true), ...
-    "dc_link", struct("artifact", "build/reports/.../dclink.json", "required", true), ...
+    "battery_evidence", struct("artifact", "build/reports/.../batt.json", "required", true, ...
+        "operating_point", struct("soc", 0.5, "temperature_c", 25, "p_kw", 200)), ...
+    "dc_link", struct("artifact", "build/reports/.../dclink.json", "required", true, ...
+        "operating_point", struct("soc", 0.5, "temperature_c", 25, "p_kw", 200)), ...
     "time_domain_validation", struct("artifact", "build/reports/.../emt.json", "required", true));
 summary = summarize_storage_bms_support(descriptor, ...
     "OutputDir", "build/reports/d3_storage_bms/bess_freq_response");
@@ -108,6 +110,24 @@ artifact paths are necessary but not sufficient — a battery run from one study
 stapled onto a DC-link run from another study sets `same_study=false` and blocks
 `handoff_ready`, even though the paths differ. This never substitutes for the
 battery-layer gate: generic DC-link evidence still cannot prove the battery.
+
+Optional per-artifact `operating_point` (`soc`, `temperature_c`, `p_kw`, `scr`)
+enables the same-operating-condition (同工况) check: same-study is still not
+enough, because two runs under one root can be taken at different SOC,
+temperature, or power. The battery point is the anchor; converter/time-domain
+points are compared within tolerance (override via `OpConditionTolerance`). A
+mismatch sets `same_operating_condition=false` and blocks `handoff_ready` even
+when `same_study=true` and the battery layer is proven. It is a metadata
+consistency check, not proof of correct behaviour at that point.
+
+The same operating temperatures are also screened against the case's declared
+BMS thermal limit (`thermal.limit_c`): any artifact whose
+`operating_point.temperature_c` is above the limit sets
+`within_thermal_limit=false` and blocks `handoff_ready`, independently of the
+op-condition and battery-layer gates. Evidence collected above the BMS thermal
+limit is out of spec and must not back a validated-BESS claim. Like the others
+this is opt-in (`[]` when no limit or no temperature is declared) and is a
+metadata check, not a thermal simulation.
 
 ## Output
 

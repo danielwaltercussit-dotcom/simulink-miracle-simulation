@@ -21,6 +21,8 @@ Record:
 - related time-domain run or required follow-up run
 - optional `study_root`: a directory all this case's evidence artifacts must
   live under, enabling the same-study check (see below)
+- optional per-artifact `operating_point` (`soc`, `temperature_c`, `p_kw`,
+  `scr`), enabling the same-operating-condition check (see below)
 
 ## Grid-Support Modes
 
@@ -105,6 +107,59 @@ case.
   DC-link evidence prove the battery, and the battery-layer gate never waives the
   same-study requirement.
 
+## Same-Operating-Condition Rule
+
+Same-study (shared path) is still not enough. Two runs under one `study_root`
+can be taken at different SOC, temperature, power, or grid strength — a battery
+thermal/SOC characterization at SOC 0.5 / 25 C and a converter run at SOC 0.9 /
+45 C must not be stapled into one validated case. For storage the operating
+point is where this bites hardest (thermal and SOC dependence).
+
+- Each artifact substruct may declare an `operating_point` with any of: `soc`,
+  `temperature_c`, `p_kw`, `scr` (finite numeric scalars).
+- `battery_evidence` is the anchor (or the first declared point if no battery
+  point is present). The converter, time-domain, modal, and impedance points are
+  compared to the anchor.
+- Only fields present in BOTH points are compared. Tolerances (overridable via
+  the `OpConditionTolerance` name-value): `soc` 0.05 abs, `temperature_c` 5 abs,
+  `p_kw` 0.05 relative, `scr` 0.2 abs.
+- `operating_condition.same_operating_condition` is `true` (all comparable
+  fields within tolerance), `false` (at least one field out, with a per-field
+  WARN naming both values and the tolerance), or empty/`[]` when fewer than two
+  artifacts declare a point (the check was not requested).
+- `same_operating_condition = false` blocks `handoff_ready`. An empty value does
+  not block: the check is opt-in.
+- This is orthogonal to both the battery-layer gate and the same-study check.
+  A mismatched operating point blocks handoff even when `same_study = true` and
+  `battery_layer_proven = true`; it never, by itself, lets DC-link evidence
+  prove the battery layer.
+- This is a metadata-consistency check only. Agreement of declared operating
+  points is necessary for combining evidence; it is NOT proof that the model or
+  hardware behaves correctly at that point.
+
+## Thermal-Limit Rule
+
+Agreeing on an operating point is still not enough: that point may itself be
+out of spec. Evidence taken above the case's declared BMS thermal limit must not
+silently back a validated-BESS claim.
+
+- Declare the limit via `thermal.limit_c`. Each artifact may carry its operating
+  temperature in `operating_point.temperature_c`.
+- Any artifact whose temperature is strictly above `thermal.limit_c` is a breach
+  and produces a per-artifact WARN naming the temperature and the limit.
+- `thermal_consistency.within_thermal_limit` is `true` (all declared
+  temperatures at or below the limit), `false` (at least one above), or
+  empty/`[]` when no `thermal.limit_c` or no artifact temperature is declared
+  (the check was not requested).
+- `within_thermal_limit = false` blocks `handoff_ready`. An empty value does not
+  block: the check is opt-in.
+- Orthogonal to every other gate. A breach blocks handoff even when
+  `same_operating_condition = true` and `battery_layer_proven = true`, and never
+  by itself proves or disproves the battery layer.
+- A temperature exactly at the limit is in-spec (the comparison is strict `>`).
+- This is a metadata consistency check, not a thermal simulation: staying within
+  the declared limit does not prove the thermal model is correct.
+
 ## Provisional Rule
 
 A case is provisional until its identity is pinned: battery model documented
@@ -118,7 +173,10 @@ The provisional banner lists the missing identity fields.
 - `status_counts`: PASS / WARN / MISSING / N/A tallies.
 - `handoff_ready` is true only when: not provisional, no MISSING dimension,
   battery and DC-link evidence are separated, `battery_layer_proven` is true,
-  and (when `study_root` is declared) `same_study` is true.
+  (when `study_root` is declared) `same_study` is true, (when two or more
+  artifacts declare an operating point) `same_operating_condition` is true, and
+  (when a thermal limit and an artifact temperature are declared)
+  `within_thermal_limit` is true.
 
 ## Interpretation Rules
 
