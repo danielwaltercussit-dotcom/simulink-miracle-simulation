@@ -29,6 +29,10 @@ function result = storage_bms_support_contract_test()
 %        power) -> same_operating_condition=false, handoff_ready=false even
 %        though same_study=true and battery_layer_proven stays true: the screen
 %        is orthogonal to the battery-layer gate.
+%     J) all evidence agrees on a 50 C operating point above the declared 45 C
+%        BMS thermal limit -> within_thermal_limit=false, handoff_ready=false
+%        even though same_operating_condition=true and battery_layer_proven=true:
+%        the thermal screen is orthogonal to the op-condition and battery gates.
 %
 %   No Simulink, no toolbox dependency: synthetic descriptors plus tiny real
 %   scratch files through the base-MATLAB helper. Scratch dir is removed at the
@@ -66,6 +70,7 @@ checks = iAddCheck(checks, iCaseSameStudy(scratch, studyA, battA, dcA, emtA));
 checks = iAddCheck(checks, iCaseCrossStudy(scratch, studyA, battA, dcB, emtA));
 checks = iAddCheck(checks, iCaseSameOpCondition(scratch, studyA, battA, dcA, emtA));
 checks = iAddCheck(checks, iCaseMismatchedOpCondition(scratch, studyA, battA, dcA, emtA));
+checks = iAddCheck(checks, iCaseThermalBreach(scratch, studyA, battA, dcA, emtA));
 
 allPass = all([checks.passed]);
 fprintf('\n=== storage_bms_support_contract_test ===\n');
@@ -356,6 +361,45 @@ c.passed = okNotSameOp && okSameStudy && okProven && okNotHand && okIssue;
 c.detail = sprintf('same_op=%d same_study=%d proven=%d handoff=%d n_issues=%d', ...
     s.operating_condition.same_operating_condition, s.separation.same_study, ...
     okProven, s.handoff_ready, numel(oc.issues));
+end
+
+
+function c = iCaseThermalBreach(scratch, studyA, battA, dcA, emtA)
+% Battery and DC-link agree on operating point (same_operating_condition stays
+% true) and the battery layer is proven, but both runs are taken at 50 C, above
+% the declared 45 C BMS thermal limit. within_thermal_limit=false must block
+% handoff while same_operating_condition and battery_layer_proven stay true: the
+% thermal screen is orthogonal to the op-condition and battery-layer gates.
+hotOp = struct('soc', 0.5, 'temperature_c', 50, 'p_kw', 200);
+d = struct( ...
+    'case_name', 'thermal_breach', ...
+    'battery_model', 'equivalent_circuit_2RC', ...
+    'evidence_source', 'simulated', ...
+    'grid_support_mode', 'frequency_response', ...
+    'rated_energy_kwh', 500, ...
+    'study_root', studyA, ...
+    'soc_soh', struct('soc_window', [0.2 0.9], 'soh', 0.95), ...
+    'thermal', struct('limit_c', 45, 'model', 'lumped_RC'), ...
+    'protection', struct('ov', true, 'uv', true, 'oc', true, 'ot', true), ...
+    'battery_evidence', struct('artifact', battA, 'required', true, 'operating_point', hotOp), ...
+    'dc_link', struct('artifact', dcA, 'required', true, 'operating_point', hotOp), ...
+    'time_domain_validation', struct('artifact', emtA, 'required', true, 'operating_point', hotOp));
+s = summarize_storage_bms_support(d, 'OutputDir', fullfile(scratch, 'thermal_breach'));
+
+th = s.thermal_consistency;
+okNotWithin = islogical(th.within_thermal_limit) && ~th.within_thermal_limit;
+okSameOp    = islogical(s.operating_condition.same_operating_condition) && ...
+    s.operating_condition.same_operating_condition;   % orthogonal: op point agrees
+okProven    = s.battery_layer_proven;                  % orthogonal: layer proven
+okNotHand   = ~s.handoff_ready;                         % thermal breach blocks
+okIssue     = ~isempty(th.issues);
+
+c.name = 'Case J: evidence above BMS thermal limit -> within_thermal_limit=false blocks handoff';
+c.passed = okNotWithin && okSameOp && okProven && okNotHand && okIssue;
+c.detail = sprintf(['within_thermal_limit=%d same_op=%d proven=%d handoff=%d ', ...
+    'limit=%.3g n_issues=%d'], th.within_thermal_limit, ...
+    s.operating_condition.same_operating_condition, okProven, s.handoff_ready, ...
+    th.limit_c, numel(th.issues));
 end
 
 

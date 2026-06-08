@@ -68,6 +68,7 @@ prov = iProvisional(d);
 dims = iEvaluateDimensions(d, prov.provisional);
 separation = iSeparationScreen(d);
 opCondition = iOperatingConditionScreen(d, opts.OpConditionTolerance);
+thermal = iThermalLimitScreen(d);
 batteryProven = iBatteryLayerProven(d, dims, prov.provisional);
 
 summary = struct();
@@ -83,10 +84,11 @@ summary.missing_documentation = prov.missing;
 summary.dimensions = dims;
 summary.separation = separation;
 summary.operating_condition = opCondition;
+summary.thermal_consistency = thermal;
 summary.battery_layer_proven = batteryProven;
 summary.status_counts = iCountStatuses(dims);
 summary.handoff_ready = iHandoffReady(dims, separation, opCondition, ...
-    batteryProven, prov.provisional);
+    thermal, batteryProven, prov.provisional);
 summary.limitations = char(opts.LimitationsNote);
 summary.excluded_claims = iExcludedClaims();
 
@@ -585,6 +587,62 @@ op.issues = cellstr(issues);
 end
 
 
+function th = iThermalLimitScreen(d)
+% Thermal-limit consistency: evidence taken above the case's declared BMS
+% thermal limit is out-of-spec and must not silently back a validated-BESS
+% claim. Reads thermal.limit_c and every artifact's operating_point.temperature_c
+% (via iExtractOpPoint). Any artifact temperature strictly above the limit is a
+% breach.
+%
+% within_thermal_limit = [] when no thermal.limit_c is declared or no artifact
+% declares a temperature (opt-in; not blocking), true when all declared
+% temperatures are at or below the limit, false otherwise (with per-artifact
+% breach issues).
+th = struct();
+th.limit_c = NaN;
+th.checked = {};
+th.issues = {};
+th.within_thermal_limit = [];
+
+hasLimit = isstruct(d.thermal) && isfield(d.thermal, "limit_c") ...
+    && isnumeric(d.thermal.limit_c) && isscalar(d.thermal.limit_c) ...
+    && isfinite(d.thermal.limit_c);
+if ~hasLimit
+    return
+end
+limit = double(d.thermal.limit_c);
+th.limit_c = limit;
+
+fields = ["battery_evidence", "dc_link", "time_domain_validation", ...
+    "modal_evidence", "impedance_evidence"];
+checked = strings(1, 0);
+issues = strings(1, 0);
+within = true;
+anyTemp = false;
+for k = 1:numel(fields)
+    pt = iExtractOpPoint(d.(fields(k)));
+    if ~isfield(pt, "temperature_c")
+        continue
+    end
+    anyTemp = true;
+    checked(end+1) = fields(k); %#ok<AGROW>
+    if pt.temperature_c > limit
+        within = false;
+        issues(end+1) = sprintf(...
+            "%s operating temperature %.3g C exceeds BMS thermal limit %.3g C", ...
+            fields(k), pt.temperature_c, limit); %#ok<AGROW>
+    end
+end
+
+if ~anyTemp
+    return   % limit declared but nothing to check against -> not requested
+end
+th.checked = cellstr(checked);
+th.issues = cellstr(issues);
+th.within_thermal_limit = within;
+end
+
+
 function pt = iExtractOpPoint(artStruct)
 % Pull a numeric operating_point substruct (soc, temperature_c, p_kw, scr) from
 % an artifact descriptor. Only finite numeric scalars are kept.
@@ -668,13 +726,15 @@ end
 end
 
 
-function tf = iHandoffReady(dims, separation, opCondition, batteryProven, provisional)
+function tf = iHandoffReady(dims, separation, opCondition, thermal, ...
+    batteryProven, provisional)
 % Handoff-ready requires: not provisional, no MISSING dimension, battery and
 % DC-link evidence separated, the battery layer proven, (when a study_root was
-% declared) all evidence same-study, and (when >=2 operating points were
-% declared) all evidence same-operating-condition. A [] same_study or
-% same_operating_condition means the check was not requested and does not block;
-% an explicit false blocks.
+% declared) all evidence same-study, (when >=2 operating points were declared)
+% all evidence same-operating-condition, and (when a thermal limit + temperatures
+% were declared) all evidence within the BMS thermal limit. A [] same_study,
+% same_operating_condition, or within_thermal_limit means the check was not
+% requested and does not block; an explicit false blocks.
 if provisional || ~separation.separated || ~batteryProven
     tf = false;
     return
@@ -687,6 +747,12 @@ end
 if islogical(opCondition.same_operating_condition) && ...
         isscalar(opCondition.same_operating_condition) && ...
         ~opCondition.same_operating_condition
+    tf = false;
+    return
+end
+if islogical(thermal.within_thermal_limit) && ...
+        isscalar(thermal.within_thermal_limit) && ...
+        ~thermal.within_thermal_limit
     tf = false;
     return
 end
@@ -807,6 +873,23 @@ end
 fprintf(fid, "- anchor_point: %s\n", iFormatOpPoint(op.anchor));
 for k = 1:numel(op.issues)
     fprintf(fid, "- WARN: %s\n", op.issues{k});
+end
+fprintf(fid, "\n");
+
+fprintf(fid, "## Thermal-limit consistency\n\n");
+th = summary.thermal_consistency;
+if isempty(th.within_thermal_limit)
+    fprintf(fid, ['- within_thermal_limit: N/A (no BMS thermal limit and/or no ' ...
+        'artifact operating temperature declared)\n']);
+elseif th.within_thermal_limit
+    fprintf(fid, ['- within_thermal_limit: all declared operating temperatures ' ...
+        'are at or below the %.3g C BMS limit\n'], th.limit_c);
+else
+    fprintf(fid, ['- within_thermal_limit: FALSE - evidence taken above the ' ...
+        '%.3g C BMS thermal limit\n'], th.limit_c);
+end
+for k = 1:numel(th.issues)
+    fprintf(fid, "- WARN: %s\n", th.issues{k});
 end
 fprintf(fid, "\n");
 

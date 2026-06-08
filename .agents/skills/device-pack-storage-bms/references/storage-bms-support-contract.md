@@ -137,6 +137,31 @@ point is where this bites hardest (thermal and SOC dependence).
   points is necessary for combining evidence; it is NOT proof that the model or
   hardware behaves correctly at that point.
 
+## Thermal-Limit Rule
+
+Agreeing on an operating point is still not enough: that point may itself be
+out of spec. Evidence taken above the case's declared BMS thermal limit must not
+silently back a validated-BESS claim.
+
+- Declare the limit via `thermal.limit_c`. Each artifact may carry its operating
+  temperature in `operating_point.temperature_c`.
+- Any artifact whose temperature is strictly above `thermal.limit_c` is a breach
+  and produces a per-artifact WARN naming the temperature and the limit.
+- `thermal_consistency.within_thermal_limit` is `true` (all declared
+  temperatures at or below the limit), `false` (at least one above), or
+  empty/`[]` when no `thermal.limit_c` or no artifact temperature is declared
+  (the check was not requested).
+- `within_thermal_limit = false` blocks `handoff_ready`. An empty value does not
+  block: the check is opt-in.
+- Orthogonal to every other gate. A breach blocks handoff even when
+  `same_operating_condition = true` and `battery_layer_proven = true`, and never
+  by itself proves or disproves the battery layer.
+- A temperature exactly at the limit is in-spec (the comparison is strict `>`).
+- This is a metadata consistency check, not a thermal simulation: staying within
+  the declared limit does not prove the thermal model is correct.
+
+## Provisional Rule
+
 A case is provisional until its identity is pinned: battery model documented
 (and not a constant DC source), grid-support mode documented, and at least one
 of rated energy / rated power documented. While provisional, every artifact PASS
@@ -148,8 +173,10 @@ The provisional banner lists the missing identity fields.
 - `status_counts`: PASS / WARN / MISSING / N/A tallies.
 - `handoff_ready` is true only when: not provisional, no MISSING dimension,
   battery and DC-link evidence are separated, `battery_layer_proven` is true,
-  (when `study_root` is declared) `same_study` is true, and (when two or more
-  artifacts declare an operating point) `same_operating_condition` is true.
+  (when `study_root` is declared) `same_study` is true, (when two or more
+  artifacts declare an operating point) `same_operating_condition` is true, and
+  (when a thermal limit and an artifact temperature are declared)
+  `within_thermal_limit` is true.
 
 ## Interpretation Rules
 

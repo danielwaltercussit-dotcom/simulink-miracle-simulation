@@ -120,6 +120,15 @@ mismatch sets `same_operating_condition=false` and blocks `handoff_ready` even
 when `same_study=true` and the battery layer is proven. It is a metadata
 consistency check, not proof of correct behaviour at that point.
 
+The same operating temperatures are also screened against the case's declared
+BMS thermal limit (`thermal.limit_c`): any artifact whose
+`operating_point.temperature_c` is above the limit sets
+`within_thermal_limit=false` and blocks `handoff_ready`, independently of the
+op-condition and battery-layer gates. Evidence collected above the BMS thermal
+limit is out of spec and must not back a validated-BESS claim. Like the others
+this is opt-in (`[]` when no limit or no temperature is declared) and is a
+metadata check, not a thermal simulation.
+
 ## Output
 
 Write storage support reports under:
