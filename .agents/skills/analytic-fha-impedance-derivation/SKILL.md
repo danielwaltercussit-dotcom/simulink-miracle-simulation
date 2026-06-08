@@ -1,6 +1,6 @@
 ---
 name: analytic-fha-impedance-derivation
-description: Use when deriving analytic or fundamental-frequency-analysis (FHA) equivalent models and closed-form impedance/admittance Z(jw) transfer functions for Simulink power-electronics and converter-dominated systems, then linking that analytic derivation to Bode/resonance evidence and a time-domain validation run. Use this BEFORE trusting a simulated impedance sweep or a time-domain result whose mechanism is not yet understood analytically. Complements (does not replace) impedance-frequency-analysis, which summarizes a response you already have.
+description: Use when deriving analytic or fundamental-frequency-analysis (FHA) equivalent models and closed-form impedance/admittance Z(jw) transfer functions for Simulink power-electronics and converter-dominated systems, then linking that analytic derivation to Bode/resonance evidence and a time-domain validation run. Also use to compare an analytic model against a measured/simulated frequency sweep, and to mathematically verify FHA truncation, dynamic-phasor narrowband, and frequency-domain error bounds. Use this BEFORE trusting a simulated impedance sweep or a time-domain result whose mechanism is not yet understood analytically. Complements (does not replace) impedance-frequency-analysis, which summarizes a response you already have.
 ---
 
 # Analytic FHA / Impedance Derivation
@@ -76,6 +76,10 @@ frequency-domain artifact in `ibr-model-validation-evidence` (P4).
 7. When a measured/simulated sweep exists, run `compare_fha_measured_impedance`
    to grade the model against the data (in-band fit vs FHA bound). Treat
    `contract_only` as "not yet data-validated", not as a pass.
+8. To certify the approximation error itself, run
+   `verify_fha_dynamic_phasor_bounds` (FHA truncation, dynamic-phasor
+   narrowband + Parseval, or frequency-domain error bound). `math_verified` is
+   a mathematical certificate only; it is NOT a model or hardware result.
 
 ## Helper
 
@@ -156,6 +160,51 @@ build/reports/f1_fha_impedance/<case>/
   fha_comparison_summary.md
   fha_comparison_summary.json
   fha_comparison_points.csv
+```
+
+## Mathematically Verifying Approximation Bounds
+
+A derivation or a data comparison still does not prove that an FHA or
+dynamic-phasor reduction's *error* is bounded. `verify_fha_dynamic_phasor_bounds`
+re-checks a stated, provable bound against a numerical computation and returns a
+grade that is strictly separate from model/hardware validation:
+
+- `contract_only` — provisional (undocumented), no numeric bound checked.
+- `math_verified` — the provable bound was numerically re-checked and HOLDS.
+- `math_verification_failed` — the numeric quantity VIOLATES the bound (an
+  honest negative, e.g. a dynamic-phasor representation used outside its
+  narrowband validity).
+
+It NEVER returns model_validated or hardware_validated: no Simulink model runs
+here. Three spec types:
+
+- `harmonic_series` — FHA (fundamental-only) truncation of a periodic signal:
+  THD, retained-power fraction, and the time-domain sup-norm bound
+  `|e(t)| <= sum_{k>1}|a_k|` (triangle inequality), re-checked against a dense
+  reconstruction of the dropped harmonics.
+- `dynamic_phasor` — generalized-averaging `x(t)=sum_k X_k e^{jk ws t}`:
+  narrowband validity (`fs/B >= NarrowbandRatioMin` and `2B < fs` so adjacent
+  carrier bands do not overlap) plus the Parseval truncation identity
+  `rms_error == sqrt(sum_{|k|>K}|X_k|^2)`, re-checked on a sampled period.
+- `frequency_response_pair` — sup-norm, relative sup, L2, per-band, and
+  FHA-validity-band-restricted error between an analytic `Z(f)` and a reference,
+  graded against `SupTolRel`/`L2TolRel` inside the validity band.
+
+```matlab
+spec.type = "harmonic_series";
+spec.harmonic_index = 1:2:99;          % odd harmonics of a square wave
+spec.amplitude = 4 ./ (pi * (1:2:99)); % a_k = 4/(pi k)
+r = verify_fha_dynamic_phasor_bounds(spec, "OperatingPoint","ideal 2-level", ...
+    "Units","pu", "OutputDir","build/reports/f1_fha_impedance/sqr_fha");
+% r.metrics.thd_pct ~ 48.34, r.evidence_grade = "math_verified"
+```
+
+Verification output:
+
+```text
+build/reports/f1_fha_impedance/<case>/
+  fha_bound_verification.md
+  fha_bound_verification.json
 ```
 
 ## Lab References

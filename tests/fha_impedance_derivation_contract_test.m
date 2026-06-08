@@ -26,6 +26,18 @@ function result = fha_impedance_derivation_contract_test()
 %     I) provisional: undocumented metadata -> contract_only, provisional=1,
 %        measured_source among the missing required fields.
 %
+%   Bound-verification helper (verify_fha_dynamic_phasor_bounds) cases:
+%     J) FHA square wave: THD ~= 48.34%, fundamental retains ~81.06% power,
+%        triangle sup-norm bound holds -> math_verified.
+%     K) FHA single harmonic: exact analytic THD for one added harmonic,
+%        bound holds -> math_verified.
+%     L) dynamic phasor narrowband valid: fs/B large, 2B<fs, Parseval
+%        truncation identity holds -> math_verified.
+%     M) dynamic phasor narrowband INVALID: fs/B below threshold -> bound_holds
+%        false -> math_verification_failed (honest negative).
+%     N) frequency_response_pair within / exceeding bound and a provisional
+%        case -> math_verified / math_verification_failed / contract_only.
+%
 %   Pure synthetic data, base MATLAB only. Returns a struct, prints PASS/FAIL
 %   per check. Scratch artifacts go under build/reports/f1_fha_impedance/ and
 %   are package-local (F1 file names) so they cannot collide with P3/P4.
@@ -43,6 +55,13 @@ checks = iAddCheck(checks, iCaseCompareGoodFit(projectRoot));
 checks = iAddCheck(checks, iCaseCompareMismatch());
 checks = iAddCheck(checks, iCaseCompareOutOfBand());
 checks = iAddCheck(checks, iCaseCompareProvisional());
+checks = iAddCheck(checks, iCaseFhaSquareWave(projectRoot));
+checks = iAddCheck(checks, iCaseFhaSingleHarmonic());
+checks = iAddCheck(checks, iCaseDpNarrowbandValid());
+checks = iAddCheck(checks, iCaseDpNarrowbandInvalid());
+checks = iAddCheck(checks, iCaseFreqPairWithinBound());
+checks = iAddCheck(checks, iCaseFreqPairExceedsBound());
+checks = iAddCheck(checks, iCaseVerifyProvisional());
 
 allPass = all([checks.passed]);
 fprintf('\n=== fha_impedance_derivation_contract_test ===\n');
@@ -308,6 +327,187 @@ c.name = 'Case I: comparison undocumented -> provisional contract_only';
 c.passed = okGrade && okProv && okMiss;
 c.detail = sprintf('grade=%s provisional=%d missing={%s}', ...
     cmp.evidence_grade, cmp.provisional, strjoin(cmp.missing_required, ','));
+end
+
+
+function c = iCaseFhaSquareWave(projectRoot)
+% Ideal square wave: a_k = 4/(pi*k) for odd k. Two checks:
+%  (1) the helper's THD / retained-power must match an INDEPENDENT recompute
+%      from the same finite harmonics (exact contract check, tol 1e-9);
+%  (2) with many harmonics the THD approaches the textbook infinite-series
+%      value sqrt(pi^2/8 - 1) ~= 48.34% (finite-truncation tol 1e-2).
+kk = 1:2:999;                 % 500 odd harmonics -> close to the infinite sum
+a = 4 ./ (pi * kk);
+spec.type = "harmonic_series";
+spec.harmonic_index = kk;
+spec.amplitude = a;
+
+outDir = fullfile(projectRoot, 'build', 'reports', 'f1_fha_impedance', 'verify_square');
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "fha_square", ...
+    "OperatingPoint", "ideal 2-level", "Units", "pu", "OutputDir", outDir);
+
+% Independent recompute from the same finite arrays.
+thdIndep = sqrt(sum(a(kk >= 3).^2)) / a(1);
+retIndep = a(1)^2 / sum(a.^2);
+thdTextbook = sqrt(pi^2/8 - 1);
+
+okGrade  = strcmp(r.evidence_grade, 'math_verified');
+okHolds  = r.bound_holds == true;
+okThdEx  = abs(r.metrics.thd - thdIndep) <= 1e-9;            % helper vs recompute
+okRetEx  = abs(r.metrics.retained_energy_fraction - retIndep) <= 1e-9;
+okThdTb  = abs(r.metrics.thd - thdTextbook) <= 1e-2;          % vs textbook (finite)
+okFiles  = isfile(fullfile(outDir, 'fha_bound_verification.json'));
+
+c.name = 'Case J: FHA square-wave THD + triangle sup bound -> math_verified';
+c.passed = okGrade && okHolds && okThdEx && okRetEx && okThdTb && okFiles;
+c.detail = sprintf(['grade=%s holds=%d THD=%.4f%% indep=%.4f%% (eq:%d) textbook=%.4f%% (<=1e-2:%d) ' ...
+    'ret=%.4f indep=%.4f files=%d'], ...
+    r.evidence_grade, r.bound_holds, r.metrics.thd_pct, 100*thdIndep, okThdEx, ...
+    100*thdTextbook, okThdTb, r.metrics.retained_energy_fraction, retIndep, okFiles);
+end
+
+
+function c = iCaseFhaSingleHarmonic()
+% Fundamental 1.0 + a single 5th harmonic at 0.2: THD = 0.2 exactly.
+spec.type = "harmonic_series";
+spec.harmonic_index = [1 5];
+spec.amplitude = [1.0 0.2];
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "fha_single", ...
+    "OperatingPoint", "synthetic", "Units", "pu");
+
+okGrade = strcmp(r.evidence_grade, 'math_verified');
+okThd   = abs(r.metrics.thd - 0.2) <= 1e-9;
+okBound = abs(r.bound.value - 0.2) <= 1e-9;        % sum|a_k|, k>1
+okHolds = r.bound_holds == true;
+
+c.name = 'Case K: FHA single harmonic exact THD -> math_verified';
+c.passed = okGrade && okThd && okBound && okHolds;
+c.detail = sprintf('grade=%s THD=%.6g (exp 0.2) bound=%.6g sup=%.6g holds=%d', ...
+    r.evidence_grade, r.metrics.thd, r.bound.value, r.numeric.sup_norm, r.bound_holds);
+end
+
+
+function c = iCaseDpNarrowbandValid()
+% Carrier 2 kHz, envelope BW 50 Hz -> fs/B=40 >> 5, 2B<fs. Keep |k|<=1,
+% drop a small k=+/-3 content; Parseval truncation identity must hold.
+spec.type = "dynamic_phasor";
+spec.carrier_hz = 2000;
+spec.envelope_bw_hz = 50;
+spec.coeff_index = [-3 -1 0 1 3];
+spec.coeff_norm  = [0.05 1.0 0.4 1.0 0.05];
+spec.keep_max_index = 1;
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "dp_valid", ...
+    "OperatingPoint", "synthetic", "Units", "pu", "NarrowbandRatioMin", 5);
+
+boundExpect = sqrt(0.05^2 + 0.05^2);
+okGrade = strcmp(r.evidence_grade, 'math_verified');
+okHolds = r.bound_holds == true;
+okBound = abs(r.bound.value - boundExpect) <= 1e-9;
+okPars  = r.numeric.parseval_residual <= 1e-6;
+okNB    = r.validity.narrowband_valid == true;
+
+c.name = 'Case L: dynamic phasor narrowband valid + Parseval -> math_verified';
+c.passed = okGrade && okHolds && okBound && okPars && okNB;
+c.detail = sprintf('grade=%s holds=%d fs/B=%.4g bound=%.6g rms=%.6g resid=%.2g', ...
+    r.evidence_grade, r.bound_holds, r.metrics.narrowband_ratio_fs_over_B, ...
+    r.bound.value, r.numeric.rms_error, r.numeric.parseval_residual);
+end
+
+
+function c = iCaseDpNarrowbandInvalid()
+% Envelope BW 600 Hz vs carrier 1 kHz: fs/B=1.67<5 AND 2B>fs -> narrowband
+% INVALID. Truncation identity itself still holds, but the grade must fail.
+spec.type = "dynamic_phasor";
+spec.carrier_hz = 1000;
+spec.envelope_bw_hz = 600;
+spec.coeff_index = [-1 0 1];
+spec.coeff_norm  = [1.0 0.3 1.0];
+spec.keep_max_index = 1;
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "dp_invalid", ...
+    "OperatingPoint", "synthetic", "Units", "pu", "NarrowbandRatioMin", 5);
+
+okGrade = strcmp(r.evidence_grade, 'math_verification_failed');
+okHolds = r.bound_holds == false;
+okNB    = r.validity.narrowband_valid == false;
+okOver  = r.validity.non_overlap_2B_lt_fs == false;
+
+c.name = 'Case M: dynamic phasor narrowband INVALID -> math_verification_failed';
+c.passed = okGrade && okHolds && okNB && okOver;
+c.detail = sprintf('grade=%s holds=%d fs/B=%.4g narrowband_valid=%d 2B<fs=%d', ...
+    r.evidence_grade, r.bound_holds, r.metrics.narrowband_ratio_fs_over_B, ...
+    r.validity.narrowband_valid, r.validity.non_overlap_2B_lt_fs);
+end
+
+
+function c = iCaseFreqPairWithinBound()
+% Analytic vs reference differ by 2% multiplicative inside band -> within
+% 10% sup/L2 tolerance -> math_verified.
+f = logspace(0, 3, 200);
+zr = 1 ./ (1j*2*pi*f*1e-4 + 0.01);            % arbitrary smooth reference
+za = zr .* (1 + 0.02);                          % 2% magnitude error
+spec.type = "frequency_response_pair";
+spec.frequency_hz = f; spec.z_analytic = za; spec.z_reference = zr;
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "pair_ok", ...
+    "OperatingPoint", "synthetic", "Units", "ohm", "ValidUpToHz", 1000, ...
+    "SupTolRel", 0.1, "L2TolRel", 0.1);
+
+okGrade = strcmp(r.evidence_grade, 'math_verified');
+okHolds = r.bound_holds == true;
+okSup   = r.metrics.sup_rel_in_band <= 0.1;
+
+c.name = 'Case N1: freq-response pair within bound -> math_verified';
+c.passed = okGrade && okHolds && okSup;
+c.detail = sprintf('grade=%s holds=%d sup_rel_ib=%.4g l2_rel_ib=%.4g', ...
+    r.evidence_grade, r.bound_holds, r.metrics.sup_rel_in_band, r.metrics.l2_rel_in_band);
+end
+
+
+function c = iCaseFreqPairExceedsBound()
+% 25% error in-band, tolerance 10% -> exceeds -> math_verification_failed.
+f = logspace(0, 3, 200);
+zr = 1 ./ (1j*2*pi*f*1e-4 + 0.01);
+za = zr .* (1 + 0.25);
+spec.type = "frequency_response_pair";
+spec.frequency_hz = f; spec.z_analytic = za; spec.z_reference = zr;
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "pair_bad", ...
+    "OperatingPoint", "synthetic", "Units", "ohm", "ValidUpToHz", 1000, ...
+    "SupTolRel", 0.1, "L2TolRel", 0.1);
+
+okGrade = strcmp(r.evidence_grade, 'math_verification_failed');
+okHolds = r.bound_holds == false;
+okSup   = r.metrics.sup_rel_in_band > 0.1;
+
+c.name = 'Case N2: freq-response pair exceeds bound -> math_verification_failed';
+c.passed = okGrade && okHolds && okSup;
+c.detail = sprintf('grade=%s holds=%d sup_rel_ib=%.4g (tol 0.1)', ...
+    r.evidence_grade, r.bound_holds, r.metrics.sup_rel_in_band);
+end
+
+
+function c = iCaseVerifyProvisional()
+% frequency_response_pair without ValidUpToHz / units -> provisional ->
+% contract_only regardless of numeric agreement.
+f = logspace(0, 3, 100);
+zr = 1 ./ (1j*2*pi*f*1e-4 + 0.01);
+spec.type = "frequency_response_pair";
+spec.frequency_hz = f; spec.z_analytic = zr; spec.z_reference = zr;   % identical
+
+r = verify_fha_dynamic_phasor_bounds(spec, "CaseName", "verify_prov");
+
+okGrade = strcmp(r.evidence_grade, 'contract_only');
+okProv  = r.provisional == true;
+okMiss  = any(strcmp('fha_validity_bound', r.missing_required)) && ...
+          any(strcmp('units', r.missing_required));
+
+c.name = 'Case N3: bound verification undocumented -> provisional contract_only';
+c.passed = okGrade && okProv && okMiss;
+c.detail = sprintf('grade=%s provisional=%d missing={%s}', ...
+    r.evidence_grade, r.provisional, strjoin(r.missing_required, ','));
 end
 
 
