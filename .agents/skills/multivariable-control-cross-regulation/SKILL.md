@@ -33,6 +33,18 @@ margins improve AND a model-backed (or measured) time-domain run backs it.
 Never convert a documented gain change into an improvement claim without that
 measured evidence.
 
+Tuning is **delay-aware**. Converter-loop phase margin is eroded by latency
+(control computation, sampling, ZOH, Rate Transition, Unit Delay, Memory, PWM,
+and physical transport): phase loss of a transport delay tau at frequency f is
+`360*f*tau` degrees. Numeric and physical delay are tracked separately, because
+a margin "gained" by deleting a numerical Unit Delay/Memory is a modelling
+artifact, not a controller improvement. Two delay guards therefore BLOCK an
+improvement claim with highest precedence: an undocumented delay change across
+cases (`blocked_undocumented_delay_change`), and an apparent margin gain caused
+by reduced numeric delay with unchanged gains
+(`pseudo_improvement_numeric_delay`). An undocumented gain change OR an
+undocumented delay change blocks improvement.
+
 ## When To Use vs power-electronics-tuning
 
 - Use `power-electronics-tuning` for the **S6 tuning registry**: which knobs
@@ -77,14 +89,28 @@ measured evidence.
    `source`) so the improvement gate can reach `model_backed`. A `simulation`
    or `measurement` artifact that exists and is same-iteration is model-backed;
    a `synthetic` source stays contract-consistent.
-7. List the **disturbance channels** each loop is responsible for rejecting.
-8. Summarize with the helper and read the classification, the `improvement`
+7. Inventory the **control-path delays** (`delays.sources`), tagging each
+   `numeric` (computation/sample/ZOH/Rate Transition/Unit Delay/Memory) or
+   `physical` (transport). The helper reports phase loss `360*f*tau` at the
+   loop crossover and a delay-adjusted phase margin. To separate a real fix
+   from a numerical artifact, supply `delay_cases` (e.g. `no_delay`,
+   `declared_physical`, `artificial_numeric`) with per-case phase margin,
+   `gains_changed_vs_baseline`, and `documented` flags.
+8. List the **disturbance channels** each loop is responsible for rejecting.
+9. Summarize with the helper and read the classification, the `improvement`
    verdict, and the `evidence_tier`. If classification is
    `undocumented_gain_tweak` or `provisional`, fill the `missing_required`
    fields before claiming a tuning result.
-9. Only report a tuning **improvement** when `improvement.status == "supported"`
+10. Only report a tuning **improvement** when `improvement.status == "supported"`
    (before/after margins improved AND a model-backed disturbance run is linked).
-   `margin_only_unverified` and `claimed_unverified` are NOT improvements.
+   `margin_only_unverified`, `claimed_unverified`,
+   `pseudo_improvement_numeric_delay`, and `blocked_undocumented_delay_change`
+   are NOT improvements.
+
+This delay-aware margin/interaction evidence (per-case phase margins, numeric
+vs physical delay attribution, pseudo-improvement flag) is intended to feed the
+D1 weak-grid GFL/GFM comparison so it can distinguish physical instability from
+numerical pseudo-instability under matched delay assumptions.
 
 ## Lab References
 
