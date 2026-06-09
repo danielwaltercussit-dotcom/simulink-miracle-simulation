@@ -45,6 +45,10 @@ try
     result.metrics.root_overlap = overlap.nOverlaps;
     result.checks.root_overlap_free = overlap.ok;
 
+    dangling = scan_dangling_lines(modelName);
+    result.metrics.root_dangling_line_count = dangling;
+    result.checks.dangling_lines_absent = dangling == 0;
+
     [policyOk, violations] = audit_goto_from_policy(allBlocks);
     result.checks.goto_from_signal_only = policyOk;
     result.violations = violations;
@@ -67,6 +71,7 @@ try
     end
 
     result.passed = result.checks.root_overlap_free ...
+        && result.checks.dangling_lines_absent ...
         && result.checks.goto_from_signal_only ...
         && result.checks.measurement_logging_present ...
         && result.checks.oracle_files_present;
@@ -84,6 +89,17 @@ end
 
 if strlength(string(opt.ReportPath)) > 0
     write_quality_report(opt.ReportPath, result);
+end
+end
+
+function n = scan_dangling_lines(modelName)
+lines = find_system(modelName, 'FindAll', 'on', 'SearchDepth', 1, 'Type', 'line');
+n = 0;
+for k = 1:numel(lines)
+    try
+        n = n + strcmp(get_param(lines(k), 'Connected'), 'off');
+    catch
+    end
 end
 end
 

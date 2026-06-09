@@ -36,6 +36,17 @@ set_param(blockPath, "UserData", trace);
 set_param(blockPath, "UserDataPersistent", "on");
 ```
 
+7. For device replacements, write a numeric interface-compatibility artifact
+   before compile/smoke success can be treated as model success. At minimum,
+   record donor parameter values, aggregation count, target dispatch MW/Mvar,
+   aggregated plant MW/MVA, internal transformer rating and ratio, external
+   interface-transformer rating and ratio, device terminal voltage, and target
+   bus nominal voltage.
+
+Preserve the donor's internal parameter design by default. Use aggregation and
+an external interface transformer to meet the target system rating and voltage
+unless the study explicitly authorizes changing donor internals.
+
 ## Inspection
 
 Run `inspect_device_adapter_contract` after build. Missing trace metadata is a
@@ -43,3 +54,7 @@ warning by default and can become a hard failure by passing `StrictTrace=true`.
 The helper inspects root-level device subsystems and key SPS blocks, so it can
 catch adapter issues on copied SG/DFIG/VSC/MMC/LCC subsystems as well as
 root-level loads, lines, and transformers.
+
+This helper is structural. It does not currently validate numeric device
+capacity, transformer sizing, transformer ratios, bus-voltage compatibility,
+or donor-parameter equality.
