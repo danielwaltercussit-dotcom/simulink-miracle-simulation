@@ -83,6 +83,21 @@ When adding FS-009+, include: ID, symptom, evidence path, likely cause, auto-fix
 - **Auto-fix**: use `simulink-model-quality-layout` plus `simulink-auto-layout-github`; keep physical three-phase wiring explicit, reserve Goto/From for signal tags like `Utabc` / `Itabc`, add `To Workspace` or root `Outport` logging, and re-run S3.
 - **Jump to**: S3.
 
+## FS-022 Reported bus voltage is near zero but SPS netlist is connected
+
+- **Symptom**: one monitored bus appears near `0 V` while compile succeeds and
+  `power_analyze` shows its transformer/network nodes are connected.
+- **Likely cause**: the VI measurement block emits per-unit voltage while
+  downstream analysis assumes physical volts and divides by `Vbase` again, or
+  otherwise mixes phase-to-ground and phase-to-phase measurement contracts.
+- **Auto-fix**: compare the suspect VI block with a healthy peer; audit
+  `VoltageMeasurement`, `Vpu`, `VpuLL`, `Vbase`, output tag, and downstream
+  normalization. Directly log the raw output. Change physical wiring only if
+  the corrected raw physical-voltage signal remains near zero.
+- **Jump to**: S5/S7 measurement and evidence checks, then S2 only if a real
+  electrical disconnection is proven.
+- **Observed**: 2026-06-09, IEEE39 SG5/DFIG5 bus 34 false-island diagnosis.
+
 ## FS-009 DFIG `wpll` long-time below 1.0, not converging
 
 - **Symptom**: PLL angular frequency stuck below the system base.

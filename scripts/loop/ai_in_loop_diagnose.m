@@ -15,9 +15,13 @@ elseif strcmp(id,'AIInLoop:SpecValidationFail')
 elseif strcmp(id,'AIInLoop:AdapterContractFail')
     sig = 'FS-020';
     fix = 'Fix the device adapter contract in S2: self-contained InitFcn, adapter-facing ports, unique device names, and trace metadata before compile/sim.';
-elseif strcmp(id,'AIInLoop:ModelQualityLayoutFail')
+elseif any(strcmp(id, {'AIInLoop:ModelQualityLayoutFail', ...
+        'AIInLoop:DanglingLineCleanupFail'}))
     sig = 'FS-021';
     fix = 'Fix the S3 model quality/layout contract: root overlap, signal-only Goto/From tags, measurement logging surface, and oracle/reference hygiene.';
+elseif strcmp(id,'AIInLoop:VoltageMeasurementContractFail')
+    sig = 'FS-022';
+    fix = 'Audit VI measurement mode and units plus downstream base conversion before diagnosing an island or changing physical wiring.';
 elseif strcmp(id,'AIInLoop:StageFailed')
     sig = 'FS-015';
     fix = 'A stage returned FAIL or a blocking SKIPPED status. Inspect the stage note in iter status.json and fix that stage before declaring PASS.';

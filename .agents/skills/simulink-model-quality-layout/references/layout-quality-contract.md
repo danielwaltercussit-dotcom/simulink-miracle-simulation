@@ -17,6 +17,8 @@ oracles when deriving layout conventions.
 ## Hard Failures
 
 - any root canvas overlap
+- any root-level line that remains `Connected='off'` after the automatic
+  dangling-line cleanup
 - Goto/From tags that appear to carry physical phase terminals or SPS
   connection names
 - no measurement/logging surface (`To Workspace` or root `Outport`)
@@ -30,3 +32,14 @@ oracles when deriving layout conventions.
 
 Warnings should be reported first and tightened only after a model family has a
 validated reference envelope.
+
+## Automatic Dangling-Line Cleanup
+
+Run `cleanup_dangling_lines` before the final S3 audit. The helper must use the
+Simulink line `Connected` property and must not classify a line as dangling
+only because `SrcPortHandle` or `DstPortHandle` contains `-1`; SPS physical
+connections can legitimately expose those handle values.
+
+The default cleanup scope is the model root. Recursive cleanup requires an
+explicit request because copied donor subsystems and linked blocks can contain
+intentional internal drawing or implementation details.

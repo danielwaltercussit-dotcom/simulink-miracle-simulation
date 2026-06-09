@@ -47,7 +47,35 @@ existing IEEE39 generator-bus step-up:
 - Three-phase **explicit physical wiring**. NEVER tie the 575 V terminal
   straight to the 20 kV bus.
 
-## 4. Netlist-based island diagnosis (the high-value technique)
+## 4. Verify the voltage-measurement contract before diagnosing an island
+
+A near-zero plotted voltage does **not** prove an electrical island. First
+compare the suspect VI measurement block with a healthy peer and inspect the
+entire normalization path:
+
+1. Check `VoltageMeasurement`, `Vpu`, `VpuLL`, `Vbase`, and the output tag.
+2. Confirm whether the logged signal is physical volts or already per-unit.
+3. Apply the voltage base exactly once. Never divide an already-per-unit signal
+   by `Vbase`.
+4. Directly log the suspect VI block output before editing physical wiring.
+5. Enter netlist/island repair only when the measurement contract matches the
+   healthy peers **and** the direct raw output remains near zero.
+
+Run the reusable audit before trusting a voltage trajectory:
+
+```matlab
+audit_sps_voltage_measurement_contract(modelPath, ...
+    'MeasurementBlocks', ["33","34","35","36","37"], ...
+    'ReportPath', 'reports/verification/voltage_measurement_contract.md');
+```
+
+Field incident: bus 34 was electrically healthy, but its VI block emitted
+approximately `0.93 pu` while the trajectory script assumed volts and divided
+by `20e3` again, producing approximately `4.6e-5` and a false "0 V island"
+diagnosis. With the block normalized to phase-to-phase physical volts, a direct
+0.3 s probe measured about `20.80 kV` (`1.040 pu` on the 20 kV base).
+
+## 5. Netlist-based island diagnosis (only after the measurement audit)
 
 A farm can be perfectly wired by visual/port inspection yet read 0 V because it
 sits on an isolated electrical node. `compile` passes, static port checks pass
@@ -76,16 +104,16 @@ Procedure:
    now report the **same node number** (SPS only merges when you connect onto
    the existing net, not merely a block port).
 
-## 5. Failure-loop discipline (process)
+## 6. Failure-loop discipline (process)
 
 When the same symptom survives 2 distinct fixes, STOP patching and isolate the
-root cause with a different instrument (here: A/B parameter swap + netlist node
-comparison) before any further edit. In this test, bus-34 stayed at 0 V through
-6+ wiring/parameter fixes; an A/B test (set its `Nb_wt` to a healthy twin's
-value -> still dead) proved the cause was structural/positional, not parametric
-or capacity-related. That single test saved further wasted rebuild cycles.
+root cause with a different instrument before any further edit. Compare the
+suspect block's output contract with a healthy peer, log the raw signal, then
+use `power_analyze` only if the raw physical voltage is still near zero. Do not
+classify a cause as structural merely because an A/B parameter swap leaves a
+post-processing error unchanged.
 
-## 6. Simulation cost (this machine, 19507-block averaged-EMT, 50 us)
+## 7. Simulation cost (this machine, 19507-block averaged-EMT, 50 us)
 
 0.3 s ~ 110 s; 0.5 s ~ 188 s; 1 s ~ 286 s; 2 s ~ 652 s; 8 s ~ 4861 s. More
 energized branches -> slower. Run long settling sims via a detached
@@ -94,10 +122,12 @@ channel (it times out and looks "stuck"). Averaged-DFIG cold start
 (`xInitial=[]`) needs multiple seconds to settle, so a 5 ms "smoke" proves
 nothing about steady-state correctness.
 
-## 7. Verdict criteria for a SG->DFIG replacement (use a numeric gate)
+## 8. Verdict criteria for a SG->DFIG replacement (use a numeric gate)
 
 A replacement is only correct if, per farm: CAPACITY (farm MW >= Pg and
 MVA <= interface cap), TRANSFORMER (0.575/<busLV> ratio, Pn >= farm MVA, no
-direct terminal->bus short), and VOLTAGE (settled bus Vpu in [0.94,1.06] AND
-small ripple, not a single end-sample that may land near 1.0 mid-oscillation).
+direct terminal->bus short), MEASUREMENT (declared output units agree with
+post-processing and base conversion occurs once), and VOLTAGE (settled bus Vpu
+in [0.94,1.06] AND small ripple, not a single end-sample that may land near 1.0
+mid-oscillation).
 "Compiles + runs + no NaN" is necessary but FAR from sufficient.

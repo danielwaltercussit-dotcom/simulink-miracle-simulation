@@ -22,6 +22,12 @@ Use it before saying a model is:
 Do not declare PASS from a narrative report alone. PASS requires a reusable
 machine check and a written verification artifact.
 
+`verify_power_system_model` PASS means the model is runnable under its current
+configuration. It does not prove that replacement-device capacity, transformer
+rating/ratio, bus nominal voltage, dispatch, or donor-parameter fidelity are
+correct. A device-replacement task also requires the numeric
+interface-compatibility artifact defined by `simulink-device-adapters`.
+
 Primary helper:
 
 ```matlab

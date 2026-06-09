@@ -19,11 +19,26 @@ r = audit_model_quality_layout("nebus39_dfig2_weakgrid_v0", ...
 assert(r.passed)
 ```
 
+Before the final S3 audit, remove only lines that Simulink explicitly marks
+`Connected='off'`:
+
+```matlab
+c = cleanup_dangling_lines("nebus39_dfig2_weakgrid_v0", ...
+    "ModelPath", "build/generated_models/nebus39_dfig2_weakgrid_v0.slx", ...
+    "ReportPath", "build/reports/layout/nebus39_dfig2_weakgrid_v0_dangling_line_cleanup.md");
+assert(c.passed)
+```
+
+Do not infer dangling SPS physical lines from `SrcPortHandle` or
+`DstPortHandle`. Valid bidirectional SPS connections can expose `-1` handles.
+The cleanup helper deletes only lines whose `Connected` property is `off`.
+
 ## Contract
 
 The helper is a layout/quality gate, not an auto-layout tool. It checks:
 
 - root canvas overlap
+- root-level dangling lines after automatic cleanup
 - root block count and subsystem encapsulation ratio
 - Goto/From use: allowed for measurement/control signals only
 - measurement/logging presence
