@@ -16,6 +16,7 @@ addpath(fullfile(projectRoot, '.agents', 'skills', 'device-pack-mmc-hvdc', 'asse
 checks = struct([]);
 checks = iAddCheck(checks, iCaseRealProbeRuns(projectRoot));
 checks = iAddCheck(checks, iCaseRealProbeGatesHandoff(projectRoot));
+checks = iAddCheck(checks, iCaseRealFaultProbeRuns(projectRoot));
 
 allPass = all([checks.passed]);
 fprintf('\n=== mmc_hvdc_model_backed_smoke ===\n');
@@ -63,6 +64,53 @@ c.name = 'Real probe drives model_validation=PASS and handoff_ready';
 c.passed = okModel && okReady && okFiles;
 c.detail = sprintf('model=%s ready=%d artifacts=%d', ...
     s.model_validation_status, s.handoff_ready, okFiles);
+end
+
+
+function c = iCaseRealFaultProbeRuns(projectRoot)
+% The REAL DC-fault discharge probe must build/load/update/simulate, match the
+% analytic decay, and produce a model-backed peak fault current. Feed it as the
+% ModelProbe for a metadata fault study whose peak current it corroborates.
+outDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', '_fixture');
+probe = run_mmc_dc_fault_probe('OutDir', outDir, 'Rf', 0.5, 'C', 0.02, 'Vdc0', 1.0);
+
+okRan   = probe.ran && strcmp(probe.stage, 'simulate') && probe.passed;
+okPeak  = isfield(probe.metrics, 'peak_fault_current_pu') && ...
+          abs(probe.metrics.peak_fault_current_pu - 2.0) < 1e-6;   % Vdc0/Rf
+
+ev = iCleanFullBridge();
+ev.case_name = 'd2_model_backed_fault';
+ev.dc_fault_handling = 'converter_blocking';
+ev.fault_type = 'dc_pole_pole';
+ev.fault_location = 'dc_terminal';
+ev.fault_protection_action = 'converter_blocking';
+ev.fault_clearing_time_ms = 5;
+ev.fault_peak_current_pu = probe.metrics.peak_fault_current_pu;  % from the model
+ev.fault_survived = true;
+caseDir = fullfile(projectRoot, 'build', 'reports', 'd2_mmc_hvdc', 'model_backed_fault');
+s = summarize_mmc_hvdc_support(ev, 'ModelProbe', probe, 'OutputDir', caseDir);
+
+okFault = strcmp(iStatusOf(s, 'fault_evidence'), 'PASS');
+okModel = strcmp(s.model_validation_status, 'PASS');
+okReady = s.handoff_ready;
+okFiles = isfile(fullfile(caseDir, 'mmc_hvdc_support.md'));
+
+c.name = 'Real DC-fault probe simulates + corroborates fault study';
+c.passed = okRan && okPeak && okFault && okModel && okReady && okFiles;
+c.detail = sprintf('ran=%d peak=%.2f pu fault_evidence=%s model=%s ready=%d', ...
+    probe.ran, probe.metrics.peak_fault_current_pu, iStatusOf(s,'fault_evidence'), ...
+    s.model_validation_status, s.handoff_ready);
+end
+
+
+function st = iStatusOf(summary, name)
+st = '';
+for k = 1:numel(summary.sections)
+    if strcmp(summary.sections(k).name, name)
+        st = summary.sections(k).status;
+        return
+    end
+end
 end
 
 
