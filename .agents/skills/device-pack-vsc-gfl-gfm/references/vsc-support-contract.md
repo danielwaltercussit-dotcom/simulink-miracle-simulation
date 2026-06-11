@@ -108,6 +108,51 @@ A GFL-vs-GFM comparison is `comparison_complete` only when:
 Completeness is the precondition for routing to `gfl-gfm-control-comparison`; it
 is not a performance verdict and runs no model.
 
+## Weak-Grid Delay-Sensitivity + Asymmetric-Fault Benchmark
+
+A weak-grid GFL-vs-GFM benchmark compares one GFL and one GFM device under a
+SHARED condition set and adds a delay-sensitivity axis plus a required
+asymmetric-fault contract.
+
+Parity gate (all must match or be justified):
+
+- `operating_point`, `grid_strength` (SCR/ESCR), `solver` (type + fixed/max
+  step), and `declared_delays` must be equal across the two cases.
+- A differing axis is allowed only when listed in
+  `conditions.justified_differences`. A documented-but-unjustified mismatch sets
+  `contract_status=blocked`; the benchmark never averages incomparable runs.
+
+Delay sensitivity:
+
+- requires >= 2 distinct total-delay points to count as a sweep;
+- a delay claim is `model_backed` only when F2 phase-margin/delay evidence and
+  M1 solver/delay evidence are supplied same-study. These packages are read-only
+  inputs (paths consumed); they are not edited here.
+
+Asymmetric fault (required):
+
+- at least one asymmetric-fault or voltage-unbalance record with `type`,
+  `negative_sequence_handled`, and `unbalance_factor_pct`;
+- a record with a same-study artifact file is `PASS`; a label without a file is
+  `WARN` (intent, not evidence); none present is `MISSING` and blocks the
+  contract.
+
+Outcome classification (reflects supplied evidence chains, never a proven cause):
+
+- `physical_instability`: F3 grid/control-boundary evidence only;
+- `numerical_pseudo_instability`: M1 solver/delay evidence only;
+- `mixed`: both F3 and M1 present (attribute jointly before a single-cause
+  verdict);
+- `insufficient_evidence`: neither present.
+
+Status separation (mandatory):
+
+- `contract_status` (modes valid, parity satisfied, delay sweep present,
+  asymmetric-fault record present) and `model_validation_status` (both cases'
+  same-study time-domain artifacts PASS, model-backed delay sweep, F3 evidence)
+  are reported separately. A complete contract is never model-backed on its own,
+  and no status here implies hardware validation.
+
 ## Interpretation Rules
 
 - A `PASS` records documentation or pointer presence, never a proven physical
