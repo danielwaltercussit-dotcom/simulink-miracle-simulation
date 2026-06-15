@@ -29,9 +29,21 @@ assert(r.passed)
 Read `references/tuning-contract.md` before adding knobs or changing failure
 signature routing.
 
+Read `references/closed-loop-experience-library.md` before selecting a tuning
+family for an established model. After each reviewed tuning round, add one
+compact reusable record there; do not append raw logs or unreviewed guesses.
+
 ## Rules
 
 - Tune only registered knobs.
+- Apply `docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md` before any model write.
+- Treat plant/device physical parameters and ratings as immutable. A registry
+  entry must be proven control-only; reject unclassified entries.
+- For the IEEE39 SG5/DFIG5 test model, run tuning-readiness inventory and an
+  unchanged baseline before automatic S6 writes.
+- Follow the approved order: PLL and DFIG current PI; SG AVR/governor;
+  virtual-inertia/POD/PSS/droop controls; then control-limit/protection/LVRT
+  parameters.
 - Record `before -> after`, FS target, units, bounds, and model path.
 - Prefer one root cause per outer AI-in-loop iteration.
 - Do not trust literature direction alone; use live metrics such as
@@ -42,3 +54,7 @@ signature routing.
 - Use `diagnostic-plotting` for before/after overlays whenever a tuning change
   is accepted, rejected, or ambiguous.
 - If the same signature and same fix repeat, stop and ask the user.
+- Preserve a rollback snapshot and restore it after simulation errors,
+  rejected candidates, and non-converged tuning.
+- Treat the experience library as reviewed guidance, not authorization to skip
+  model-specific T0/T1 evidence or immutable-boundary checks.

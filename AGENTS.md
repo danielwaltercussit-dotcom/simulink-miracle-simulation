@@ -10,12 +10,48 @@ work back to Claude Code, remind it to avoid broad refactors and to modify only
 the files needed for the current critical issue until that issue is validated
 and ready to merge.
 
-Claude Code must update `build/reports/agent_handoff/latest_claude_packet.md`
-after every completed work chunk before handing the task back to Codex.
+Claude Code must overwrite the named package packet with a compact `HANDBACK`
+result after every work chunk. `latest_claude_packet.md` is a tiny Codex pointer,
+not a history log or mandatory Claude read.
+
+Every Claude Code work chunk starts in a fresh conversation. Codex owns the
+externalized context boundary: after review, overwrite the package packet with
+the next compact `READY` task, refresh the tiny latest pointer, then generate
+`build/reports/agent_handoff/next_claude_prompt.md` with
+`scripts/maintenance/prepare_claude_fresh_session.ps1`. The prompt is
+self-contained; Claude reads only it plus at most three named evidence files.
+It must not read the package at startup or recover context from old chats.
+The script must also write `next_claude_prompt.txt` so the user can transfer the
+prompt without relying on clipboard contents.
+
+Use `docs/FRESH_SESSION_HANDOFF_TEMPLATES.md` for the exact compact format and
+size limits. Never append history to handoff files.
+
+If a Claude response repeats text, emits runaway tool output, loses the task
+boundary, or a long synchronous simulation stalls, stop that conversation.
+Trust disk artifacts, let Codex review them, refresh the handoff packet, and
+continue in another fresh conversation.
+
+Default Claude task packages should be long coherent chunks that reach the next
+scientific or merge decision, including focused implementation, boundary tests,
+artifact read-back, and the decision package. Do not create a new conversation
+for every small fix when those phases share one approved objective.
+
+Claude Code client streaming output is capped at two user-visible lines in
+QuietExecutor mode: one `START`, then one terminal `DONE` or `BLOCKED`. It must
+not stream progress, tool narration, reasoning, findings, suggestions, or
+periodic wait messages; those go to disk. Any task expected to exceed 60 seconds
+should preferentially run as a user-visible Background Task with ETA-scaled
+low-frequency polling. If background execution is unavailable, stop instead of
+silently starting a long synchronous run.
 
 Before doing workflow-driven power-system model generation in this project, read
 `docs/MODELING_WORKFLOW_DRAFT.md`. Treat it as the current living specification
 for the user's desired portable Simulink modeling process.
+
+Before any controller-parameter tuning or S6 write, read
+`docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md`. Device/plant physical parameters
+and ratings are immutable; only proven control parameters may be tuned.
 
 For Codex / Claude Code division of labor, handoff packets, and the ordered
 skills-library optimization backlog, read `docs/CODEX_CLAUDE_COLLABORATION.md`.

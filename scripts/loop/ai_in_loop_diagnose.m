@@ -22,6 +22,9 @@ elseif any(strcmp(id, {'AIInLoop:ModelQualityLayoutFail', ...
 elseif strcmp(id,'AIInLoop:VoltageMeasurementContractFail')
     sig = 'FS-022';
     fix = 'Audit VI measurement mode and units plus downstream base conversion before diagnosing an island or changing physical wiring.';
+elseif strcmp(id,'AIInLoop:DetachedArtifactMissing') || strcmp(id,'AIInLoop:DetachedArtifactInvalid')
+    sig = 'FS-023';
+    fix = 'Treat detached process termination as neither PASS nor FAIL. Write success.flag only after required evidence artifacts are re-read and validated; otherwise write failed.flag and stop the next expensive stage.';
 elseif strcmp(id,'AIInLoop:StageFailed')
     sig = 'FS-015';
     fix = 'A stage returned FAIL or a blocking SKIPPED status. Inspect the stage note in iter status.json and fix that stage before declaring PASS.';

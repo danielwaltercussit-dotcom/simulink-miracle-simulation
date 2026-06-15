@@ -131,3 +131,26 @@ post-processing and base conversion occurs once), and VOLTAGE (settled bus Vpu
 in [0.94,1.06] AND small ripple, not a single end-sample that may land near 1.0
 mid-oscillation).
 "Compiles + runs + no NaN" is necessary but FAR from sufficient.
+
+## 9. Reactive-control telemetry before tuning
+
+Do not infer DFIG operating Q or available dynamic var headroom from bus voltage
+and nameplate geometry alone.
+
+- Log each farm's `PQ_pu` signal with a unique device-owned name.
+- In this averaged DFIG donor, `PQ_pu` is a struct/bus with `P_pu` and `Q_pu`
+  timeseries fields, not a flat timeseries.
+- Enable logging on the signal source **output port**. The line object may not
+  expose `DataLogging`.
+- Verify sign and per-unit base with bounded positive/negative Qref probes.
+- Treat `sqrt(S^2-P^2)` as a nameplate upper bound, not a measured dynamic
+  capability curve.
+
+Interface labels must also be traced rather than trusted. In the IEEE39 field
+test, root constants named `W3x_Trip` were actually connected to the active
+DFIG `Qref_pu` input. Record and repair misleading adapter/build labels before
+claiming a reusable control interface.
+
+For detached MATLAB runs, a `done` flag proves only process termination. Write
+`success.flag` only after validating required result artifacts; write a
+separate `failed.flag` on exceptions.

@@ -58,11 +58,10 @@ Read these first, in order:
 
 Do not bulk-read every skill. Route narrowly.
 
-The handoff packet should be the live pointer for the next agent. If it is
-fresh and specific, Claude Code should start there instead of scanning the whole
-project. Codex is responsible for keeping that packet directional enough to
-explain what changed, what was intentionally not changed, and what target
-Claude should pursue next.
+Codex uses the tiny latest pointer to locate the active package and review
+result. Claude Code starts only from the generated `next_claude_prompt.md`, then
+reads at most the three evidence files named there. The named package is the
+required handback destination, not a Claude startup artifact.
 
 ## 2.1 Planning-Only Skills
 
@@ -90,8 +89,7 @@ Rules:
 
 When Codex creates a new project-optimization plan for Claude Code, Codex must
 show the plan to the user first and wait for confirmation before writing it into
-`build/reports/agent_handoff/latest_claude_packet.md` as a Claude-directed
-instruction.
+the named package packet as a `READY` Claude-directed instruction.
 
 Rules:
 
@@ -140,6 +138,10 @@ Get-ChildItem $env:USERPROFILE\Desktop -Directory
 Treat that folder as read-only. Use it for patterns, parameters, state names,
 layout conventions, and validation scenarios; never edit, overwrite, or move
 its files.
+
+For controller-tuning work, use
+`docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md` as the approved order and
+immutable plant/device boundary before any S6 write.
 
 ## 4. Current Integrated Capabilities
 
@@ -238,8 +240,8 @@ Use this lightweight loop:
 5. Run the smallest meaningful validation: static check, helper smoke test,
    synthetic evidence, or one fast MATLAB run when needed.
 6. Re-read the generated artifact or changed contract from disk.
-7. Update `build/reports/agent_handoff/latest_claude_packet.md` with changed
-   files, validation, artifacts, known gaps, and the next iteration target.
+7. Overwrite the named package packet with a compact `HANDBACK` containing
+   changed files, validation, artifacts, known gaps, and the next decision.
 
 The point is to preserve the closed-loop discipline: every skill improvement
 must have a user-facing purpose, a contract, evidence, and a handoff. It should
@@ -297,81 +299,31 @@ Validation expectations:
 - Always re-read generated artifacts from disk before accepting PASS claims, to
   avoid stale-artifact or hallucinated-result failures.
 
-## 6. Efficient Handoff Packet
+## 6. Compact Handoff Protocol
 
-After each Claude Code work chunk, write exactly one compact handoff packet.
-This is mandatory before handing the task back to Codex:
+Use `docs/FRESH_SESSION_HANDOFF_TEMPLATES.md` as the exact handoff contract.
 
-```text
-build/reports/agent_handoff/latest_claude_packet.md
-```
+The exchange has only three artifacts:
 
-`build/` is ignored by Git, so this is local communication, not repository
-noise. Keep it under 120 lines.
+- `next_claude_prompt.md`: self-contained execution order, at most 60 lines;
+- `next_claude_prompt.txt`: identical user-transfer copy that does not depend on
+  clipboard contents;
+- `<package>_claude_packet.md`: current `READY` task or latest `HANDBACK`
+  result, at most 60 lines and always overwritten;
+- `latest_claude_packet.md`: Codex pointer, at most 8 lines.
 
-Use this format:
+Claude starts from the execution prompt and at most three mandatory evidence
+files. It does not read the package packet at startup. Detailed evidence stays
+in task JSON/Markdown/log files and is linked rather than copied.
 
-```markdown
-# Claude Code Handoff
+Codex writes `READY`; Claude overwrites it with `HANDBACK`. Required result
+content is exact final state, max five verified facts, max three review
+findings/blockers, max three evidence paths, grouped changed files, max three
+validation results, and one next-decision sentence.
 
-Branch:
-Commit(s):
-Task:
-Plan approval:
-- status: draft_pending_user_approval | approved_by_user | not_applicable
-- user approval note:
-
-Changed files:
-- path
-
-Codex review delta:
-- created:
-- modified:
-- deleted:
-- intentionally not touched:
-
-Validation:
-- command/result
-
-User-visible artifacts:
-- path
-
-Important findings:
-- one-line finding
-
-What Codex did:
-- concrete action
-
-What Codex did not do:
-- concrete non-action
-
-Known gaps / next step:
-- one-line next step
-
-Implementation freedom:
-- what Claude may decide creatively inside the target boundary
-
-Do not review:
-- unrelated paths
-```
-
-If a change should persist for future agents, also update the appropriate
-tracked doc or skill contract. Do not rely on the ignored handoff packet for
-long-term project knowledge.
-
-If Codex resumes and this packet is missing or stale, Codex should ask Claude
-Code to provide it before reviewing anything broad. The packet should keep
-Codex from spending tokens re-deriving what changed.
-
-When Codex performs a global review, it must update this packet with:
-
-- the files it created, modified, or deleted;
-- the files it observed as in-flight work and deliberately preserved;
-- the decisions it made, the work it did not do, and the next planning target;
-- whether Claude Code should repair, extend, or leave each changed area alone.
-
-This prevents Claude Code from blindly restoring deleted files, undoing Codex
-review edits, or re-scanning the whole repository to infer intent.
+Never append history, duplicate generic rules, paste logs, or mix the completed
+result with the next task. Durable behavioral changes belong in tracked docs or
+skill contracts.
 
 ## 7. Codex Review Checklist
 
@@ -408,7 +360,7 @@ When Codex resumes after Claude Code:
   while sibling-package files are visible.
 - The branch-specific packet is the authoritative parallel-work record:
   `build/reports/agent_handoff/<package_slug>_claude_packet.md`. Keep it under
-  120 lines. `latest_claude_packet.md` is only the compact global index.
+  60 lines. `latest_claude_packet.md` is only the compact global index.
 - Commit focused changes with messages like:
   - `feat(loop): attach weak-grid matrix evidence`
   - `feat(skill): add lab model pattern miner`
@@ -435,14 +387,125 @@ When Codex resumes after Claude Code:
 - Claude Code handback reminder: do not refactor files; modify only the
   necessary files for the current issue until Codex confirms the bug,
   boundary-case, and test evidence are handled.
-- Claude Code must update `build/reports/agent_handoff/latest_claude_packet.md`
+- Claude Code must overwrite its named package packet with a compact `HANDBACK`
   after every completed work chunk before handing the branch back to Codex.
-- In parallel work, Claude Code must update its branch-specific packet and may
-  update `latest_claude_packet.md` only as a compact index entry. Do not append
-  full package plans or test transcripts to the latest packet.
+- In parallel work, Claude Code updates only its branch-specific package.
+  Codex owns `latest_claude_packet.md` as the compact global pointer.
 - Project-local skills to avoid by default during modeling/review:
   `skill-creator`, `code-simplifier`; `find-skill` and `document-skills` were
   removed from this project-local registry.
 - Optional global skills remain installed for other tasks, but do not load
   document, design, Notion/Slack/Gmail, broad refactor, or skill discovery
   skills during normal Simulink work.
+
+## 9.1 Long Simulink Session Survival
+
+For large Simulink models, one Claude conversation must not become the
+simulation log, image store, and historical handoff at the same time.
+
+- Start each modeling chunk in a fresh conversation from the self-contained
+  execution prompt plus at most three directly relevant evidence files.
+- Do not continue a session whose transcript already contains earlier build,
+  island-debug, and control-tuning phases.
+- Never run a simulation expected to exceed 60 seconds through a synchronous
+  MCP call. Launch it as a detached batch job that writes compact JSON/Markdown
+  evidence and a log file; inspect only status and targeted log excerpts.
+- Do not return MATLAB figures as base64 tool results. Export images to disk and
+  reference their paths.
+- Keep terminal/tool output below about 100 lines. Use targeted `Select-String`,
+  `head`/`tail`, report JSON, or context indexing instead of full recursive
+  reads and full logs.
+- Checkpoint after every accepted baseline, failed probe, and completed chunk.
+  A new session must be able to continue from the checkpoint without loading
+  the old transcript.
+- Stop a failed probe before launching another expensive run. First fix the
+  telemetry/parser contract using a short smoke run.
+- Keep dedicated package packets under 60 lines and remove superseded
+  conclusions instead of appending an unlimited historical narrative.
+
+## 9.2 Fresh Claude Conversation Contract
+
+Claude conversations are disposable execution workers. The durable context is
+the tracked protocol plus compact local handoff artifacts.
+
+After every Codex review:
+
+1. Overwrite the package packet with the next compact `READY` task.
+2. Generate the self-contained prompt; the generator validates evidence and
+   refreshes the tiny latest pointer.
+3. Give the user the generated `next_claude_prompt.txt`; clipboard copy is
+   optional.
+4. Start a new Claude conversation from only that prompt.
+
+Each new Claude conversation must:
+
+- execute exactly one named chunk;
+- read only the generated prompt and at most three named evidence files;
+- avoid repository-wide context recovery;
+- overwrite the package packet with a compact `HANDBACK` before stopping;
+- stop rather than continue when output repeats, a tool stalls, a required
+  artifact is missing, or the task boundary becomes unclear.
+
+Codex defines boundaries, reviews claims, and chooses the next chunk. Claude
+Code advances only the assigned chunk and does not need global project detail.
+
+Chunk sizing should favor a coherent end-to-end result rather than one tiny
+action per conversation. Codex may approve a multi-phase chunk containing a
+contract fix, negative test, conditional model-backed probe, artifact analysis,
+and handoff when all phases share one objective and each transition has an
+explicit gate. Claude should continue through those pre-approved phases and
+stop early only at a failed gate, scientific decision point, scope boundary, or
+named stop condition.
+
+Default planning granularity is one complete decision chain per Claude
+conversation, not one defect or one file per conversation. A normal long chunk
+should include the focused implementation, negative/boundary tests, aligned
+artifact or contract updates, read-back verification, and the next-decision
+package. Codex should pre-authorize these related phases and name their gates so
+Claude does not pause after each small success or circle the same diagnosis.
+
+## 9.3 IEEE39 SG5/DFIG5 Tuning Chunk Profile
+
+For the expensive IEEE39 10-machine, 5SG-to-5DFIG modeling test, default to one
+long, gated work chunk that advances a complete scientific decision. Do not
+split inventory, detached-run launch, result parsing, time-scale
+classification, and next-iteration selection into separate conversations when
+they share one objective.
+
+- Claude starts from one compact task index plus at most one direct contract or
+  evidence file. The index links all other artifacts; Claude reads a linked
+  leaf only when a named gate requires it.
+- The prompt must state ordered gates, exact early-stop conditions, allowed
+  writes, detached-run command shape, expected artifacts, and the decision the
+  chunk must reach. Avoid broad repository recovery.
+- Expensive simulations run detached with three-state flags and compact
+  machine-readable output. One chunk may wait for and analyze one approved
+  expensive run; it must not launch another until the first result is parsed.
+- A successful T1 chunk ends with dominant-band/root-cause classification, an
+  explicit `S6_authorization_recommendation`, and a bounded first T2 candidate
+  plan. It does not silently begin parameter writes.
+- Repeated reading, repeated diagnosis, or repeated fixes without new disk
+  evidence is a stop condition. Codex reviews the evidence and refreshes the
+  next task instead of asking Claude to circle the same issue.
+- Use the handoff generator's `-QuietExecutor` mode by default for these
+  modeling chunks. Claude client streaming output is capped at two lines: one
+  `START`, then one terminal `BLOCKED` or `DONE`; Codex owns narrative review
+  and recommendations.
+- For large logs, tests, or diffs, Claude should use targeted reads or the
+  already-installed `context-management` compression scripts. Do not make
+  Claude read the full skill instructions or paste output into chat.
+- Claude may add at most two evidence-backed executor suggestions to the disk
+  handback. They are advisory; Codex may use or reject them when planning.
+- For model tests, Claude loads only skills explicitly named by the execution
+  prompt or its one compact task index. It must not enumerate the skill registry
+  or recover a broad skill context before starting.
+- Runs over 60 seconds use a user-visible Claude Code Background Tasks sidebar
+  task whenever a background-capable tool exists. Background execution is the
+  default, not an optional optimization. Record ETA and status path, poll compact
+  flags/status at low frequency scaled to ETA, inspect logs only on failure or
+  material overrun, and close the completed background task promptly. If
+  background execution is unavailable, stop instead of starting a long
+  synchronous call.
+- QuietExecutor client streaming is zero-narrative and has no periodic `WAIT`
+  messages. Claude writes findings, reasoning, suggestions, progress, and
+  background-task status only to disk artifacts and the Background Tasks UI.

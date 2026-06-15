@@ -39,6 +39,10 @@ s = struct('name','S6_TUNE','status','PASS','model',char(modelName), ...
 
 if ~bdIsLoaded(modelName); load_system(char(modelName)); end
 
+% Write-contract gate and rollback helper live under scripts/tuning.
+here = fileparts(mfilename('fullpath'));
+addpath(fullfile(fileparts(here), 'tuning'));
+
 % Round 0 — sim with current parameters
 [out, simOk, errMsg] = safe_sim(modelName, tFull);
 if ~simOk
@@ -129,6 +133,17 @@ for round = 1:opt.MaxRounds
         knob_state(knobIdx).flip_count = knob_state(knobIdx).flip_count + 1;
     end
 
+    % --- Write-contract gate: refuse immutable/unclassified knobs ---
+    [writable, why] = tuning_entry_is_writable(knob);
+    if ~writable
+        knob_state(knobIdx).exhausted = true;
+        s.history(end+1).round = round;
+        s.history(end).params  = capture_registry(modelName);
+        s.history(end).metrics = m;
+        s.history(end).action  = sprintf('%s rejected by write contract (%s)', knob.id, why);
+        continue
+    end
+
     oldVal = eval(get_param(knob.block_path, knob.mask_param));
     newVal = knob.scale_fcn(oldVal, signDir);
     newVal = clamp_to_bounds(newVal, knob.min, knob.max);
@@ -143,17 +158,27 @@ for round = 1:opt.MaxRounds
         continue
     end
 
-    set_param(knob.block_path, knob.mask_param, mat2str(newVal));
-    save_system(modelName);
-
-    [out, simOk, errMsg] = safe_sim(modelName, tFull);
-    if ~simOk
+    % Snapshot BEFORE the write, then write + sim through the rollback helper.
+    % A failed write OR a failed post-write simulation restores this snapshot
+    % before we return, so the model is never left at a partially-written or
+    % unsimulatable parameter set.
+    preWrite = capture_registry(modelName);
+    wr = tuning_write_then_sim(preWrite, ...
+        @() write_knob(knob, newVal, modelName), ...
+        @() safe_sim(modelName, tFull), ...
+        @(snap) restore_registry(modelName, snap));
+    if wr.rolled_back
+        if wr.restore_ok
+            save_system(modelName);
+        end
         s.status = 'FAIL';
-        s.error  = errMsg;
+        s.error  = wr.msg;
         s.final_metrics = m;
+        s.rolled_back_pre_write = wr.rolled_back && wr.restore_ok;
         write_tuning_report(opt.ReportPath, s);
         return
     end
+    out = wr.out;
     m_new = extract_tuning_metrics(out, ...
         'fault_t_start', opt.FaultStart, 'fault_t_end', opt.FaultEnd, ...
         'V_nom_LL', opt.VnomLL);
@@ -219,23 +244,44 @@ function v = clamp_to_bounds(v, lo, hi)
 v = max(lo, min(hi, v));
 end
 
+function write_knob(knob, newVal, modelName)
+% Apply one knob write and persist it. Used as the writeFcn callback for
+% tuning_write_then_sim so the write and its rollback share one code path.
+set_param(knob.block_path, knob.mask_param, mat2str(newVal));
+save_system(modelName);
+end
+
 function ok = restore_registry(modelName, snapshot)
 % Write a captured {id -> value} snapshot back onto the model's knobs.
-% Used to roll a non-converged tuning run back to its best-so-far params.
+% Used to roll a non-converged tuning run back to its best-so-far params, and
+% as the rollback callback for tuning_write_then_sim.
+%
+% All-or-nothing: ok is true ONLY if EVERY registry knob that has a usable
+% value in the snapshot is successfully written. A single failed/partial
+% restore returns false so the caller never reports a clean rollback when the
+% model is actually left in a mixed state. Knobs absent from the snapshot or
+% carrying empty/NaN values are skipped (nothing to restore), not failures.
 ok = false;
 if isempty(snapshot) || ~isstruct(snapshot); return; end
 reg = tuning_registry(modelName);
+restoredAny = false;
 for k = 1:numel(reg)
     if ~isfield(snapshot, reg(k).id); continue; end
     val = snapshot.(reg(k).id);
     if isempty(val) || any(isnan(val(:))); continue; end
     try
         set_param(reg(k).block_path, reg(k).mask_param, mat2str(val));
-        ok = true;
+        restoredAny = true;
     catch
-        % skip knobs that can no longer be written; best-effort restore
+        % A knob we intended to restore could not be written: the model is now
+        % in a mixed state, so the rollback as a whole has failed.
+        ok = false;
+        return
     end
 end
+% Success only if we actually restored at least one knob (an empty snapshot or
+% one with no usable values is not a proven restore).
+ok = restoredAny;
 end
 
 function snap = capture_registry(modelName)

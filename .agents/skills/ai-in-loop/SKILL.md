@@ -45,6 +45,9 @@ the matching row in Section 8 references them.
 4. Three-phase physical SPS connections must never be replaced by `Goto/From`. Only ordinary Simulink measurement/control signals may.
 5. Any parameter change must be recorded with `before -> after`, source spec section, and the loop iteration index.
 6. If the same failure signature appears 2 iterations in a row with the same proposed fix, stop and ask the user.
+7. Before S6 writes, apply `docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md`.
+   Device/plant physical parameters and ratings are immutable; only proven
+   control parameters may enter the registry.
 
 ## Loop State Machine
 
@@ -275,8 +278,9 @@ S6 is **not** a pass-through anymore. It runs an inner loop:
 
 Files:
 - `scripts/loop/extract_tuning_metrics.m` — metric extractor
-- `scripts/loop/tuning_registry.m` — per-model knob registry (currently
-  covers W33 PLL ParK; expand here to add rotor-side / DC-link / speed loops)
+- `scripts/loop/tuning_registry.m` — per-model knob registry; current discovery
+  is not yet sufficient for automatic writes on the full IEEE39 SG5/DFIG5 test
+  model, so complete tuning-readiness inventory first
 - `scripts/loop/ai_in_loop_stage_tune.m` — the inner loop driver
 - References: `.agents/skills/simulink-modeling-assistant/references/dfig-pll-tuning-refs.md`
 
@@ -285,9 +289,9 @@ Important behaviour notes:
   literature. The literature rule "weak grid → lower PLL bandwidth" was the
   starting hypothesis but was wrong on this Asynchronous-Machine-based DFIG;
   the inner loop self-corrected by reading the live growth metric.
-- The stage saves the model at every round so a CTRL-C / crash leaves the
-  last attempted parameters on disk; reproducibility comes from re-running
-  the build script (which resets the unstable initial state).
+- Automatic writes require a proven rollback snapshot. Restore best-so-far
+  after rejected/non-converged candidates and restore the pre-write snapshot
+  after simulation errors.
 - Reference test bench: `nebus39_dfig_weakgrid_v0` — built specifically with
   an unstable PLL to exercise S6. Converges in 3 rounds: `[15 9.6 3 150]`
   → `[33.75 21.6 6.75 337.5]`, oscillation amplitude 298 A → 1 A.

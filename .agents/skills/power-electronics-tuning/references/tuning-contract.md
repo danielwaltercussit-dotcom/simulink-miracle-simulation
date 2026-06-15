@@ -13,6 +13,25 @@ Each tunable knob must define:
 - `units`
 - `fs_targets`
 - `scale_fcn`
+- `priority`
+- `parameter_class`
+- `control_only`
+- `rollback_value`
+
+`control_only` must be true before a tuning stage may write the parameter.
+Reject plant/device physical parameters, ratings, topology, and unclassified
+parameters. Use `docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md` as the
+authoritative priority and immutability contract.
+
+## Approved Priority
+
+1. PLL and DFIG rotor/grid current-loop PI.
+2. Remaining synchronous-machine AVR and governor controls.
+3. Virtual inertia, POD/PSS-style damping, and reactive/voltage droop.
+4. Control saturation, anti-windup, protection, and LVRT thresholds/timers.
+
+Do not advance to a lower priority while the selected higher-priority root
+cause remains untested or unresolved.
 
 ## Current Failure Signature Mapping
 
@@ -35,3 +54,6 @@ Each tunable knob must define:
 3. Add FS targets.
 4. Run `inspect_tuning_registry`.
 5. Run at least `ai_in_loop_run(..., "goal", "tune")`.
+
+Before step 5, prove rollback-on-error and verify that the selected model-owned
+signals support the intended metric and failure-signature decision.

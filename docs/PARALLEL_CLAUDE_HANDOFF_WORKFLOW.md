@@ -7,6 +7,8 @@ Use this workflow for every parallel E/F/M/D Claude Code conversation.
 1. **Assign**
    - Codex writes a user-approved package target and explicit write scope.
    - Package name and branch name remain stable.
+   - Codex generates `build/reports/agent_handoff/next_claude_prompt.md`; start
+     the package in a fresh Claude conversation from that prompt.
 
 2. **Isolate**
    - Use a dedicated worktree:
@@ -15,8 +17,8 @@ Use this workflow for every parallel E/F/M/D Claude Code conversation.
    - Confirm branch and status before editing.
 
 3. **Implement**
-   - Read only `AGENTS.md`, the collaboration protocol, this workflow, the
-     package plan, and directly relevant skill/contract files.
+   - Start from the generated prompt and read only its at-most-three named
+     evidence files.
    - Keep tests and artifacts package-local.
    - Do not restore `NEBUS39V2.slx`.
 
@@ -35,13 +37,15 @@ Use this workflow for every parallel E/F/M/D Claude Code conversation.
 6. **Hand Back**
    - Write
      `build/reports/agent_handoff/<package_slug>_claude_packet.md`.
-   - Keep the packet under 120 lines.
+   - Keep the packet under 60 lines.
    - Include branch, commit, files, validation commands/results, artifact paths,
      PASS/WARN/MISSING states, known gaps, and intentionally untouched files.
 
 7. **Codex Review**
    - Codex verifies branch ownership, reruns tests, checks status semantics, and
      decides repair/extend/merge.
+   - Codex refreshes the package packet and generates the next fresh-session
+     prompt. Do not continue the reviewed Claude conversation.
 
 ## Mandatory Preflight
 
@@ -64,5 +68,6 @@ are present in the worktree.
 - [ ] Generated evidence re-read from disk.
 - [ ] Contract-only, model-backed, and hardware-backed claims distinguished.
 - [ ] Package commit created.
-- [ ] Branch-specific packet updated and under 120 lines.
+- [ ] Branch-specific packet updated and under 60 lines.
 - [ ] No merge performed.
+- [ ] Conversation stopped after the assigned chunk.

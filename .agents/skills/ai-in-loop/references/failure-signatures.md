@@ -98,6 +98,20 @@ When adding FS-009+, include: ID, symptom, evidence path, likely cause, auto-fix
   electrical disconnection is proven.
 - **Observed**: 2026-06-09, IEEE39 SG5/DFIG5 bus 34 false-island diagnosis.
 
+## FS-023 Detached batch ended but required evidence is missing
+
+- **Symptom**: a detached MATLAB job writes `done.flag`, but the required
+  Markdown/JSON/MAT artifact is absent or invalid.
+- **Likely cause**: the wrapper catches an exception and writes the same
+  completion flag on both success and failure, so process termination is
+  mistaken for validation PASS.
+- **Auto-fix**: use mutually exclusive `success.flag` and `failed.flag`; create
+  `success.flag` only after required artifacts are re-read and validated. A
+  stale temporary model must be closed without saving and deleted on failure.
+- **Jump to**: the owning telemetry/simulation stage. Do not launch the next
+  expensive run.
+- **Observed**: 2026-06-10, DFIG P/Q telemetry smoke.
+
 ## FS-009 DFIG `wpll` long-time below 1.0, not converging
 
 - **Symptom**: PLL angular frequency stuck below the system base.
