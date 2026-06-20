@@ -11,7 +11,7 @@ snapshot-ready.
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+% Run from the repository root.
 init_simulink_agent_project
 addpath("scripts/layout")
 r = audit_model_quality_layout("nebus39_dfig2_weakgrid_v0", ...
@@ -43,7 +43,12 @@ The helper is a layout/quality gate, not an auto-layout tool. It checks:
 - Goto/From use: allowed for measurement/control signals only
 - measurement/logging presence
 - oracle files are present and treated as read-only references
-- reference availability for `C:\Users\jonas\Desktop\实验室仿真模型汇总`
+- reference availability for
+  `fullfile(getenv('USERPROFILE'),'Desktop','实验室仿真模型汇总')`
+
+Before layout, call `capture_layout_structure`. After layout, call
+`verify_layout_structure(...,"ThrowOnFail",true)` before this S3 audit. A
+readable diagram is still a failure if layout changed blocks or connectivity.
 
 Read `references/layout-quality-contract.md` before changing layout rules or
 making root-canvas edits.

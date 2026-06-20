@@ -10,6 +10,10 @@ After any root-canvas layout change, run `simulink-model-quality-layout` /
 M01/M02 for two-area spacing, M07 for compact single-machine layouts, and M08
 for legal signal-only Goto/From usage.
 
+Use full layout only inside new or empty ordinary signal-flow subsystems. Use
+incremental placement for existing signal-flow subsystems. These modes never
+override the deterministic-coordinate rule for a power-system root canvas.
+
 ## Hard rule: zero overlap at root canvas
 
 **No two top-level blocks may overlap.** Bounding boxes of any pair of root

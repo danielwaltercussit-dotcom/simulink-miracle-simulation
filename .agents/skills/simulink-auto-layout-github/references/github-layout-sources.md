@@ -8,6 +8,12 @@
 | McSCert/Simulink-Utility | `external/github/McSCert-Simulink-Utility` | Bounds, line routing, Goto/From discovery, connected-block utilities. |
 | simulink/skills | `external/github/simulink-skills-upstream` | Upstream Simulink agent skills, including context resolution and positioning conventions. |
 
+## Reference-Only Source
+
+| Source | Local path | Use |
+|---|---|---|
+| matlab/simulink-agentic-toolkit | `external/simulink-agentic-toolkit` | Official `model_edit` full/incremental layout semantics and post-edit `model_read`/`model_check` workflow. Do not install globally from this skill. |
+
 ## Selection Notes
 
 - McSCert Auto-Layout is best for ordinary signal-flow subsystems and model formatting experiments.

@@ -30,6 +30,10 @@ in task report folders; this file stores only the reviewed decision.
   PI tuning outcome.
 - Reuse limit: do not select a tuning direction until unchanged-parameter T1
   evidence classifies the dominant band and signal owner.
+- Launch lesson: a detached T1 long baseline must be treated as disk-backed
+  evidence. `RUNNING` is not a failure, network/VPN switching is not normally a
+  simulation control input, and S6 remains blocked until postrun plus causal
+  perturbation confirms control authority.
 
 ## Reviewed Tuning Rounds
 

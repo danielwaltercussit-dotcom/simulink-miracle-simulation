@@ -16,6 +16,11 @@ Claude reads only the prompt at startup, then at most three evidence files named
 inside it. Claude never reads the package packet before execution; the packet is
 the required handback destination.
 
+Every execution prompt must name one writable compact resume/status artifact.
+Claude overwrites it after every ordered phase and before long commands. It is
+the recovery source after interruption; internal task lists and chat history
+are not recovery sources.
+
 ## Size Limits
 
 - execution prompt: at most 60 lines;
@@ -23,6 +28,8 @@ the required handback destination.
 - package packet: at most 60 lines;
 - latest pointer: at most 8 lines;
 - mandatory evidence reads: at most 3 files.
+- quiet-executor soft input budget: about 32k tokens; hard handback: about 40k;
+- individual tool output: at most 40 lines; verbose output belongs on disk.
 
 If more context seems necessary, improve the compact verified-state summary or
 name one evidence index. Do not add more historical files.
@@ -58,6 +65,7 @@ new task to `HANDBACK`.
 objective
 verified context: max 5 bullets
 work phases and transition gates
+resume/status artifact: one writable compact path
 write scope: directories or grouped paths
 acceptance and early-stop conditions
 required result fields
@@ -93,7 +101,18 @@ Claude:
 
 1. Read the prompt and its named evidence only.
 2. Execute one bounded chunk.
-3. Overwrite the named packet with compact `HANDBACK` and stop.
+3. Overwrite the resume/status artifact after each phase.
+4. Overwrite the named packet with compact `HANDBACK` and stop.
+
+At about 32k input tokens, checkpoint and finish only the current gate. If the
+chunk approaches 40k input tokens or 45 minutes of active work, or hits
+an API 5xx/524 error, repeated timeout, or interruption, write a compact partial
+HANDBACK with `BLOCKED_EXECUTOR_RESUME_REQUIRED` and stop. Codex creates a fresh
+continuation prompt from the disk resume/status artifact.
+
+Token-saving execution rules: use targeted `rg`/sliced reads, never re-read an
+unchanged file, never paste full files/logs/diffs, batch validation once, and
+redirect verbose output to disk before reading only its compact summary.
 
 ## Quiet Executor Mode
 

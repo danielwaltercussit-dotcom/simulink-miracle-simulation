@@ -18,6 +18,8 @@ param(
 
     [string[]]$AllowedWritePaths = @(),
 
+    [string]$ResumeStatusPath = "",
+
     [string[]]$Validation = @("Run the named validation and re-read its evidence."),
 
     [string[]]$ResultContract = @("Report final_state, verified facts, evidence, changed files, validation, and next decision."),
@@ -31,6 +33,15 @@ param(
     [string]$LatestPointerPath = "build/reports/agent_handoff/latest_claude_packet.md",
 
     [string]$ReviewPath = "",
+
+    [ValidateRange(8, 60)]
+    [int]$TokenSoftLimitK = 32,
+
+    [ValidateRange(12, 80)]
+    [int]$TokenHardLimitK = 40,
+
+    [ValidateRange(10, 100)]
+    [int]$MaxToolOutputLines = 40,
 
     [switch]$QuietExecutor,
 
@@ -117,6 +128,12 @@ if ($ReadFirst.Count -gt 3) {
 if ($QuietExecutor -and $ReadFirst.Count -ne 1) {
     throw "QuietExecutor requires exactly one compact startup read."
 }
+if ($QuietExecutor -and [string]::IsNullOrWhiteSpace($ResumeStatusPath)) {
+    throw "QuietExecutor requires a writable ResumeStatusPath."
+}
+if ($TokenHardLimitK -le $TokenSoftLimitK) {
+    throw "TokenHardLimitK must be greater than TokenSoftLimitK."
+}
 foreach ($path in $ReadFirst) {
     $evidencePath = if ([System.IO.Path]::IsPathRooted($path)) {
         [System.IO.Path]::GetFullPath($path)
@@ -151,6 +168,7 @@ $prompt = if ($QuietExecutor) {
 package: $packageId
 workdir: $workFullPath
 handback: $packetPath
+resume_status: $ResumeStatusPath
 objective: $Task
 read_only: $($ReadFirst -join ', ')
 write_scope: $($AllowedWritePaths -join '; ')
@@ -159,9 +177,13 @@ stop: $($StopCondition -join ' | ')
 result: $($ResultContract -join ' | ')
 rules: read only this prompt then read_only; no old chat/repo scan/package read.
 rules: client stream max 2 lines: one START, then one terminal BLOCKED or DONE.
-rules: use targeted reads and compact output; never paste logs/diffs in chat.
+rules: token budget soft=$($TokenSoftLimitK)k/hard=$($TokenHardLimitK)k input; checkpoint at soft, partial HANDBACK and stop at hard.
+rules: use rg/sliced reads; never reread unchanged files or print whole files/logs/diffs; tool output <=$MaxToolOutputLines lines.
 rules: suggestions max 2, evidence-backed, disk handback only; Codex decides.
 rules: complete all pre-approved gates in this long chunk; do not stop after small fixes.
+rules: overwrite the prompt-named resume/status artifact after every phase and before long commands.
+rules: batch validation once; redirect verbose output to disk and read only exit code + compact summary.
+rules: at hard token limit, 45 min active work, API 5xx/524, repeated timeout, or interruption, write partial HANDBACK and BLOCKED_EXECUTOR_RESUME_REQUIRED.
 rules: >60s run = prefer visible Background Task; BLOCKED if background unavailable.
 rules: close terminal Background Task; never repeat an expensive failed run.
 START format: START $packageId
@@ -176,6 +198,7 @@ kind: $TaskKind
 package_id: $packageId
 workdir: $workFullPath
 handback_packet: $packetPath
+resume_status: $ResumeStatusPath
 
 ## Objective
 $Task

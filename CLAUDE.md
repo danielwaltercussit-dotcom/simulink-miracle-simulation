@@ -40,12 +40,36 @@ or refactor skills during a bounded model test.
   with `running.flag`, validated `success.flag`, and `failed.flag`.
 - A completion flag is not evidence by itself. Re-read the required JSON,
   Markdown, MAT, or model artifact before claiming success.
-- Keep tool output targeted and below about 100 lines.
+- Keep tool output targeted and below 40 lines. Redirect verbose validation to
+  disk and read only exit code, failing names, and a compact summary.
+- Use `rg`, filename filters, and sliced reads. Do not re-read unchanged files,
+  print whole large files, or repeatedly inspect the same evidence.
+- Batch independent validation into one command when practical. Run the full
+  suite once after focused tests pass; do not repeatedly rerun successful suites.
 - If output starts repeating, a tool stalls, or the task boundary becomes
   unclear, stop immediately and write the handoff packet from disk evidence.
 - Continue through pre-approved conditional phases without asking for a new
   conversation after every small step. Stop at a scientific decision gate,
   failed acceptance gate, write-scope boundary, or the named stop condition.
+- After every ordered phase, overwrite the prompt-named resume/status artifact
+  with completed gates, current files, validation, and the exact next action.
+  The status artifact is the recovery source after an API timeout; do not rely
+  on chat history or the internal task list.
+- The configured API supports a 1M-token context window. Keep a fresh-session
+  chunk below roughly 600k input tokens, with a hard stop near 800k input
+  tokens or four hours of active editing/analysis, whichever comes first. The
+  remaining context is reserved for tool results, validation, recovery, and the
+  final handback. At the soft limit, checkpoint disk status and finish the
+  current ordered phase or safe validation gate. At the hard limit, write a
+  compact partial HANDBACK with `state: HANDBACK`, final state
+  `BLOCKED_EXECUTOR_RESUME_REQUIRED`, and stop. Codex will issue a fresh
+  continuation prompt.
+- A single transient API 5xx/524, connection reset, tool timeout, or interrupted
+  response is not by itself a stop condition. Allow the client retry policy to
+  recover, then continue from the latest disk checkpoint. If retries are
+  exhausted, the same failure recurs, or session state becomes uncertain,
+  persist the resume/status artifact and compact partial HANDBACK at the next
+  opportunity, then stop.
 
 ## Quiet Execution
 
@@ -54,6 +78,10 @@ report. Client streaming output is capped at exactly one `START` line and one
 terminal `DONE` or `BLOCKED` line. Do not emit `WAIT`, progress lines, tool
 narration, pasted output, reasoning, findings, suggestions, or repeated status
 to the client. Put all detail in the named disk handback and status artifacts.
+
+Quiet execution does not mean silent failure. Update the prompt-named disk
+resume/status artifact after every phase and before any long command. If no
+resume/status path is named, stop as `BLOCKED_EXECUTOR_CONTRACT` before editing.
 
 For a run expected to exceed 60 seconds:
 

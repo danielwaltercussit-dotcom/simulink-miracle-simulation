@@ -28,6 +28,27 @@ rating/ratio, bus nominal voltage, dispatch, or donor-parameter fidelity are
 correct. A device-replacement task also requires the numeric
 interface-compatibility artifact defined by `simulink-device-adapters`.
 
+Verification reports for replacement or research models must keep separate
+fields for structural, runtime, physical energization, observability,
+operating-point qualification, and scientific evidence. A generic helper PASS
+may satisfy only the first two. Read
+`../simulink-modeling-assistant/references/current-simulation-experience.md`
+before promoting a result beyond runnable-model status.
+
+For controller logic, use explicit feedback-polarity contracts. A generic smoke
+simulation can pass even when a negative-feedback loop has been wired as
+positive feedback, as long as the short run remains finite. Register intended
+feedback signs with `ControlFeedbackContracts` so the gate checks the relevant
+`Sum` block `Inputs` string before declaring PASS.
+
+Feedback-polarity results carry a per-contract `classification`:
+`PASS`, `MISMATCH`, `FIXED`, `BAD_CONTRACT`, `MISSING_BLOCK`, `NOT_SUM_BLOCK`,
+or `ERROR`. The helper writes both a Markdown report and a machine-readable
+JSON report (same base name, `.json` extension, or set `ReportJsonPath`
+/ `ControlFeedbackJsonPath` explicitly). See
+`docs/CONTROL_FEEDBACK_POLARITY_GATE.md` and
+`references/verification-contract.md` for the schema and routing rules.
+
 Primary helper:
 
 ```matlab
@@ -38,6 +59,19 @@ r = verify_power_system_model("nebus39_dfig2_weakgrid_v0", ...
     "StopTime", 0.005, ...
     "ReportPath", "build/reports/verification/nebus39_dfig2_weakgrid_v0.md");
 assert(r.passed)
+```
+
+Feedback-polarity example:
+
+```matlab
+contract = struct( ...
+    "block_path", "VoltageController/Sum", ...
+    "expected_inputs", "+-", ...
+    "description", "Vref minus measured terminal voltage");
+r = verify_power_system_model("candidate_model", ...
+    "ControlFeedbackContracts", contract, ...
+    "ReportPath", "build/reports/verification/candidate_model.md");
+assert(r.checks.control_feedback_polarity)
 ```
 
 ## Verification Stack
@@ -60,6 +94,7 @@ assert(r.passed)
 - logged outputs exist unless explicitly disabled
 - numeric logged outputs contain no NaN/Inf
 - root canvas has no overlapping blocks when `ai_in_loop_count_overlap` is on path
+- declared feedback-polarity contracts pass when `ControlFeedbackContracts` is supplied
 - InitFcn is non-empty or contains self-contained aliases such as `Ts` / `Tsample`
 - a Markdown report is written when `ReportPath` is supplied
 

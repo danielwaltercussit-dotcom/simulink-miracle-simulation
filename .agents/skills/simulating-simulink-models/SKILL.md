@@ -142,6 +142,28 @@ out = parsim(in);
 
 `parsim` also supports `'UseFastRestart','on'` for faster batch runs.
 
+## Long Detached Simulations
+
+If a run is expected to exceed an interactive tool timeout, do not run it
+synchronously in the chat/tool session. Use a project launcher that:
+
+- has a preflighted launch spec;
+- writes `claim.lock`, `running.flag`, and mutually exclusive terminal flags;
+- records a compact launch manifest and resume status file;
+- writes logs to disk instead of chat;
+- leaves success promotion to a read-only status monitor plus bundle validator.
+
+For power-system baselines that may feed S6 decisions, follow
+`../baseline-regression/references/long-baseline-causal-gate.md`. Network or VPN
+switching by the operator should not affect a local MATLAB worker, but sleep,
+logout, reboot, killed MATLAB processes, or license loss can.
+
+For long-run memory and signal-integrity gates, also read
+`../simulink-modeling-assistant/references/current-simulation-experience.md`.
+Resolve the real `MATLAB.exe` compute child PID before sampling memory. Measure
+post-compile private-byte slope and projected peak; do not infer safety from MAT
+file size or logging decimation. Preserve each signal's native time vector.
+
 ## Guardrails
 
 - **Never** use `set_param`, `load_system`, or `open_system` to drive simulation — `SimulationInput` replaces all of these.

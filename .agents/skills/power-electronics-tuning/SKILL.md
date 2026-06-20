@@ -41,6 +41,10 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
   entry must be proven control-only; reject unclassified entries.
 - For the IEEE39 SG5/DFIG5 test model, run tuning-readiness inventory and an
   unchanged baseline before automatic S6 writes.
+- A long unchanged baseline can promote a root-cause candidate, but it does not
+  authorize S6 by itself. Require causal confirmation before writing controller
+  parameters; if missing, route to `baseline-regression` and
+  `multitimescale-analysis` for a single-factor perturbation contract.
 - Follow the approved order: PLL and DFIG current PI; SG AVR/governor;
   virtual-inertia/POD/PSS/droop controls; then control-limit/protection/LVRT
   parameters.

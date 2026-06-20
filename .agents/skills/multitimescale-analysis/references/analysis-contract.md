@@ -81,6 +81,9 @@ Report units. Do not compare per-unit and SI values without naming the base.
 
 ## Classification Rules
 
+- Before modal or cross-stage classification, qualify the pre-event operating
+  point against audited P/Q dispatch and bus conditions. An unqualified run may
+  support debugging but not a replacement-stage modal verdict.
 - If the first failure is non-finite and appears on many signals at the same
   timestamp, suspect solver, initialization, or missing parameter data before
   tuning.
@@ -93,6 +96,9 @@ Report units. Do not compare per-unit and SI values without naming the base.
   scenario recovery; use explicit pass/fail windows.
 - If plots show behavior but source data or thresholds are missing, mark the
   result as evidence incomplete, not PASS.
+- If a band is absent or below prominence in either stage, do not report a
+  frequency shift for that band.
+- If the claimed shift is below Rayleigh resolution, classify it as unresolved.
 
 ## Report Language
 

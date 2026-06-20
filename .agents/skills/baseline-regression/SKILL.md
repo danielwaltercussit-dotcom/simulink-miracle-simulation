@@ -54,3 +54,18 @@ The report should include:
 - linked diagnostic plots, if generated
 
 Read `references/regression-contract.md` before defining new tolerances.
+
+## Long Baselines and Causal Gates
+
+For expensive unchanged baselines that may feed tuning or root-cause decisions,
+read `references/long-baseline-causal-gate.md` before launch, monitoring, or
+postrun promotion.
+
+Key rules:
+
+- launch long runs only from a preflighted contract and a fresh run id;
+- run them detached, then hand back `RUNNING` instead of busy-waiting;
+- promote success only after flags, finalized bundle manifest, readable summary,
+  and the bundle validator all agree;
+- keep postrun outputs outside immutable bundles unless manifested;
+- treat a long unchanged baseline as candidate evidence, not S6 authorization.

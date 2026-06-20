@@ -69,6 +69,10 @@ classify by request type:
 
 ## Read When Needed
 
+- `references/current-simulation-experience.md` — shared acceptance-gate,
+  operating-point, observability, modal-interpretation, and long-run memory
+  contract. Read this for replacement studies, oscillation claims, or long
+  baselines.
 - `references/pattern-rows.md` — compact recipe per M01–M08.
 - `references/layout-cookbook.md` — the 6 layout rules + ASCII templates per topology.
 - `references/parameter-cheatsheet.md` — DFIG / SG / MMC / LCC default PI sets.
@@ -95,6 +99,11 @@ When authoring or reviewing a build script for a derived model, use
 `simulink-device-adapters` before S4 compile so device names, adapter ports,
 InitFcn self-containment, mask introspection, and trace metadata are checked
 as part of S2 rather than discovered after simulation.
+
+For replacement studies, do not route directly from compile/smoke to a modal or
+physics verdict. Apply the six gates in
+`references/current-simulation-experience.md`: structure, runtime, physical
+energization, observability, operating point, then scientific evidence.
 
 When touching root layout, use `simulink-model-quality-layout` after the
 layout cookbook. The desktop `实验室仿真模型汇总` folder is a read-only style

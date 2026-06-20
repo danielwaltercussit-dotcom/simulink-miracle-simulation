@@ -11,11 +11,18 @@ p.addParameter('ReportPath', '', @(x) ischar(x) || isstring(x));
 p.addParameter('RequireOutputs', true, @(x) islogical(x) || isnumeric(x));
 p.addParameter('RequiredSignals', {}, @(x) iscell(x) || isstring(x));
 p.addParameter('CheckRootOverlap', true, @(x) islogical(x) || isnumeric(x));
+p.addParameter('ControlFeedbackContracts', struct([]), @(x) isempty(x) || isstruct(x));
+p.addParameter('ControlFeedbackReportPath', '', @(x) ischar(x) || isstring(x));
+p.addParameter('ControlFeedbackJsonPath', '', @(x) ischar(x) || isstring(x));
+p.addParameter('AutoFixControlFeedback', false, @(x) islogical(x) || isnumeric(x));
 p.parse(varargin{:});
 opt = p.Results;
 opt.ProjectRoot = char(opt.ProjectRoot);
 opt.RequireOutputs = logical(opt.RequireOutputs);
 opt.CheckRootOverlap = logical(opt.CheckRootOverlap);
+opt.ControlFeedbackReportPath = char(opt.ControlFeedbackReportPath);
+opt.ControlFeedbackJsonPath = char(opt.ControlFeedbackJsonPath);
+opt.AutoFixControlFeedback = logical(opt.AutoFixControlFeedback);
 if isstring(opt.RequiredSignals)
     opt.RequiredSignals = cellstr(opt.RequiredSignals);
 end
@@ -50,6 +57,32 @@ try
         result.checks.root_overlap_free = true;
     end
 
+    if ~isempty(opt.ControlFeedbackContracts)
+        feedbackReportPath = opt.ControlFeedbackReportPath;
+        if isempty(feedbackReportPath) && strlength(string(opt.ReportPath)) > 0
+            [reportDir, reportBase] = fileparts(char(opt.ReportPath));
+            feedbackReportPath = fullfile(reportDir, [reportBase '_control_feedback.md']);
+        end
+        feedbackJsonPath = opt.ControlFeedbackJsonPath;
+        feedback = verify_control_feedback_polarity(modelName, opt.ControlFeedbackContracts, ...
+            'ProjectRoot', opt.ProjectRoot, ...
+            'ReportPath', feedbackReportPath, ...
+            'ReportJsonPath', feedbackJsonPath, ...
+            'AutoFix', opt.AutoFixControlFeedback, ...
+            'SaveOnFix', opt.AutoFixControlFeedback);
+        result.checks.control_feedback_polarity = feedback.passed;
+        result.metrics.control_feedback_contract_count = feedback.contract_count;
+        result.metrics.control_feedback_mismatch_count = feedback.mismatch_count;
+        result.metrics.control_feedback_fixed_count = feedback.fixed_count;
+        result.metrics.control_feedback_failed_count = feedback.failed_count;
+        result.metrics.control_feedback_classification_counts = feedback.classification_counts;
+        result.metrics.control_feedback_report = feedback.report_path;
+        result.metrics.control_feedback_json_report = feedback.report_json_path;
+        result.control_feedback = feedback;
+    else
+        result.checks.control_feedback_polarity = true;
+    end
+
     out = sim(modelName, 'StopTime', num2str(opt.StopTime), ...
         'ReturnWorkspaceOutputs', 'on');
     result.checks.sim_completed = true;
@@ -79,7 +112,8 @@ try
         && (~opt.RequireOutputs || result.checks.has_outputs) ...
         && result.checks.required_signals_present ...
         && result.checks.finite_outputs ...
-        && result.checks.root_overlap_free;
+        && result.checks.root_overlap_free ...
+        && result.checks.control_feedback_polarity;
 
     if result.passed
         result.status = 'PASS';
@@ -175,8 +209,18 @@ for k = 1:numel(metricNames)
     value = result.metrics.(metricNames{k});
     if isnumeric(value) && isscalar(value)
         fprintf(fid, '- %s: %.6g\n', metricNames{k}, value);
+    elseif ischar(value) || (isstring(value) && isscalar(value))
+        fprintf(fid, '- %s: `%s`\n', metricNames{k}, char(value));
     elseif iscell(value)
         fprintf(fid, '- %s: `%s`\n', metricNames{k}, strjoin(value, ', '));
+    elseif isstruct(value)
+        % Render struct fields compactly, e.g. for classification_counts.
+        subKeys = fieldnames(value);
+        parts = cell(1, numel(subKeys));
+        for j = 1:numel(subKeys)
+            parts{j} = sprintf('%s=%d', subKeys{j}, value.(subKeys{j}));
+        end
+        fprintf(fid, '- %s: `%s`\n', metricNames{k}, strjoin(parts, ', '));
     else
         fprintf(fid, '- %s: (omitted)\n', metricNames{k});
     end

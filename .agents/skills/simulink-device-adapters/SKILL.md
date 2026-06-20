@@ -49,6 +49,17 @@ compatibility only. Its PASS does not prove capacity, transformer, voltage, or
 parameter-provenance compatibility. Do not declare a replacement valid until a
 separate numeric interface-compatibility artifact exists.
 
+Also require a replacement observability artifact that names physical P/Q
+channels, units, sign, base, native time vectors, and the common channels used
+for baseline/candidate comparison. Remove or repoint stale source-specific
+measurement chains. Internal donor telemetry and physical grid injection are
+separate evidence surfaces; one cannot substitute for the other.
+
+Before using a replacement run for modal or cross-stage conclusions, require an
+operating-point qualification artifact comparing measured pre-event dispatch
+and bus conditions with the audited target. Read
+`../simulink-modeling-assistant/references/current-simulation-experience.md`.
+
 Read `references/adapter-contract.md` before changing build scripts or adding a
 new device family.
 

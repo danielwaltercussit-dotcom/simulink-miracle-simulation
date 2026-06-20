@@ -112,6 +112,60 @@ When adding FS-009+, include: ID, symptom, evidence path, likely cause, auto-fix
   expensive run.
 - **Observed**: 2026-06-10, DFIG P/Q telemetry smoke.
 
+## FS-024 Detached MATLAB process starts but run directory is absent
+
+- **Symptom**: MATLAB process starts for a detached `-batch` command, but the
+  expected `run_<runId>` directory, `claim.lock`, and `running.flag` are absent.
+- **Likely cause**: Windows `Start-Process -ArgumentList` split the MATLAB
+  `-batch` body into fragments, so MATLAB executed only the first statement
+  such as `addpath(...)` and never called the batch entry point.
+- **Auto-fix**: prove no run directory or claim was created; then relaunch with
+  the whole `-batch "<body>"` invocation passed as one argument string, or use a
+  verified launcher script. If any run evidence exists, do not relaunch; review
+  status first.
+- **Jump to**: launch/monitor owner. Do not create a new run id unless the old
+  one is proven consumed or failed.
+- **Observed**: 2026-06-17, T1BASE4 long baseline launch diagnosis.
+
+## FS-025 Long-run memory grows although logging was decimated
+
+- **Symptom**: final MAT/bundle is small or `LogDecimation` is enabled, but
+  `MATLAB.exe` private bytes grow approximately linearly with wall time.
+- **Likely cause**: executing Scope sinks or another runtime store remains active;
+  data-volume reduction is being mistaken for process-memory bounding.
+- **Auto-fix**: resolve and monitor the real compute child PID; run fresh-process
+  single-variable probes. Disabling Scope `DataLogging` is insufficient if the
+  Scope still executes. Disable Scope execution in a task-owned runtime copy,
+  preserve required `logsout`, then gate 3 s -> 24 s -> 60 s on slope, peak,
+  free commit, and projected long-horizon memory.
+- **Jump to**: long-baseline memory attribution; do not repeat the raw long run.
+- **Observed**: 2026-06-20, IEEE39 T1BASE6 bounded-memory recovery.
+
+## FS-026 Modal verdict uses an unqualified operating point
+
+- **Symptom**: a runtime-valid record is used to claim a mode is absent or shifted,
+  but pre-event device dispatch is far from the audited target or still ramping.
+- **Likely cause**: runtime validity was promoted directly to scientific validity.
+- **Auto-fix**: classify the record as
+  `RUNTIME_VALID_OPERATING_POINT_UNQUALIFIED`; retain runtime evidence, withdraw
+  the modal comparison, and run a fresh qualified attempt at the audited
+  operating point. Use model-based modal evidence before a structural-absence
+  claim.
+- **Jump to**: operating-point recovery, then `multitimescale-analysis`.
+- **Observed**: 2026-06-20, 4M2A R3 attempt02 scientific correction.
+
+## FS-027 Degenerate signal used as the global time axis
+
+- **Symptom**: long-run analysis sees one sample, constant channels, mismatched
+  lengths, or false missing-mode results despite healthy physical P/Q evidence.
+- **Likely cause**: a one-sample internal DFIG time vector was reused for all
+  signals, or channels from different logging surfaces were assumed aligned.
+- **Auto-fix**: retain each signal's native time vector, validate monotonicity and
+  sample count, then align/interpolate explicitly. Keep physical injection and
+  internal donor telemetry as separate evidence.
+- **Jump to**: observability adapter and analysis input normalization.
+- **Observed**: 2026-06-18, 4M2A R1 long-run bundle analysis.
+
 ## FS-009 DFIG `wpll` long-time below 1.0, not converging
 
 - **Symptom**: PLL angular frequency stuck below the system base.

@@ -37,6 +37,13 @@ scientific or merge decision, including focused implementation, boundary tests,
 artifact read-back, and the decision package. Do not create a new conversation
 for every small fix when those phases share one approved objective.
 
+Long coherent chunks still require phase checkpoints. Every prompt must name a
+compact disk resume/status artifact. Claude overwrites it after each phase and
+before long commands. At roughly 60k input tokens, 45 minutes of active work,
+an API 5xx/524 response, repeated timeout, or interruption, Claude must write a
+partial HANDBACK and stop so Codex can continue in a fresh session. Do not use
+chat history or Claude's internal task list as the only progress record.
+
 Claude Code client streaming output is capped at two user-visible lines in
 QuietExecutor mode: one `START`, then one terminal `DONE` or `BLOCKED`. It must
 not stream progress, tool narration, reasoning, findings, suggestions, or

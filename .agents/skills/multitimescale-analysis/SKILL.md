@@ -54,6 +54,38 @@ Use project-specific signals and metrics where available:
 5. Route one next action: tune a registered knob, add logging, fix the model
    structure, strengthen the scenario, or rerun `ai-in-loop`.
 
+## Causal Evidence Bridge
+
+When a long baseline reveals a low-frequency or cross-timescale candidate, do
+not jump straight to tuning. First decide whether the record length is enough to
+estimate the dominant band and damping. If not, extend the unchanged baseline
+without changing plant, device, or controller parameters.
+
+After the unchanged baseline is long enough, bridge causality with a
+single-factor perturbation:
+
+- control/reference-side injection for PLL or converter-control candidates;
+- mechanical power, load, or fault-clearance perturbation for synchronous
+  electromechanical candidates;
+- wind-speed step/ramp or DFIG reference perturbation for wind-unit candidates.
+
+Do not combine line-parameter changes, wind-speed changes, synchronous machine
+speed changes, and controller-gain changes in the same first causal test. A
+combined study is allowed only after single-factor signatures are separated.
+
+## Scientific Qualification
+
+Read
+`../simulink-modeling-assistant/references/current-simulation-experience.md`
+before comparing stages or declaring a mode absent.
+
+- Qualify the pre-event operating point before interpreting band presence.
+- Preserve per-signal native time vectors and align them explicitly.
+- Derive frequency resolution from the selected window.
+- If either stage lacks a separable band, suppress frequency-shift language.
+- State "not observed in this qualified record"; require model-based modal
+  evidence before claiming structural absence.
+
 ## Output
 
 Write compact notes into the current report when the analysis is part of an
