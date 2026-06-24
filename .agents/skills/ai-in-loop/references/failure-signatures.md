@@ -166,6 +166,34 @@ When adding FS-009+, include: ID, symptom, evidence path, likely cause, auto-fix
 - **Jump to**: observability adapter and analysis input normalization.
 - **Observed**: 2026-06-18, 4M2A R1 long-run bundle analysis.
 
+## FS-028 Ambient-masked ringdown promoted to damping evidence
+
+- **Symptom**: a persistent spectral line appears in no-injection/null windows,
+  but a flat or non-decaying ringdown is interpreted as low damping, stable
+  damping, or S6 authorization.
+- **Likely cause**: the free-decay record never rises above the ambient floor;
+  estimator disagreement or near-zero fits are being treated as physics.
+- **Auto-fix**: mark damping `UNIDENTIFIABLE_AMBIENT_MASKED`, preserve the causal
+  FRF result separately, and close or escalate the branch. Do not repeat the
+  same authorized-amplitude ringdown/broadband class without new authority.
+- **Jump to**: `small-signal-modal-analysis` / `power-electronics-tuning`
+  authority decision; no S6 parameter write.
+- **Observed**: 2026-06-23, IEEE39 T1RD45 1.6333 Hz ambient line.
+
+## FS-029 Modal identity inferred from frequency coincidence
+
+- **Symptom**: a hand estimate or dlinmod mode near the target frequency is
+  treated as the same physical mode without sensitivity or participation proof.
+- **Likely cause**: frequency proximity is being used as a substitute for modal
+  identity evidence.
+- **Auto-fix**: require parameter sensitivity, named-state participation, or a
+  controlled source-disable bridge. For shaft/torsional claims, reject the
+  classification if Ksh perturbations do not follow the expected monotonic
+  square-root trend.
+- **Jump to**: `small-signal-modal-analysis`; do not tune against the unproven
+  owner.
+- **Observed**: 2026-06-24, IEEE39 T1AMBSRC Tier-1 shaft-sensitivity rejection.
+
 ## FS-009 DFIG `wpll` long-time below 1.0, not converging
 
 - **Symptom**: PLL angular frequency stuck below the system base.

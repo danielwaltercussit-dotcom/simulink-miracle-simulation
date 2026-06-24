@@ -128,3 +128,27 @@ Avoid:
 - treating non-observation as proof of physical absence;
 - treating a sudden memory drop as optimization before checking process exit and
   Windows crash evidence.
+
+## 8. Ambient-masked tuning and modal identity
+
+For S6/tuning decisions, causal confirmation alone is not enough. A confirmed
+FRF resonance remains non-tunable when damping is ambient-masked or the owner is
+not proven converter-gain-tunable.
+
+Use the following gates:
+
+- If the target spectral line is already strong in a no-injection/null window,
+  classify it as ambient until a controlled record rises above that floor.
+- Do not fit damping to a flat envelope at the ambient floor. Near-zero zeta
+  from Prony/Hilbert disagreement or a non-decaying envelope is unidentifiable,
+  not proof of low damping.
+- Do not repeat the same authorized-amplitude ringdown or broadband class when
+  it cannot separate the line from ambient content. Escalate to an explicit
+  authority decision or close the branch.
+- A persistent ambient line does not authorize S6. To reopen tuning require all
+  of: explicit physical source identity, a converter-gain-tunable owner, and a
+  non-ambient-masked damping estimate below threshold.
+- Do not claim modal identity from near-frequency coincidence. Require parameter
+  sensitivity, named-state participation, or another physical identity bridge.
+  For shaft/torsional claims, frequency should respond to shaft stiffness with
+  the expected trend; a Ksh-insensitive mode is not a shaft mode.
