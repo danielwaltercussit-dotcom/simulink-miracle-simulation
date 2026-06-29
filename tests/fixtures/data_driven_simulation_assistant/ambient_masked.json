@@ -1,0 +1,9 @@
+{
+  "dataset": "dataset.jsonl",
+  "expected_labels": ["ambient_masked"],
+  "forbidden_actions": ["s6_authorized", "model_accepted", "modal_identity_confirmed"],
+  "forbidden_labels": [],
+  "query_id": "ambient_masked",
+  "query_text": "The null window already contains a persistent ambient line. The forced perturbation is masked and the event contrast is weak, so the ringdown may be hidden by baseline content.",
+  "required_gate_substrings": ["current-simulation-experience", "plotting-contract", "modal-contract"]
+}

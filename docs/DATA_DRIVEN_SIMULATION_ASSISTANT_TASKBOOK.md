@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P1_SKILL_SKELETON_READY`
+Status: `P4_EVAL_HARNESS_READY`
 
 ## 0. Purpose
 
@@ -351,7 +351,7 @@ Future commands to add when scripts exist:
 python scripts/ml/build_simulation_experience_dataset.py --help
 python scripts/ml/suggest_simulation_diagnosis.py --fixture tests/fixtures/data_driven_simulation_assistant/ambient_masked.json
 python scripts/ml/evaluate_simulation_assistant.py --fixtures tests/fixtures/data_driven_simulation_assistant
-python -m pytest tests/data_driven_simulation_assistant_test.py
+python tests/data_driven_simulation_assistant_test.py
 ```
 
 On this Windows host, system Python may be missing. Use the Codex runtime Python
@@ -363,9 +363,9 @@ from `codex_app.load_workspace_dependencies` when needed.
 |---|---|---|---|---|---|
 | P0 Taskbook/setup | completed | Codex | `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | `git diff --check` PASS; structure check PASS | Start P1 skill skeleton |
 | P1 Skill skeleton | completed | Codex | `.agents/skills/data-driven-simulation-assistant/SKILL.md`; `.agents/skills/data-driven-simulation-assistant/references/assistant-contract.md`; `.agents/skills/data-driven-simulation-assistant/references/label-taxonomy.md`; `.agents/skills/data-driven-simulation-assistant/references/dataset-schema.md`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | `git diff --check` PASS; frontmatter validation PASS; JSON examples parse; authority scan reviewed | Start P2 dataset builder |
-| P2 Dataset builder | pending | unassigned | none | none | Define schema and extractor |
-| P3 Retrieval baseline | pending | unassigned | none | none | Implement transparent baseline |
-| P4 Evaluation harness | pending | unassigned | none | none | Add fixture-driven safety metrics |
+| P2 Dataset builder | completed | Codex | `scripts/ml/build_simulation_experience_dataset.py`; `scripts/ml/simulation_assistant_lib.py`; `tests/fixtures/data_driven_simulation_assistant/dataset.jsonl`; `tests/data_driven_simulation_assistant_test.py` | builder help PASS; real builder wrote 15 labeled records under ignored `build/ml/`; schema unittest PASS | Start P5 only after reviewing P3/P4 metrics |
+| P3 Retrieval baseline | completed | Codex | `scripts/ml/suggest_simulation_diagnosis.py`; `scripts/ml/simulation_assistant_lib.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | five fixtures top1/top3 PASS; forbidden phrase scan over scripts/fixtures clean | Feed P4 evaluation metrics |
+| P4 Evaluation harness | completed | Codex | `scripts/ml/evaluate_simulation_assistant.py`; `tests/data_driven_simulation_assistant_test.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | offline evaluation PASS: top1=1.0, top3=1.0, forbidden_action_violations=0, missing_gate_violations=0; unittest PASS | Plan P5 CPU-friendly prototype |
 | P5 Neural prototype | pending | unassigned | none | none | Train only after P3/P4 pass |
 | P6 Experiment suggestion | pending | unassigned | none | none | Add advisory planner |
 | P7 Skill integration | pending | unassigned | none | none | Add routing notes |
@@ -412,6 +412,37 @@ Status vocabulary:
 - Blockers/risks: no scripts or neural model implemented yet; P2 must add a
   deterministic no-training dataset builder before any neural prototype.
 - Next action: implement P2 dataset schema enforcement and text-only builder.
+
+### 2026-06-29 Codex P2-P4
+
+- Previous-agent review: reviewed P1 commit `87b6549`, the skill skeleton, and
+  all three reference contracts; accepted the advisory-only boundary and kept
+  deterministic gate ownership intact.
+- This-turn changes: implemented the text-only dataset builder, transparent
+  lexical retrieval baseline, offline evaluation harness, shared helper library,
+  five regression fixtures, one schema fixture dataset, and a direct unittest
+  smoke suite.
+- Previous round changed: P1 created the project-local skill contract and
+  marked P2 as the next action; confirmed and advanced only P2-P4 files.
+- Files changed: `scripts/ml/simulation_assistant_lib.py`;
+  `scripts/ml/build_simulation_experience_dataset.py`;
+  `scripts/ml/suggest_simulation_diagnosis.py`;
+  `scripts/ml/evaluate_simulation_assistant.py`;
+  `tests/data_driven_simulation_assistant_test.py`;
+  `tests/fixtures/data_driven_simulation_assistant/dataset.jsonl`;
+  `tests/fixtures/data_driven_simulation_assistant/*.json`;
+  `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: Codex runtime Python ran builder help; real builder wrote 15
+  labeled records to ignored `build/ml/simulation_experience_dataset.jsonl`;
+  fixture evaluation passed with top1=1.0, top3=1.0,
+  forbidden_action_violations=0, missing_gate_violations=0,
+  evidence_path_coverage=1.0; direct unittest passed 4 tests; forbidden phrase
+  scan over `scripts/ml` and committed fixtures had no matches.
+- Blockers/risks: retrieval is intentionally lexical and small-fixture backed;
+  P5 must compare any neural prototype against this baseline and keep it
+  experimental if it does not improve useful recall or calibration.
+- Next action: implement P5 as a CPU-friendly small embedding/classifier
+  prototype under `scripts/ml/train_failure_signature_classifier.py`.
 
 ### Template For Future Agent Entries
 
