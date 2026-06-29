@@ -75,6 +75,7 @@ classify by request type:
   baselines.
 - `references/pattern-rows.md` — compact recipe per M01–M08.
 - `references/layout-cookbook.md` — the 6 layout rules + ASCII templates per topology.
+- `references/agentic-modeling-policy.md` — distilled official SATK, Guy on Simulink, and power-electronics modeling rules. Read this before adding a new modeling workflow, adopting external skill ideas, or changing generic build/debug/layout policy.
 - `references/parameter-cheatsheet.md` — DFIG / SG / MMC / LCC default PI sets.
 - `references/derivation-cookbook.md` — end-to-end recipe to build a new derived model (donor pick, spec, build script, FS-017 prevention, validation gate, AI-summary snapshot). **Read this when user asks for a new derived model.**
 - `docs/MODELING_PATTERN_LIBRARY.md` — full pattern catalogue (load lazily).
@@ -99,6 +100,18 @@ When authoring or reviewing a build script for a derived model, use
 `simulink-device-adapters` before S4 compile so device names, adapter ports,
 InitFcn self-containment, mask introspection, and trace metadata are checked
 as part of S2 rather than discovered after simulation.
+
+Before building or extending a model from generic Simulink blocks, apply the
+official SATK gate distilled in `references/agentic-modeling-policy.md`: honor
+`.satk/reuse-libraries.json`, `.satk/block-policy.json`, and
+`.satk/library-kg/index.md` when present; otherwise do not invent custom
+library preferences, blocked blocks, or protected parameters.
+
+When the symptom is a wrong value at a specific time step, route to
+`simulink-debug-commandline` rather than guessing a structural change. When the
+symptom is compile/update/runtime slowness or solver churn, route to
+`simulink-profile-initialization`, `simulink-profiler-analyzer`, or
+`simulink-solver-profiler-analyzer` before changing model structure.
 
 For replacement studies, do not route directly from compile/smoke to a modal or
 physics verdict. Apply the six gates in

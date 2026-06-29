@@ -1,0 +1,3 @@
+display_name: Analytic FHA / Impedance Derivation
+short_description: Closed-form FHA / impedance Z(jw) derivation with poles, FHA validity band, and time-domain linkage.
+default_prompt: Derive the analytic FHA / impedance transfer function for this converter topology and operating point. Report analytic poles, the FHA validity band (and where the grid leaves it), negative-resistance bands, and the required time-domain confirmation run. Do not claim instability or hardware validation from an analytic derivation alone; mark it provisional if topology, operating point, units, or the FHA bound are undocumented.

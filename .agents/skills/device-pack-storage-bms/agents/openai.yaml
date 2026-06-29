@@ -1,0 +1,3 @@
+display_name: Storage / Battery / BMS Device Support
+short_description: Battery/BMS, bidirectional converter, SOC/SOH, thermal, protection, and grid-support evidence — kept distinct from generic DC-link converter evidence.
+default_prompt: Review this battery energy storage case for documented battery/BMS evidence (SOC/SOH, thermal limits, protection), bidirectional DC-link converter evidence, grid-support mode, and the time-domain/modal/impedance validation route. Keep battery/BMS evidence separate from generic DC-link converter evidence; do not let a constant-DC-source converter run stand in for battery validation, and do not claim hardware validation from declared assumptions alone.

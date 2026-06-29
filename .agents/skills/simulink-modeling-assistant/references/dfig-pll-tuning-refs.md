@@ -42,7 +42,7 @@ Use this only for the rule-driven first kick. Refine with a sim.
 4. [Grid-Synchronization Stability Analysis for Multi DFIGs Connected in Parallel to Weak AC Grids](https://pdfs.semanticscholar.org/be1f/610be4447529214a8f2c1aeedfa26fa32f8d.pdf)
 5. [Wind SSO (USF, 2019)](http://power.eng.usf.edu/docs/papers/2019/wind_SSO.pdf) — sub-synchronous oscillation analysis.
 6. [Parameter Setting Strategy for the Controller of the DFIG Wind Turbine](https://ieeexplore.ieee.org/ielx7/6287639/8948470/08993816.pdf) — IEEE. Direct setting recipe.
-7. Project's own [modeling-pattern-library M01](C:\Users\jonas\Desktop\simulink_agent_v1\docs\MODELING_PATTERN_LIBRARY.md) — `kp_pll = 60, ki_pll = 1400` is the **strong-grid default**.
+7. Project's own `docs/MODELING_PATTERN_LIBRARY.md` M01 row — `kp_pll = 60, ki_pll = 1400` is the **strong-grid default**.
 8. Project's own [pattern-rows M03](pattern-rows.md) — `Copll = 0.5, Covol = 0.8` are oscillation-study amplifiers; do **not** use for normal grid stability.
 
 ## What FS-009 should fix

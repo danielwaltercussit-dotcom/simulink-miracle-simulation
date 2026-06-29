@@ -174,7 +174,7 @@ After in-project sim PASS but **before** copying to AI summary, run:
 ```bash
 "/d/Program Files/MATLAB/R2024b/bin/matlab.exe" -batch "
   restoredefaultpath;  % clear ALL project paths
-  addpath('C:\Users\jonas\AppData\Roaming\MathWorks\MATLAB Add-Ons\Toolboxes\MATLAB MCP Core Server Toolbox');
+  addpath(fullfile(getenv('APPDATA'),'MathWorks','MATLAB Add-Ons','Toolboxes','MATLAB MCP Core Server Toolbox'));
   load_system('<outPath>');
   set_param('<model>','SimulationCommand','update');
   out = sim('<model>','StopTime','0.005');
@@ -225,9 +225,10 @@ S6/S7/S7B may legitimately SKIP on this model:
 
 ### 9. Snapshot to AI summary folder (after PASS)
 
-Per [[../../../../../../C:/Users/jonas/.claude/projects/C--Users-jonas-Desktop-Claude-demo/memory/ai-summary-snapshot-routine.md]]:
-copy `<model>.slx`, `case_<model>.yaml`, `build_<model>.m`, `<model>_report.md`,
-`<model>_*.png` to `~/Desktop/AI summary of simulation models/<model>/`.
+If the current host or project defines an AI-summary snapshot routine, follow
+that current routine. Otherwise copy `<model>.slx`, `case_<model>.yaml`,
+`build_<model>.m`, `<model>_report.md`, and `<model>_*.png` to
+`fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models',modelName)`.
 Update its README index table.
 
 ## Reference instance: nebus39_dfig1_v0

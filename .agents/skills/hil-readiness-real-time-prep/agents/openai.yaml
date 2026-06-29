@@ -1,0 +1,3 @@
+display_name: HIL / Real-Time Readiness Prep
+short_description: Software-side real-time / HIL readiness gate for power-electronics models before RTDS/OPAL-RT bring-up.
+default_prompt: Assess this model's software-side readiness for real-time / hardware-in-the-loop deployment from a readiness manifest. Classify fixed-step feasibility, algebraic-loop risk, codegen-unsupported blocks, code-generation constraints, subsystem partitioning, I/O mapping placeholders, and per-step latency budget. Separate contract_status from readiness_class and real_time_deployable. Label results software_readiness_only unless real HIL hardware evidence is supplied; never claim hardware-in-the-loop validation from software metadata alone.

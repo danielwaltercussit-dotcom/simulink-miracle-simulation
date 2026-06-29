@@ -7,14 +7,14 @@ description: Use when verifying a derived Simulink or Simscape Electrical power-
 
 This is the project-local verification gate for derived power-electronics /
 converter-interfaced power-system models in
-`C:\Users\jonas\Desktop\simulink_agent_v1`.
+the current repository root.
 
 Use it before saying a model is:
 
 - smoke-ready
 - tuning-ready
 - `sltest` / regression-ready
-- snapshot-ready for `C:\Users\jonas\Desktop\AI summary of simulation models`
+- snapshot-ready for the user's configured AI-summary/export folder
 - AI-in-loop PASS
 
 ## Core Rule
@@ -52,7 +52,7 @@ JSON report (same base name, `.json` extension, or set `ReportJsonPath`
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = pwd;  % run from the repository root
 init_simulink_agent_project
 addpath("scripts/verification")
 r = verify_power_system_model("nebus39_dfig2_weakgrid_v0", ...
@@ -79,11 +79,16 @@ assert(r.checks.control_feedback_polarity)
 1. `verify_power_system_model` for model-level checks.
 2. `testing-simulink-models` for component-level `.feature` / Simulink Test
    harnesses when the model has signal-based Inport/Outport interfaces.
-3. `ai-in-loop` when verification should trigger tuning, diagnosis, reporting,
+3. Official `model_check`, Model Advisor, or Simulink Check compliance review
+   when the task requires structural compliance, custom checks, MAB/JMAAB,
+   ISO 26262, DO-178C, AUTOSAR, or other standards evidence. If the required
+   toolbox is unavailable, record a soft skip instead of pretending compliance
+   passed.
+4. `ai-in-loop` when verification should trigger tuning, diagnosis, reporting,
    and AI summary snapshotting.
-4. `multitimescale-analysis` when a failed or borderline check needs a
+5. `multitimescale-analysis` when a failed or borderline check needs a
    cross-band explanation before choosing tuning or debugging.
-5. `diagnostic-plotting` when a failed or borderline check needs waveform
+6. `diagnostic-plotting` when a failed or borderline check needs waveform
    evidence before routing the next fix.
 
 ## What The Helper Checks
@@ -95,6 +100,8 @@ assert(r.checks.control_feedback_polarity)
 - numeric logged outputs contain no NaN/Inf
 - root canvas has no overlapping blocks when `ai_in_loop_count_overlap` is on path
 - declared feedback-polarity contracts pass when `ControlFeedbackContracts` is supplied
+- SATK `model_check` or available compliance tooling is run when the request or
+  project gate requires compliance evidence
 - InitFcn is non-empty or contains self-contained aliases such as `Ts` / `Tsample`
 - a Markdown report is written when `ReportPath` is supplied
 

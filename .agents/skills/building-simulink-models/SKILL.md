@@ -9,7 +9,8 @@ metadata:
 
 # Building Models
 
-Use `model_edit` for Simulink, System Composer, and Simscape models (structural changes and parameter configuration). For Stateflow chart internals, use `evaluate_matlab_code` with the Stateflow API (see below).
+Use `model_edit` for structural changes and parameter configuration in
+Simulink, System Composer, Simscape, and Stateflow chart internals.
 
 ## When to Use
 
@@ -24,14 +25,34 @@ Use `model_edit` for Simulink, System Composer, and Simscape models (structural 
 - Querying parameter values → use `model_query_params`
 - Resolving variable references to numeric values → use `model_resolve_params`
 
+## Library & Policy Prerequisites
+
+Before creating or extending a model, check the project-local SATK policy
+files if they exist:
+
+- `.satk/reuse-libraries.json`
+- `.satk/block-policy.json`
+- `.satk/library-kg/index.md`
+
+If all three exist, use them as a hard constraint for block selection. If
+`.satk/reuse-libraries.json` exists with `confirmedNone: true`, built-in block
+selection is allowed and the policy/KG files are not required. If the files are
+missing, do not invent custom library policy; ask the user before creating or
+assuming reusable libraries, blocked blocks, protected parameters, or a library
+knowledge index.
+
 ## Workflow
 
+0. **Policy gate:** Apply the Library & Policy prerequisites above.
 1. **Read first:** Use `model_read` on the target scope to get block IDs and understand existing topology.
-2. **Plan the data flow:** For complex edits, sketch inputs → operations → outputs, then map to blocks.
+2. **Plan the data flow:** For complex edits, sketch inputs → operations → outputs, then map to blocks and any approved library entries.
 3. **Edit:** Use `model_edit` with operations scoped to one subsystem level at a time.
 4. **Verify:** Use `model_read` on the scope to confirm the structure matches your intent.
+5. **Check connectivity:** Run `model_check` after structural edits in a scope and fix error-severity unconnected ports, dangling lines, or edit-time check findings before claiming the edit is complete.
 
-**CRITICAL:** If `model_edit` returns `status: partial`, run `model_read` immediately to determine if corrective action is needed.
+**CRITICAL:** If `model_edit` returns `status: partial`, run both `model_read`
+and `model_check` immediately to determine what was created and what must be
+repaired.
 
 ## Operation Chaining with `ref`
 
@@ -43,6 +64,9 @@ Use `ref` to name a block and `#ref` to reference it in later operations within 
 ```
 
 The response `created` map shows `ref → blk_id`. In subsequent calls, use the `blk_id` (e.g., `blk_42`) — `#ref` only works within a single call.
+
+In Stateflow scope, `#ref` references are portless; do not append `.y1` or
+`.u1` suffixes to Stateflow state/transition references.
 
 ## Guardrails
 
@@ -56,6 +80,8 @@ The response `created` map shows `ref → blk_id`. In subsequent calls, use the 
   ```
 - Do not call `Simulink.BlockDiagram.arrangeSystem` or use `set_param` for block positioning unless the user explicitly requests it. `model_edit` has a built-in autolayout engine that runs automatically after each call.
 - Always pass `layout_mode` to `model_edit`. Use `"full"` when populating an empty scope (new model root, or a newly-created subsystem) for optimal block arrangement. Use `"incremental"` when adding blocks to a scope that already has existing blocks (preserves existing positions).
+- For project power-system roots, SPS/Simscape electrical one-line diagrams, benchmark busbar views, or any canvas where coordinates carry electrical meaning, follow `simulink-auto-layout-github/references/layout-policy.md`: use deterministic coordinates and never run root-level global `arrangeSystem`.
+- Each `model_edit` call operates in exactly one domain determined by the scope. To add a Chart block and populate its internals, use one Simulink-scope call to add the Chart, read the model to discover the Stateflow scope ID, then use a separate Stateflow-scope call for internals.
 - Use meaningfully named variables (e.g., `Kp_SpeedController`) instead of hardcoded numeric values. Define variables in model workspace or a `.m` init script.
 - Don't use `evaluate_matlab_code` with `set_param`/`add_block` to bypass `model_edit` — it skips autolayout, undo tracking, and error recovery
 - Use `open_system` rather than `load_system` to open models that are not already open, or when creating new models, unless the user explicitly asks otherwise or the model is a library. This ensures the user can see live edits as they happen.

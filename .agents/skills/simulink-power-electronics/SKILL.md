@@ -101,6 +101,15 @@ block paths, logged signals, simulations, and numeric checks.
 - Validate before success: update diagram, run the minimum relevant
   simulation, compare plant-side gates, check legal switch states, and report
   numeric results.
+- Keep validation claims tiered. `opened` means the model file was accessible;
+  `compiled` means update diagram passed; `simulated` means `sim` completed for
+  the stated stop time; `measured` means relevant plant/control signals were
+  logged or numerically checked. Do not upgrade a claim across tiers without
+  evidence.
+- If a waveform, gate, or control defect appears at a specific time step, route
+  to `simulink-debug-commandline` / `sldebug` before making speculative
+  topology edits. If the issue is solver resets, zero crossings, algebraic
+  loops, or stiffness, route to `simulink-solver-profiler-analyzer`.
 - Ask for missing model data, logs, or GUI state when available tools cannot
   access them.
 

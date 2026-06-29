@@ -1,0 +1,3 @@
+display_name: MMC / HVDC Device Pack
+short_description: Connect MMC/HVDC station assumptions to validation evidence.
+default_prompt: Build or audit an MMC/HVDC converter-station evidence package covering submodule type, arm energy, circulating-current control, DC-link dynamics, AC/DC fault handling, control mode, and model fidelity, with explicit PASS/WARN/MISSING status.
