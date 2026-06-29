@@ -101,6 +101,38 @@ class DataDrivenSimulationAssistantTest(unittest.TestCase):
             self.assertEqual(payload["forbidden_action_violations"], 0)
             self.assertEqual(payload["missing_gate_violations"], 0)
 
+    def test_cpu_neural_classifier_prototype_compares_against_baseline(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_dir = Path(temp_dir) / "models"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "train_failure_signature_classifier.py"),
+                    "--dataset",
+                    str(FIXTURES / "dataset.jsonl"),
+                    "--fixtures",
+                    str(FIXTURES),
+                    "--model-dir",
+                    str(model_dir),
+                    "--epochs",
+                    "500",
+                ],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["model"]["type"], "hashed_bow_numpy_mlp")
+            self.assertEqual(payload["classifier"]["top3_label_hit"], 1.0)
+            self.assertGreaterEqual(payload["classifier"]["confidence_gain_cases"], 1)
+            self.assertEqual(payload["forbidden_action_violations"], 0)
+            self.assertEqual(payload["missing_gate_violations"], 0)
+            self.assertTrue((model_dir / "failure_signature_classifier_model.json").exists())
+            for case in payload["cases"]:
+                self.assertEqual(case["classifier_result"]["status"], "advisory_needs_gate")
+                self.assertTrue(case["classifier_result"]["required_gates"])
+
 
 if __name__ == "__main__":
     unittest.main()

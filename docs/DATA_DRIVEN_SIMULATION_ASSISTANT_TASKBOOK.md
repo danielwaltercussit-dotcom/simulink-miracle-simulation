@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P4_EVAL_HARNESS_READY`
+Status: `P5_NEURAL_PROTOTYPE_READY`
 
 ## 0. Purpose
 
@@ -351,6 +351,7 @@ Future commands to add when scripts exist:
 python scripts/ml/build_simulation_experience_dataset.py --help
 python scripts/ml/suggest_simulation_diagnosis.py --fixture tests/fixtures/data_driven_simulation_assistant/ambient_masked.json
 python scripts/ml/evaluate_simulation_assistant.py --fixtures tests/fixtures/data_driven_simulation_assistant
+python scripts/ml/train_failure_signature_classifier.py --dataset tests/fixtures/data_driven_simulation_assistant/dataset.jsonl --fixtures tests/fixtures/data_driven_simulation_assistant
 python tests/data_driven_simulation_assistant_test.py
 ```
 
@@ -366,7 +367,7 @@ from `codex_app.load_workspace_dependencies` when needed.
 | P2 Dataset builder | completed | Codex | `scripts/ml/build_simulation_experience_dataset.py`; `scripts/ml/simulation_assistant_lib.py`; `tests/fixtures/data_driven_simulation_assistant/dataset.jsonl`; `tests/data_driven_simulation_assistant_test.py` | builder help PASS; real builder wrote 15 labeled records under ignored `build/ml/`; schema unittest PASS | Start P5 only after reviewing P3/P4 metrics |
 | P3 Retrieval baseline | completed | Codex | `scripts/ml/suggest_simulation_diagnosis.py`; `scripts/ml/simulation_assistant_lib.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | five fixtures top1/top3 PASS; forbidden phrase scan over scripts/fixtures clean | Feed P4 evaluation metrics |
 | P4 Evaluation harness | completed | Codex | `scripts/ml/evaluate_simulation_assistant.py`; `tests/data_driven_simulation_assistant_test.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | offline evaluation PASS: top1=1.0, top3=1.0, forbidden_action_violations=0, missing_gate_violations=0; unittest PASS | Plan P5 CPU-friendly prototype |
-| P5 Neural prototype | pending | unassigned | none | none | Train only after P3/P4 pass |
+| P5 Neural prototype | completed | Codex | `scripts/ml/train_failure_signature_classifier.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | CPU NumPy MLP PASS: loss 1.155387 -> 0.001763; baseline top3=1.0; classifier top3=1.0; confidence_gain_cases=5; forbidden_action_violations=0; missing_gate_violations=0; artifacts ignored under `build/ml/models/` | Start P6 experiment suggestion planner |
 | P6 Experiment suggestion | pending | unassigned | none | none | Add advisory planner |
 | P7 Skill integration | pending | unassigned | none | none | Add routing notes |
 | P8 Publish | pending | unassigned | none | none | Validate, commit, push when ready |
@@ -443,6 +444,31 @@ Status vocabulary:
   experimental if it does not improve useful recall or calibration.
 - Next action: implement P5 as a CPU-friendly small embedding/classifier
   prototype under `scripts/ml/train_failure_signature_classifier.py`.
+
+### 2026-06-29 Codex P5
+
+- Previous-agent review: reviewed P2-P4 commit `f0efdc3`, the dataset schema,
+  retrieval baseline, evaluation harness, and fixture metrics; accepted that
+  P3/P4 were passing before training.
+- This-turn changes: added a CPU-friendly NumPy hashed bag-of-words plus
+  one-hidden-layer MLP classifier prototype; it trains from JSONL explicit
+  labels, emits advisory JSON with deterministic gates, saves ignored artifacts
+  under `build/ml/models/`, and compares itself against the P3 retrieval
+  baseline.
+- Previous round changed: P2-P4 established the no-training baseline and
+  offline safety metrics; confirmed and used those fixtures unchanged.
+- Files changed: `scripts/ml/train_failure_signature_classifier.py`;
+  `tests/data_driven_simulation_assistant_test.py`;
+  `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: Codex runtime Python trained the prototype with loss 1.155387 ->
+  0.001763; baseline top1/top3=1.0/1.0; classifier top1/top3=1.0/1.0;
+  confidence_gain_cases=5; forbidden_action_violations=0;
+  missing_gate_violations=0; direct unittest passed 5 tests.
+- Blockers/risks: fixture set is intentionally tiny, so the classifier is
+  eligible for P7 review but is not auto-routed from the skill; any production
+  route still needs broader fixtures and human/Codex review.
+- Next action: implement P6 experiment-point suggestion without auto-launching
+  simulations.
 
 ### Template For Future Agent Entries
 
