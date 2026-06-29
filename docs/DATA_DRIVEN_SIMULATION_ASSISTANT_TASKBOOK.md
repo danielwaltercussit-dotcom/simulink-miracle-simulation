@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P0_TASKBOOK_READY`
+Status: `P1_SKILL_SKELETON_READY`
 
 ## 0. Purpose
 
@@ -362,7 +362,7 @@ from `codex_app.load_workspace_dependencies` when needed.
 | Phase | Status | Owner | Last changed files | Validation | Next action |
 |---|---|---|---|---|---|
 | P0 Taskbook/setup | completed | Codex | `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | `git diff --check` PASS; structure check PASS | Start P1 skill skeleton |
-| P1 Skill skeleton | pending | unassigned | none | none | Create skill and references |
+| P1 Skill skeleton | completed | Codex | `.agents/skills/data-driven-simulation-assistant/SKILL.md`; `.agents/skills/data-driven-simulation-assistant/references/assistant-contract.md`; `.agents/skills/data-driven-simulation-assistant/references/label-taxonomy.md`; `.agents/skills/data-driven-simulation-assistant/references/dataset-schema.md`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | `git diff --check` PASS; frontmatter validation PASS; JSON examples parse; authority scan reviewed | Start P2 dataset builder |
 | P2 Dataset builder | pending | unassigned | none | none | Define schema and extractor |
 | P3 Retrieval baseline | pending | unassigned | none | none | Implement transparent baseline |
 | P4 Evaluation harness | pending | unassigned | none | none | Add fixture-driven safety metrics |
@@ -390,6 +390,28 @@ Status vocabulary:
   change tracking, and deterministic-gate boundaries.
 - Next action: implement P1 skill skeleton and update this taskbook before
   handoff.
+
+### 2026-06-29 Codex P1
+
+- Previous-agent review: reviewed `ad31603` and the P0 Agent Log; confirmed the
+  dedicated branch/worktree excludes primary-worktree dirty skill and `.claude/`
+  state.
+- This-turn changes: created the project-local data-driven simulation assistant
+  skill skeleton and three reference contracts for advisory behavior, label
+  taxonomy, and dataset schema.
+- Previous round changed: P0 created the branch taskbook and handoff protocol;
+  confirmed and kept that structure unchanged except for P1 status updates.
+- Files changed: `.agents/skills/data-driven-simulation-assistant/SKILL.md`;
+  `.agents/skills/data-driven-simulation-assistant/references/assistant-contract.md`;
+  `.agents/skills/data-driven-simulation-assistant/references/label-taxonomy.md`;
+  `.agents/skills/data-driven-simulation-assistant/references/dataset-schema.md`;
+  `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: `git diff --check` PASS; project-local skill frontmatter
+  validation PASS; advisory JSON examples parsed with `ConvertFrom-Json`;
+  authority scan found only forbidden/routing/candidate-only wording.
+- Blockers/risks: no scripts or neural model implemented yet; P2 must add a
+  deterministic no-training dataset builder before any neural prototype.
+- Next action: implement P2 dataset schema enforcement and text-only builder.
 
 ### Template For Future Agent Entries
 
