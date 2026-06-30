@@ -36,6 +36,14 @@ Treat the desktop lab archive as read-only ground truth. Especially useful:
 6. Route tuning or scenario work only after identifying the dominant state
    group and frequency band.
 
+## Data-Driven Assistant Routing
+
+Use `data-driven-simulation-assistant` only for candidate retrieval of similar
+text reports, candidate modal-uncertainty labels, or candidate evidence gaps.
+The deterministic modal contract owns final modal identity, damping
+interpretation, participation claims, and any route toward tuning or scenario
+changes.
+
 ## Helper
 
 Use the project helper when you already have a numeric state matrix:

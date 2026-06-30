@@ -93,6 +93,16 @@ Additional research-routing skills:
 - Use `ibr-model-validation-evidence` when the output is a reusable model
   package rather than a one-off smoke simulation.
 
+Data-driven assistant routing:
+
+- Use `data-driven-simulation-assistant` only for candidate retrieval,
+  candidate failure labels, missing-gate hints, or advisory experiment
+  suggestions from prior text reports.
+- The deterministic modeling, simulation, modal, tuning, regression, and
+  verification gates own final decisions; data-driven output is never model
+  acceptance, modal identity, source identity, tuning direction, or run-launch
+  authority.
+
 ## Stage Routing
 
 When authoring or reviewing a build script for a derived model, use

@@ -9,6 +9,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "scripts" / "ml"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "data_driven_simulation_assistant"
+P7_TARGET_SKILLS = [
+    "simulink-modeling-assistant",
+    "ai-in-loop",
+    "small-signal-modal-analysis",
+    "power-electronics-tuning",
+    "baseline-regression",
+]
 
 sys.path.insert(0, str(SCRIPTS))
 
@@ -180,6 +187,22 @@ class DataDrivenSimulationAssistantTest(unittest.TestCase):
                 self.assertIn(term, proposed, fixture_name)
             for term in rejected_terms:
                 self.assertNotIn(term, proposed, fixture_name)
+
+    def test_p7_skill_routing_notes_keep_assistant_advisory(self):
+        forbidden_phrases = [
+            "assistant can authorize",
+            "assistant authorizes",
+            "data-driven output authorizes",
+            "data-driven assistant authorizes",
+        ]
+        for skill_name in P7_TARGET_SKILLS:
+            path = REPO_ROOT / ".agents" / "skills" / skill_name / "SKILL.md"
+            text = path.read_text(encoding="utf-8").lower()
+            self.assertIn("data-driven-simulation-assistant", text, skill_name)
+            self.assertIn("candidate retrieval", text, skill_name)
+            self.assertIn("deterministic", text, skill_name)
+            for phrase in forbidden_phrases:
+                self.assertNotIn(phrase, text, skill_name)
 
 
 if __name__ == "__main__":

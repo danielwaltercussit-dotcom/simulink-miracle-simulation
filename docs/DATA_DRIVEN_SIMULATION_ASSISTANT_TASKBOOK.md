@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P6_EXPERIMENT_SUGGESTION_READY`
+Status: `P7_SKILL_INTEGRATION_READY`
 
 ## 0. Purpose
 
@@ -370,7 +370,7 @@ from `codex_app.load_workspace_dependencies` when needed.
 | P4 Evaluation harness | completed | Codex | `scripts/ml/evaluate_simulation_assistant.py`; `tests/data_driven_simulation_assistant_test.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | offline evaluation PASS: top1=1.0, top3=1.0, forbidden_action_violations=0, missing_gate_violations=0; unittest PASS | Plan P5 CPU-friendly prototype |
 | P5 Neural prototype | completed | Codex | `scripts/ml/train_failure_signature_classifier.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | CPU NumPy MLP PASS: loss 1.155387 -> 0.001763; baseline top3=1.0; classifier top3=1.0; confidence_gain_cases=5; forbidden_action_violations=0; missing_gate_violations=0; artifacts ignored under `build/ml/models/` | Start P6 experiment suggestion planner |
 | P6 Experiment suggestion | completed | Codex | `scripts/ml/simulation_assistant_lib.py`; `scripts/ml/suggest_simulation_diagnosis.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | P6 suggestion mode PASS for ambient-masked, memory-unbounded, and modal-identity fixtures; unittest PASS 6 tests; no auto-launch in contracts | Start P7 skill integration |
-| P7 Skill integration | pending | unassigned | none | none | Add routing notes |
+| P7 Skill integration | completed | Codex | `.agents/skills/simulink-modeling-assistant/SKILL.md`; `.agents/skills/ai-in-loop/SKILL.md`; `.agents/skills/small-signal-modal-analysis/SKILL.md`; `.agents/skills/power-electronics-tuning/SKILL.md`; `.agents/skills/baseline-regression/SKILL.md`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | routing-note unittest PASS 7 tests; target skill frontmatter validation PASS; authority scan no matches | Start P8 review, commit, publish prep |
 | P8 Publish | pending | unassigned | none | none | Validate, commit, push when ready |
 
 Status vocabulary:
@@ -500,6 +500,36 @@ Status vocabulary:
   notes make the advisory boundary visible in existing skills.
 - Next action: implement P7 routing notes in relevant project-local skills
   without giving this assistant validation or tuning authority.
+
+### 2026-06-30 Codex P7
+
+- Previous-agent review: reviewed P6 commit `aba9521`, the experiment
+  suggestion mode, P6 Agent Log, and P7 requirements; confirmed the assistant
+  still does not auto-launch MATLAB or simulations.
+- This-turn changes: added concise `data-driven-simulation-assistant` routing
+  notes to `simulink-modeling-assistant`, `ai-in-loop`,
+  `small-signal-modal-analysis`, `power-electronics-tuning`, and
+  `baseline-regression`; added a unittest that checks each target skill keeps
+  the assistant advisory and mentions candidate retrieval plus deterministic
+  gates.
+- Previous round changed: P6 created advisory experiment contracts and pointed
+  to P7 integration; confirmed and changed only project-local skill routing
+  notes, the P7 test, and this taskbook.
+- Files changed: `.agents/skills/simulink-modeling-assistant/SKILL.md`;
+  `.agents/skills/ai-in-loop/SKILL.md`;
+  `.agents/skills/small-signal-modal-analysis/SKILL.md`;
+  `.agents/skills/power-electronics-tuning/SKILL.md`;
+  `.agents/skills/baseline-regression/SKILL.md`;
+  `tests/data_driven_simulation_assistant_test.py`;
+  `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: direct unittest passed 7 tests; target skill frontmatter
+  validation passed; authority scan for assistant authorization, data-driven
+  final-decision ownership, data-driven PASS, and data-driven S6-write wording
+  had no matches.
+- Blockers/risks: P7 adds routing notes only; P8 still needs full branch review,
+  staged secret scan, final validation, and push only when requested or at a
+  publish checkpoint.
+- Next action: run P8 review/validation and prepare the branch for publishing.
 
 ### Template For Future Agent Entries
 

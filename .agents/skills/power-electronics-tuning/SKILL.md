@@ -62,3 +62,11 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
   rejected candidates, and non-converged tuning.
 - Treat the experience library as reviewed guidance, not authorization to skip
   model-specific T0/T1 evidence or immutable-boundary checks.
+
+## Data-Driven Assistant Routing
+
+Use `data-driven-simulation-assistant` only for candidate retrieval, candidate
+failure labels, missing-gate hints, or advisory experiment suggestions before a
+tuning decision. The deterministic tuning contract, S6 registry, baseline
+evidence, rollback policy, and live metrics own final knob selection,
+direction, acceptance, and write permission.

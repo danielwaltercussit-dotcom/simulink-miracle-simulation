@@ -108,6 +108,15 @@ S3 now includes a model quality / layout gate. `ai_in_loop_stage_layout` runs
 | S9 | this skill | `diagnostic-plotting` for logsout figures and `figure_manifest.json` |
 | S10 | this skill + `snapshot-auditor` | `snapshot-auditor` for copied package completeness before handoff; `ibr-model-validation-evidence` for handoff-ready plant/model credibility packages |
 
+Data-driven assistant routing:
+
+- Use `data-driven-simulation-assistant` in S8/S9 only for candidate retrieval,
+  candidate failure labels, missing-gate hints, or advisory experiment
+  suggestions from reviewed text artifacts.
+- The AI-in-loop state machine and deterministic project gates own final
+  `PASS`/`FAIL`, S6 write permission, modal identity, validation evidence, and
+  run-launch decisions; data-driven output is never a stop-condition override.
+
 For S9 report figures, use `diagnostic-plotting` when smoke, tuning, scenario,
 or regression evidence needs waveform plots beyond the root `top.png` layout
 screenshot. Use `snapshot-auditor` before treating a copied AI summary package
