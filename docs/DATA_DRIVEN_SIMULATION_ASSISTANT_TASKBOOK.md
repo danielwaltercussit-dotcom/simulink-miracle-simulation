@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P7_SKILL_INTEGRATION_READY`
+Status: `P8_PUBLISH_READY`
 
 ## 0. Purpose
 
@@ -371,7 +371,7 @@ from `codex_app.load_workspace_dependencies` when needed.
 | P5 Neural prototype | completed | Codex | `scripts/ml/train_failure_signature_classifier.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | CPU NumPy MLP PASS: loss 1.155387 -> 0.001763; baseline top3=1.0; classifier top3=1.0; confidence_gain_cases=5; forbidden_action_violations=0; missing_gate_violations=0; artifacts ignored under `build/ml/models/` | Start P6 experiment suggestion planner |
 | P6 Experiment suggestion | completed | Codex | `scripts/ml/simulation_assistant_lib.py`; `scripts/ml/suggest_simulation_diagnosis.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | P6 suggestion mode PASS for ambient-masked, memory-unbounded, and modal-identity fixtures; unittest PASS 6 tests; no auto-launch in contracts | Start P7 skill integration |
 | P7 Skill integration | completed | Codex | `.agents/skills/simulink-modeling-assistant/SKILL.md`; `.agents/skills/ai-in-loop/SKILL.md`; `.agents/skills/small-signal-modal-analysis/SKILL.md`; `.agents/skills/power-electronics-tuning/SKILL.md`; `.agents/skills/baseline-regression/SKILL.md`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | routing-note unittest PASS 7 tests; target skill frontmatter validation PASS; authority scan no matches | Start P8 review, commit, publish prep |
-| P8 Publish | pending | unassigned | none | none | Validate, commit, push when ready |
+| P8 Publish | completed | Codex | `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | full unittest PASS 7 tests; schema/retrieval/P6/evaluation/neural smoke PASS; `git diff --check` PASS; branch file list excludes `.claude/` and submodule internals; staged secret scan PASS | Push P8 commit to `origin/feature/data-driven-simulation-assistant` |
 
 Status vocabulary:
 `pending`, `in-progress`, `needs-review`, `needs-rework`, `blocked`,
@@ -530,6 +530,31 @@ Status vocabulary:
   staged secret scan, final validation, and push only when requested or at a
   publish checkpoint.
 - Next action: run P8 review/validation and prepare the branch for publishing.
+
+### 2026-06-30 Codex P8
+
+- Previous-agent review: reviewed P7 commit `8a3746b`, the five target skill
+  routing notes, P7 Agent Log, and the clean worktree state; confirmed P7 kept
+  the data-driven assistant advisory.
+- This-turn changes: performed final branch validation and updated this
+  taskbook for the publish checkpoint.
+- Previous round changed: P7 integrated advisory routing notes into existing
+  project-local skills; confirmed and left those skill files unchanged.
+- Files changed: `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: direct unittest passed 7 tests; dataset builder help passed; real
+  builder wrote 16 labeled records to ignored `build/ml/p8_simulation_experience_dataset.jsonl`;
+  retrieval fixture smoke passed; P6 experiment-suggestion smoke passed with
+  `auto_launch=false`; offline evaluation passed with top1=1.0, top3=1.0,
+  forbidden_action_violations=0, missing_gate_violations=0; CPU NumPy neural
+  smoke passed with loss 1.155387 -> 0.001763, confidence_gain_cases=5, and no
+  forbidden or missing-gate violations; `git diff --check` passed; branch file
+  list from `2846615..HEAD` contains only main-repo skill/docs/scripts/tests
+  paths and excludes `.claude/` plus submodule internals; staged secret scan
+  passed before commit.
+- Blockers/risks: generated datasets, reports, and model artifacts remain
+  under ignored `build/`; no large generated artifact is committed.
+- Next action: push this P8 commit to
+  `origin/feature/data-driven-simulation-assistant`.
 
 ### Template For Future Agent Entries
 
