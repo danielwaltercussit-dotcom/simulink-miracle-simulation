@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from simulation_assistant_lib import load_fixture, load_jsonl, suggest_from_records
+from simulation_assistant_lib import load_fixture, load_jsonl, suggest_experiment_contract, suggest_from_records
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,6 +17,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fixture", default="", help="Fixture JSON with query_text and expected labels.")
     parser.add_argument("--query-id", default="query")
     parser.add_argument("--top-k", type=int, default=3)
+    parser.add_argument("--suggest-experiment", action="store_true", help="Attach a P6 advisory experiment contract.")
+    parser.add_argument("--candidate-label", default="", help="Candidate label to plan for; defaults to top candidate.")
+    parser.add_argument("--evidence-gap", action="append", default=[], help="Current evidence gap for experiment planning.")
+    parser.add_argument("--max-runtime-minutes", type=int, default=10)
+    parser.add_argument("--forbidden-action", action="append", default=[], help="Additional forbidden action.")
     return parser.parse_args()
 
 
@@ -46,6 +51,18 @@ def main() -> int:
     query_id, query_text, dataset_path = load_query(args)
     records = load_jsonl(dataset_path)
     result = suggest_from_records(query_text, records, query_id=query_id, top_k=args.top_k)
+    if args.suggest_experiment:
+        candidate_label = args.candidate_label
+        if not candidate_label and result.get("candidates"):
+            candidate_label = result["candidates"][0]["label"]
+        if not candidate_label:
+            raise ValueError("No candidate label available for experiment suggestion.")
+        result["experiment_suggestion"] = suggest_experiment_contract(
+            candidate_label=candidate_label,
+            evidence_gaps=args.evidence_gap,
+            max_runtime_minutes=args.max_runtime_minutes,
+            forbidden_actions=args.forbidden_action,
+        )
     print(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True))
     return 0
 

@@ -525,6 +525,176 @@ def suggest_from_records(
     }
 
 
+def _budget(max_runtime_minutes: int, probe_count: int) -> dict[str, Any]:
+    minutes = max(1, int(max_runtime_minutes))
+    return {
+        "max_runtime_minutes": minutes,
+        "probe_count": probe_count,
+        "per_probe_minutes": max(1, minutes // max(probe_count, 1)),
+        "auto_launch": False,
+        "artifact_root": "build/reports/ml/experiment_suggestions/",
+    }
+
+
+def suggest_experiment_contract(
+    candidate_label: str,
+    evidence_gaps: Iterable[str] | None = None,
+    max_runtime_minutes: int = 10,
+    forbidden_actions: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    gaps = [gap for gap in (evidence_gaps or []) if gap]
+    forbidden = list(dict.fromkeys(list(FORBIDDEN_ACTIONS) + list(forbidden_actions or [])))
+    gates = gates_for_candidate_label(candidate_label)
+    common = {
+        "status": "advisory_experiment_contract",
+        "candidate_label": candidate_label,
+        "method": "rule_based_budget_planner",
+        "current_evidence_gaps": gaps,
+        "required_gates": gates,
+        "forbidden_actions": forbidden,
+        "human_review_required": True,
+        "auto_launch": False,
+    }
+
+    if candidate_label == "ambient_masked":
+        return {
+            **common,
+            "proposed_experiment": {
+                "name": "authority_gated_source_isolation_and_evidence_separation",
+                "steps": [
+                    "review source and modal authority gates before changing the perturbation contract",
+                    "separate null-window and event-window evidence with identical logging channels",
+                    "compare isolated-source and normal-source text reports only after gate review",
+                    "escalate to stronger evidence separation only with bounded probe count",
+                ],
+                "disallowed_paths": ["repeat_unseparated_probe", "treat_confidence_as_modal_identity"],
+            },
+            "expected_evidence": [
+                "null-window baseline summary",
+                "event-window contrast summary",
+                "source-isolation gate note",
+                "diagnostic plot manifest path",
+            ],
+            "resource_budget": _budget(max_runtime_minutes, probe_count=2),
+            "stop_conditions": [
+                "required source or modal gate is missing",
+                "event/null contrast remains below review threshold after bounded probes",
+                "runtime budget is exceeded",
+                "memory or artifact growth becomes unbounded",
+            ],
+        }
+
+    if candidate_label == "memory_unbounded":
+        return {
+            **common,
+            "proposed_experiment": {
+                "name": "bounded_memory_probe_with_pid_slope_gate",
+                "steps": [
+                    "run only preflighted bounded probes with fixed StopTime and output manifest",
+                    "sample process PID, RSS, artifact count, and report size before and after each probe",
+                    "compute memory slope and artifact growth slope before approving more evidence gathering",
+                    "prefer shorter probes over a long continuation when slope is unknown",
+                ],
+                "disallowed_paths": ["open_ended_run", "append_without_retention_limit"],
+            },
+            "expected_evidence": [
+                "pid and memory samples",
+                "artifact-count slope",
+                "bounded output manifest",
+                "stop-policy note",
+            ],
+            "resource_budget": _budget(max_runtime_minutes, probe_count=2),
+            "stop_conditions": [
+                "PID or RSS sample is unavailable",
+                "memory slope is positive beyond the review threshold",
+                "artifact count grows without a retention cap",
+                "runtime budget is exceeded",
+            ],
+        }
+
+    if candidate_label == "modal_identity_unproven":
+        return {
+            **common,
+            "proposed_experiment": {
+                "name": "modal_sensitivity_participation_source_disable_review",
+                "steps": [
+                    "collect sensitivity evidence for the claimed frequency family",
+                    "review participation evidence against the modal contract",
+                    "prepare source-disable evidence as a gated comparison plan",
+                    "route any identity claim back to deterministic modal review",
+                ],
+                "disallowed_paths": ["gain_change_before_identity", "frequency_peak_only_promotion"],
+            },
+            "expected_evidence": [
+                "sensitivity summary",
+                "participation-factor summary",
+                "source-disable comparison contract",
+                "modal contract review note",
+            ],
+            "resource_budget": _budget(max_runtime_minutes, probe_count=3),
+            "stop_conditions": [
+                "modal contract evidence is missing",
+                "participation evidence contradicts the candidate",
+                "source-disable comparison cannot be isolated",
+                "runtime budget is exceeded",
+            ],
+        }
+
+    if candidate_label == "control_feedback_polarity_mismatch":
+        return {
+            **common,
+            "proposed_experiment": {
+                "name": "deterministic_polarity_gate_replay",
+                "steps": [
+                    "review derivation sign convention and Simulink wiring endpoints",
+                    "run or inspect the deterministic polarity gate before controller changes",
+                    "compare candidate wiring notes with the derivation cookbook",
+                ],
+                "disallowed_paths": ["gain_change_to_hide_sign_error", "accept_response_without_polarity_gate"],
+            },
+            "expected_evidence": [
+                "derivation sign note",
+                "wiring endpoint note",
+                "polarity gate result",
+            ],
+            "resource_budget": _budget(max_runtime_minutes, probe_count=1),
+            "stop_conditions": [
+                "polarity gate cannot be run or reviewed",
+                "derivation and wiring remain inconsistent",
+                "runtime budget is exceeded",
+            ],
+        }
+
+    return {
+        **common,
+        "proposed_experiment": {
+            "name": "bounded_evidence_gap_review",
+            "steps": [
+                "name the missing deterministic gate",
+                "collect one bounded text-report evidence bundle",
+                "return to human or Codex review before changing model behavior",
+            ],
+            "disallowed_paths": ["auto_launch", "accept_without_gate"],
+        },
+        "expected_evidence": [
+            "evidence-gap summary",
+            "required-gate note",
+            "bounded artifact manifest",
+        ],
+        "resource_budget": _budget(max_runtime_minutes, probe_count=1),
+        "stop_conditions": [
+            "required gate is missing",
+            "runtime budget is exceeded",
+            "evidence remains ambiguous after the bounded probe",
+        ],
+    }
+
+
+def gates_for_candidate_label(candidate_label: str) -> list[str]:
+    rule = next((rule for rule in LABEL_RULES if rule.label == candidate_label), None)
+    return list(rule.required_gates) if rule else []
+
+
 def load_fixture(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)

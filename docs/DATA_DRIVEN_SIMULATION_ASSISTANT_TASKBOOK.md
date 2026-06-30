@@ -4,7 +4,7 @@ Branch: `feature/data-driven-simulation-assistant`
 Worktree: `C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1__data_driven_assistant`
 Base commit: `2846615 docs(skills): summarize ambient-masked tuning lessons`
 Package id: `DATA-DRIVEN-SIMULATION-ASSISTANT`
-Status: `P5_NEURAL_PROTOTYPE_READY`
+Status: `P6_EXPERIMENT_SUGGESTION_READY`
 
 ## 0. Purpose
 
@@ -350,6 +350,7 @@ Future commands to add when scripts exist:
 ```powershell
 python scripts/ml/build_simulation_experience_dataset.py --help
 python scripts/ml/suggest_simulation_diagnosis.py --fixture tests/fixtures/data_driven_simulation_assistant/ambient_masked.json
+python scripts/ml/suggest_simulation_diagnosis.py --fixture tests/fixtures/data_driven_simulation_assistant/ambient_masked.json --suggest-experiment --evidence-gap "missing source isolation" --max-runtime-minutes 9
 python scripts/ml/evaluate_simulation_assistant.py --fixtures tests/fixtures/data_driven_simulation_assistant
 python scripts/ml/train_failure_signature_classifier.py --dataset tests/fixtures/data_driven_simulation_assistant/dataset.jsonl --fixtures tests/fixtures/data_driven_simulation_assistant
 python tests/data_driven_simulation_assistant_test.py
@@ -368,7 +369,7 @@ from `codex_app.load_workspace_dependencies` when needed.
 | P3 Retrieval baseline | completed | Codex | `scripts/ml/suggest_simulation_diagnosis.py`; `scripts/ml/simulation_assistant_lib.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | five fixtures top1/top3 PASS; forbidden phrase scan over scripts/fixtures clean | Feed P4 evaluation metrics |
 | P4 Evaluation harness | completed | Codex | `scripts/ml/evaluate_simulation_assistant.py`; `tests/data_driven_simulation_assistant_test.py`; `tests/fixtures/data_driven_simulation_assistant/*.json` | offline evaluation PASS: top1=1.0, top3=1.0, forbidden_action_violations=0, missing_gate_violations=0; unittest PASS | Plan P5 CPU-friendly prototype |
 | P5 Neural prototype | completed | Codex | `scripts/ml/train_failure_signature_classifier.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | CPU NumPy MLP PASS: loss 1.155387 -> 0.001763; baseline top3=1.0; classifier top3=1.0; confidence_gain_cases=5; forbidden_action_violations=0; missing_gate_violations=0; artifacts ignored under `build/ml/models/` | Start P6 experiment suggestion planner |
-| P6 Experiment suggestion | pending | unassigned | none | none | Add advisory planner |
+| P6 Experiment suggestion | completed | Codex | `scripts/ml/simulation_assistant_lib.py`; `scripts/ml/suggest_simulation_diagnosis.py`; `tests/data_driven_simulation_assistant_test.py`; `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md` | P6 suggestion mode PASS for ambient-masked, memory-unbounded, and modal-identity fixtures; unittest PASS 6 tests; no auto-launch in contracts | Start P7 skill integration |
 | P7 Skill integration | pending | unassigned | none | none | Add routing notes |
 | P8 Publish | pending | unassigned | none | none | Validate, commit, push when ready |
 
@@ -469,6 +470,36 @@ Status vocabulary:
   route still needs broader fixtures and human/Codex review.
 - Next action: implement P6 experiment-point suggestion without auto-launching
   simulations.
+
+### 2026-06-30 Codex P6
+
+- Previous-agent review: reviewed P5 commit `d0dd306`, the CPU-friendly
+  classifier prototype, generated-model ignore boundary, and P5 Agent Log;
+  accepted that P5 stayed advisory and not auto-routed.
+- This-turn changes: added a rule-based experiment suggestion mode to
+  `suggest_simulation_diagnosis.py`, backed by
+  `suggest_experiment_contract()` in the shared helper library. The contract
+  accepts candidate label, evidence gaps, max runtime budget, and forbidden
+  actions, then emits proposed experiment steps, expected evidence, resource
+  budget, required gates, and stop conditions.
+- Previous round changed: P5 produced an eligible-for-review neural prototype
+  but left routing to later phases; confirmed and kept P6 independent from
+  model routing.
+- Files changed: `scripts/ml/simulation_assistant_lib.py`;
+  `scripts/ml/suggest_simulation_diagnosis.py`;
+  `tests/data_driven_simulation_assistant_test.py`;
+  `docs/DATA_DRIVEN_SIMULATION_ASSISTANT_TASKBOOK.md`.
+- Validation: Codex runtime Python generated P6 contracts for
+  `ambient_masked`, `memory_unbounded`, and `modal_identity_unproven`; ambient
+  output proposed source isolation/evidence separation instead of repeated
+  unseparated probes; memory output proposed bounded PID/RSS slope probes;
+  modal output proposed sensitivity, participation, and source-disable review
+  without gain-change promotion; direct unittest passed 6 tests.
+- Blockers/risks: P6 remains a rule-based planner and does not launch MATLAB or
+  simulations; broader experiment policies can be added only after P7 routing
+  notes make the advisory boundary visible in existing skills.
+- Next action: implement P7 routing notes in relevant project-local skills
+  without giving this assistant validation or tuning authority.
 
 ### Template For Future Agent Entries
 

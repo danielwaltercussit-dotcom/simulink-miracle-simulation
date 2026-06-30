@@ -133,6 +133,54 @@ class DataDrivenSimulationAssistantTest(unittest.TestCase):
                 self.assertEqual(case["classifier_result"]["status"], "advisory_needs_gate")
                 self.assertTrue(case["classifier_result"]["required_gates"])
 
+    def test_experiment_suggestion_mode_respects_p6_acceptance(self):
+        cases = [
+            (
+                "ambient_masked.json",
+                ["source_isolation", "evidence_separation"],
+                ["repeated same-amplitude ringdown"],
+            ),
+            (
+                "memory_unbounded.json",
+                ["bounded_memory_probe", "pid", "slope"],
+                [],
+            ),
+            (
+                "frequency_coincidence.json",
+                ["sensitivity", "participation", "source_disable"],
+                ["gain change", "parameter tuning"],
+            ),
+        ]
+        for fixture_name, expected_terms, rejected_terms in cases:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "suggest_simulation_diagnosis.py"),
+                    "--fixture",
+                    str(FIXTURES / fixture_name),
+                    "--suggest-experiment",
+                    "--evidence-gap",
+                    "missing deterministic gate review",
+                    "--max-runtime-minutes",
+                    "9",
+                ],
+                cwd=REPO_ROOT,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            suggestion = payload["experiment_suggestion"]
+            proposed = json.dumps(suggestion["proposed_experiment"], sort_keys=True).lower()
+            self.assertFalse(suggestion["auto_launch"])
+            self.assertLessEqual(suggestion["resource_budget"]["max_runtime_minutes"], 9)
+            self.assertTrue(suggestion["stop_conditions"])
+            self.assertTrue(suggestion["required_gates"])
+            for term in expected_terms:
+                self.assertIn(term, proposed, fixture_name)
+            for term in rejected_terms:
+                self.assertNotIn(term, proposed, fixture_name)
+
 
 if __name__ == "__main__":
     unittest.main()
