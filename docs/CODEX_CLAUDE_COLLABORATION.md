@@ -63,12 +63,14 @@ the active `simulink_agent_v1` worktree is the source of truth. Other worktrees
 and workspace-root copies are sync targets or evidence only. Distill reusable
 modeling rules into existing `SKILL.md`, `references/`, or small skill-local
 helpers; leave provenance reports in place and link source paths instead of
-moving or copying run artifacts. A migration package carries only skills,
-skill-local helpers, reusable docs/templates, and distilled references; it
+moving or copying run artifacts. A portable checkout or approved transfer
+carries only skills, skill-local helpers, reusable docs/templates, and
+distilled references; it
 excludes simulation models, tests, `build/`, `Claude_demo/`, `dif11_work/`,
 `slprj/`, and `.slxc` unless the user approves a wider archive. On Windows,
-sync by copy plus hash verification first; do not add symlink-based workflow or
-new packaging layers without approval. Before claiming portability complete,
+prefer sparse checkout from a reviewed Git ref; for offline transfer, use copy
+plus hash verification. Do not add symlink-based workflow or new packaging
+layers without approval. Before claiming portability complete,
 run the existing validators from a clean temp path or second host and record the
 command result in the final status; do not create a new manifest just for that
 smoke test.

@@ -1,83 +1,88 @@
-# Host Migration Runbook
+# Portable Skills Migration
 
-This project must be migrated as a verified workspace snapshot, not only as a
-Git clone. GitHub does not currently contain all active branches, uncommitted
-work, ignored evidence, `.ctx` checkpoint state, or the external DFIG test
-workspace.
+Use this runbook to move the authoritative modeling skills and distilled
+experience to another agent or host. This is not a workspace backup and does
+not carry simulation state.
 
-## What The Export Contains
+## Portable Boundary
 
-- a complete copy of the primary project, including `.git`, submodules,
-  ignored evidence, caches, and current uncommitted work;
-- a `git bundle` containing all local refs as a second recovery path;
-- the external `Claude_demo/ieee39_sg5_dfig5_skills_test` workspace;
-- full snapshots of every secondary Git worktree, including ones reported clean
-  by Git status, because old index stat caches can hide real byte differences;
-- optional read-only reference archives used by the modeling workflow;
-- source Git/worktree/environment reports and a SHA-256 payload manifest;
-- restore and verification scripts plus a new-host start file.
+The authoritative source is `.agents/skills` in the reviewed
+`simulink_agent_v1` revision. Transfer only:
 
-Git credentials, MATLAB licenses, Codex account state, and global tool
-installations are intentionally not copied. Configure those separately.
+- `.agents/skills/`, including skill-local scripts, references, and assets;
+- `AGENTS.md` and `CLAUDE.md`;
+- the six project docs referenced by those instructions and skills;
+- this runbook and `init_simulink_agent_project.m`.
 
-## Export On The Old Host
+Do not transfer models, tests, `build/`, `Claude_demo/`, `dif11_work/`,
+`slprj/`, `.slxc`, handoff packets, raw run evidence, worktree snapshots, or
+lab/reference archives. Keep `${LAB_MODEL_ARCHIVE}` external and read-only.
 
-Close MATLAB, Simulink, Claude Code, and editors that may still be writing files.
-Then run from the project root:
+## Publish A Reviewed Revision
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\maintenance\export_host_migration.ps1 `
-  -DestinationRoot E:\SimulinkMigration `
-  -IncludeReferenceArchives
-```
+Before publishing, validate the source revision and review its diff. Push a
+reviewed commit or tag to the project remote; do not publish a dirty worktree as
+a migration payload.
 
-Use an external drive, network share, or another folder outside the project.
-Do not choose a destination inside `simulink_agent_v1`.
+## Sparse Checkout On A New Host
 
-After the export completes:
+Replace `<repo-url>` and `<reviewed-ref>` with the approved remote and commit,
+branch, or tag:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\SimulinkMigration\<package>\verify_host_migration.ps1 `
-  -PackageRoot E:\SimulinkMigration\<package>
+git clone --filter=blob:none --no-checkout <repo-url> simulink_agent_portable
+Set-Location simulink_agent_portable
+git sparse-checkout init --no-cone
+@'
+/.agents/skills/
+/AGENTS.md
+/CLAUDE.md
+/docs/CODEX_CLAUDE_COLLABORATION.md
+/docs/CONTROL_FEEDBACK_POLARITY_GATE.md
+/docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md
+/docs/FRESH_SESSION_HANDOFF_TEMPLATES.md
+/docs/HOST_MIGRATION_RUNBOOK.md
+/docs/MODELING_PATTERN_LIBRARY.md
+/docs/MODELING_WORKFLOW_DRAFT.md
+/init_simulink_agent_project.m
+'@ | git sparse-checkout set --stdin
+git checkout <reviewed-ref>
 ```
 
-Do not make further project changes after the final export. If changes are
-made, create a new export.
+This checkout is itself a usable project-local skills workspace. A consuming
+project may copy `.agents/skills` from this reviewed checkout, but should not
+copy run artifacts or model files with it.
 
-## Restore On The New Host
+## Validate The New Host
 
-Install Git, Git LFS, MATLAB R2024b, and the required MATLAB/Simulink products.
-Copy the migration package to the new host, verify it, then run:
+Run the dependency-free skill validator for every top-level skill, then run the
+repository-local reference check:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File D:\Transfer\<package>\restore_host_migration.ps1 `
-  -PackageRoot D:\Transfer\<package> `
-  -DesktopRoot $env:USERPROFILE\Desktop
+$validator = '.agents/skills/skill-creator/scripts/quick_validate.py'
+$failed = @()
+Get-ChildItem '.agents/skills' -Directory | Where-Object {
+    Test-Path (Join-Path $_.FullName 'SKILL.md')
+} | ForEach-Object {
+    & python $validator $_.FullName
+    if ($LASTEXITCODE -ne 0) { $failed += $_.Name }
+}
+if ($failed.Count -gt 0) { throw "Skill validation failed: $($failed -join ', ')" }
+
+python .agents/skills/simulink-power-electronics/scripts/validate_skill_structure.py --quiet
+if ($LASTEXITCODE -ne 0) { throw 'Repository-local reference validation failed.' }
 ```
 
-The restore script refuses to overwrite existing target folders. It restores
-the primary repo, external DFIG workspace, optional reference archives, and all
-registered secondary worktrees. Dirty secondary worktree snapshots are overlaid
-after their branches are recreated.
+Also verify that no excluded payload slipped into the sparse checkout:
 
-After restoration, Git may expose modifications in a secondary worktree that
-the old host reported as clean. Treat those as recovered real file differences,
-not migration noise. Review them before any discard or cleanup.
-
-If the new Desktop path differs from the old one, generated current-task files
-will still contain old absolute paths. The new agent must repair only the active
-handoff/checkpoint path references and regenerate the fresh-session prompt.
-
-## New-Host Read Order
-
-Start the new Codex conversation with:
-
-```text
-Read AGENTS.md and docs/MIGRATION_CURRENT_STATE.md first. Verify the restored
-workspace against migration_reports before doing any implementation. Report the
-active package, current decision, next action, dirty worktrees, and no-touch
-boundaries. Do not simulate or write tuning parameters during takeover.
+```powershell
+$forbidden = @(Get-ChildItem -Recurse -File | Where-Object {
+    $_.Extension -in @('.slx', '.mdl', '.slxc') -or
+    $_.FullName -match '\\(build|tests|Claude_demo|dif11_work|slprj)\\'
+})
+if ($forbidden.Count -gt 0) { throw 'Non-portable simulation content found.' }
 ```
 
-Then complete the acceptance list in `docs/MIGRATION_CURRENT_STATE.md`. Keep the
-old host and the migration package unchanged until takeover acceptance passes.
+For periodic updates, check out the next reviewed revision and rerun these
+checks. Distill new reusable lessons into existing skill references; retain the
+original reports on the source host as provenance.
