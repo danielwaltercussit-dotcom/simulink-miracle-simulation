@@ -11,10 +11,10 @@ Use the desktop archive as read-only layout guidance:
 - `M08_VSCbyhjq`: legal Goto/From reference; tags are for ordinary
   measurement/control signals such as `Utabc`, `Itabc`, `Inetabc`, `Unetabc`.
 
-Resolve the optional lab archive as
-`fullfile(getenv('USERPROFILE'),'Desktop','实验室仿真模型汇总')`. Do not edit
-files there; use them as oracles when deriving layout conventions. Report a
-warning, rather than inventing a replacement path, when the archive is absent.
+Resolve the optional lab archive from `LAB_MODEL_ARCHIVE` or an explicitly
+provided path. Do not edit files there; use them as oracles when deriving layout
+conventions. Report a warning, rather than inventing a replacement path, when
+the archive is unset or absent.
 
 ## Hard Failures
 

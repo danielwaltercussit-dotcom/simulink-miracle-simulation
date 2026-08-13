@@ -1,0 +1,4 @@
+interface:
+  display_name: "MATLAB Optimize Performance"
+  short_description: "Optimize measured MATLAB performance"
+  default_prompt: "Use $matlab-optimize-performance to improve measured MATLAB performance with profiling evidence and behavior-preserving changes."

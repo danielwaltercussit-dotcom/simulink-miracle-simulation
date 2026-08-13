@@ -32,7 +32,9 @@ accepting pass/fail conclusions.
 Use the matrix generator for planning artifacts:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/scenarios")
 m = generate_weak_grid_scr_matrix("CaseName","dfig_w33_scr_scan", ...
     "ScrValues",[1.2 1.5 2 3 5], ...

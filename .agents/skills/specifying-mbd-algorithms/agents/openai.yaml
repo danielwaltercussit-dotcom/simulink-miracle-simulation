@@ -1,0 +1,4 @@
+interface:
+  display_name: "Specifying MBD Algorithms"
+  short_description: "Specify model-based design algorithms"
+  default_prompt: "Use $specifying-mbd-algorithms to specify model-based design algorithms with clear inputs, states, constraints, and validation criteria."

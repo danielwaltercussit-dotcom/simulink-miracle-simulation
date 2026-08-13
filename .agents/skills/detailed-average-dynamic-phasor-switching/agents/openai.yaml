@@ -1,3 +1,4 @@
-display_name: Detailed/Average/Dynamic-Phasor Model Switching
-short_description: Govern fidelity transitions between switching, averaged, dynamic-phasor, RMS, and phasor models with explicit equivalence evidence.
-default_prompt: Record the equivalence evidence for switching this converter-grid study between model fidelities (operating point, base values, retained bandwidth, losses, initialization mapping, error metric, time-step ratio) and report whether the switch is pass or provisional.
+interface:
+  display_name: "Detailed/Average/Dynamic-Phasor Model Switching"
+  short_description: "Govern model-fidelity transition evidence"
+  default_prompt: "Use $detailed-average-dynamic-phasor-switching to record equivalence evidence when moving between switching, averaged, dynamic-phasor, RMS, or phasor models."

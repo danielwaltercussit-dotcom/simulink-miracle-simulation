@@ -1,3 +1,4 @@
-display_name: Small-Signal Modal Analysis
-short_description: Explain oscillations with eigenvalues, damping, and participation.
-default_prompt: Analyze this converter-grid model or Jacobian for modal damping, dominant states, participation factors, and the time-domain validation route.
+interface:
+  display_name: "Small-Signal Modal Analysis"
+  short_description: "Modal damping and participation analysis"
+  default_prompt: "Use $small-signal-modal-analysis to analyze converter-grid modal damping, dominant states, participation factors, and the required time-domain validation route."

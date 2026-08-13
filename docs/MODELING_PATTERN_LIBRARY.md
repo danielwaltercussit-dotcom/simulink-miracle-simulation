@@ -1,9 +1,9 @@
 # 实验室仿真模型建模模式库 (v0.1)
 
-来源: `C:\Users\jonas\Desktop\实验室仿真模型汇总`
+来源: `${LAB_MODEL_ARCHIVE}` (read-only lab/reference model archive)
 适用: 当用户提"换电源 / 换风机 / 换台数 / 改电压等级 / 改线路距离"等小改动时,**优先复用本库的现成参数与布局**,避免每次从零推算控制器 PI、基准容量和坐标。
 
-补充参考源: `C:\Users\jonas\Desktop\AI summary of simulation models` 中 6.3 以后的模型可作为 AI 生成结果参考; 本仓库只读这些外部参考,不在清理时移动或删除。
+补充参考源: `${AI_SUMMARY_ROOT}` 中 6.3 以后的模型可作为 AI 生成结果参考; 本仓库只读这些外部参考,不在清理时移动或删除。新主机迁移时显式设置这些根路径,不要把外部模型复制进技能库。
 
 旧 `REFERENCE_MODEL_LAYOUT_OBSERVATIONS.md` 与 `IEEE39_LAYOUT_REFERENCES.md` 已并入本文件的布局规则。IEEE39 顶层布局采用横向电气主路径、区域对称和测量信号 Goto/From 的组合; 三相物理连接仍必须显式连线。
 

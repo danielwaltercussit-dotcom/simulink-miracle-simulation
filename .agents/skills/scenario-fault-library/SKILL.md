@@ -11,7 +11,9 @@ script. Scenarios should become spec patches plus expected observables.
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/scenarios")
 p = generate_fault_scenario_patch("voltage_sag_0p5pu_200ms", ...
     "ModelName", "nebus39_dfig2_weakgrid_v0", ...

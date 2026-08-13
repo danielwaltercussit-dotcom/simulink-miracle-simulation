@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Modeling Assistant"
+  short_description: "Routes project modeling requests to skills"
+  default_prompt: "Use $simulink-modeling-assistant to route this Simulink power-system modeling request through the pattern library and required gates."

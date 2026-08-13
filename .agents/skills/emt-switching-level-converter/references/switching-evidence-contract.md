@@ -3,6 +3,13 @@
 Use this contract when generating or reviewing switching-level (detailed) EMT
 waveform evidence for converter-dominated systems.
 
+## Contents
+
+- Required metadata and switching waveform metrics.
+- Discretization adequacy and model-backed provenance.
+- Interpretation/status wording and loss/thermal evidence.
+- Relation to other evidence and failure routing.
+
 ## Required Metadata
 
 Record:

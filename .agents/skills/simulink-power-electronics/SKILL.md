@@ -5,72 +5,52 @@ description: Use when working on Simulink or Simscape Electrical power-electroni
 
 # Simulink Power Electronics
 
-Use this skill for Simulink/Simscape Electrical power-electronics work:
-model inspection, waveform/control debugging, schematic layout, validation, and
-user-approved corpus self-improvement. Keep conclusions grounded in inspected
-block paths, logged signals, simulations, and numeric checks.
+Use this skill for Simulink/Simscape Electrical PE inspection, waveform/control
+debugging, schematic layout, validation, and approved corpus improvement. Keep
+conclusions grounded in inspected paths, logged signals, simulations, and checks.
 
 ## Core Workflow
 
-1. At the start of a session, look for and use the local `superpowers`
-   skill or other skill which has a likely name when it is installed. It is valuable process guidance for selecting
-   and sequencing other skills; user instructions still take precedence.
-2. Classify by domain, topology, and control objective.
-3. Load only the narrow context needed: usually `references/workflow.md`, one
-   domain subskill, and one triggered reference.
-4. Prefer MATLAB MCP and Simulink Agentic Toolkit evidence. If model tools are
-   unavailable, continue only with file/document/script review and report that
-   model-level inspection or validation is blocked.
-5. Track validation state explicitly: `opened`, `compiled`, `simulated`,
+1. Classify by domain, topology, and control objective.
+2. Load only narrow context: usually `references/workflow.md`, one domain
+   subskill, and one triggered reference.
+3. Prefer MATLAB MCP and Simulink Agentic Toolkit evidence. If model tools are
+   unavailable, continue with file/script review and report the blocked tier.
+4. Track validation state explicitly: `opened`, `compiled`, `simulated`,
    `measured`.
 
 ## Lean Loading Rules
 
 - Treat this root file as a **router**, not a handbook.
-- Do not bulk-load README, every reference, or every subskill.
+- Do not bulk-load every reference or every subskill.
 - Read platform and MCP setup details only when tool status is uncertain.
-- Only run corpus/self-improvement work when the user explicitly allows this
-  skill to self-iterate.
-- When self-iteration is enabled, promote new notes only when they are grounded
-  in official sources, inspected models, or repeatable validation.
+- Run corpus/self-improvement only when the user explicitly allows it; promote
+  notes only when grounded in official sources, inspected models, or validation.
 
 ## Read When Needed
 
-- `references/domain-map.md` to choose the subskill.
-- `references/workflow.md` for inspect -> diagnose -> edit -> validate.
-- `references/model-standards.md` before editing PE models.
-- `references/layout-patterns-from-examples.md` and
-  `references/simscape-layout.md` for generated or repaired Simscape
-  schematics, especially when plant, control, measurement, and scope wiring
-  make the top level hard to read.
-- `references/control-algorithm-debugging.md` for control tracing,
-  PI/feedforward, and P/Q checks.
-- `references/simulink-command-line-sop.md` for command-line simulation and
-  output reading.
-- `references/mcp-simulink-troubleshooting.md` for supported platform, MCP
-  dependency, or tool discovery questions.
-- `references/companion-skills.md` when asked about optional external skills,
-  including `using-superpowers`.
-- `references/output-standards.md` before reports.
-- `references/capability-map.md` only when asked about scope.
-- `references/self-iteration-loop.md` and `references/example-derived-patterns.md`
-  for user-approved corpus/self-improvement.
-- Use `model-fidelity-selector` when the PE question could be answered by
-  RMS/phasor, averaged EMT, switching EMT, modal, impedance, or hybrid models.
-- Use `small-signal-modal-analysis` for eigenvalue, damping, participation, or
-  controller-interaction questions.
-- Use `weak-grid-scr-scenario` for SCR/ESCR, low system strength, and
-  fault/line-contingency stress matrices.
-- Use `gfl-gfm-control-comparison` for fair PLL/GFL versus VSG/droop/GFM
-  comparisons.
-- Use `ibr-model-validation-evidence` when model credibility or handoff
-  evidence is the goal.
-- `subskills/three-phase-grid-inverter/SKILL.md` for active grid-inverter work.
-- Treat other `subskills/*/SKILL.md` files as evidence guides until populated.
-- Use Simulink Agentic Toolkit or model-based-design skills for generic build,
-  edit, simulate, and test mechanics; use this skill for PE-specific routing
-  and evidence rules.
-- Use `assets/` templates when output needs a project README or diagnostic
+- `references/domain-map.md`: choose the domain subskill.
+- `references/workflow.md`: inspect -> diagnose -> edit -> validate.
+- `references/model-standards.md`: before editing PE models.
+- `references/layout-patterns-from-examples.md` and `references/simscape-layout.md`:
+  generated or repaired Simscape schematics.
+- `references/control-algorithm-debugging.md`: control tracing, PI/feedforward,
+  and P/Q checks.
+- `references/simulink-command-line-sop.md`: command-line simulation/output reading.
+- `references/mcp-simulink-troubleshooting.md`: supported platform, MCP, or tools.
+- `references/output-standards.md`: before reports.
+- `references/capability-map.md`: only when asked about scope.
+- `references/self-iteration-loop.md` and `references/example-derived-patterns.md`:
+  user-approved corpus/self-improvement.
+- Route fidelity, modal, weak-grid, GFL/GFM, and validation-evidence questions to
+  `model-fidelity-selector`, `small-signal-modal-analysis`,
+  `weak-grid-scr-scenario`, `gfl-gfm-control-comparison`, and
+  `ibr-model-validation-evidence`.
+- Use `subskills/three-phase-grid-inverter/SKILL.md` for active grid-inverter work;
+  treat other `subskills/*/SKILL.md` files as evidence guides until populated.
+- Use Simulink Agentic Toolkit/model-based-design skills for generic build, edit,
+  simulate, and test mechanics; this skill adds PE-specific routing and evidence.
+- Use `assets/` templates only when output needs a project README or diagnostic
   report.
 
 ## Operating Rules
@@ -113,25 +93,13 @@ block paths, logged signals, simulations, and numeric checks.
 - Ask for missing model data, logs, or GUI state when available tools cannot
   access them.
 
-## Subskill Routing
+## Boundary And Reporting
 
-- `subskills/three-phase-grid-inverter`: active SPWM/SVPWM, gate routing,
-  waveform balance, VSG, PI/feedforward, and P/Q checks.
-- Developing or stub subskills: use only as scope markers and evidence
-  checklists.
 - If the domain is ambiguous, classify by source/load, topology, control
   objective, and validation signals first.
-
-## Boundary
-
-- This skill does not manage OS-level schedulers, background jobs, or other
-  system automation.
-- This skill does not replace Simulink build/simulate/test skills; it adds
-  PE-specific routing, evidence standards, and diagnostics.
+- This skill adds PE-specific routing, evidence standards, and diagnostics; it
+  does not replace build/simulate/test skills or manage OS schedulers.
 - Keep downloaded corpora, generated models, caches, and long-loop outputs out
   of source control under `data/pe-loop/` or `data/generated-models/`.
-
-## Reporting
-
-Report root cause, changed paths, validation state, and remaining risks in the
-user's language.
+- Report root cause, changed paths, validation state, and remaining risks in the
+  user's language.

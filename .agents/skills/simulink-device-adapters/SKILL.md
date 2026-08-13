@@ -11,7 +11,9 @@ adapter-facing subsystems.
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 addpath("scripts/adapters")
 r = inspect_device_adapter_contract("nebus39_dfig2_weakgrid_v0", ...

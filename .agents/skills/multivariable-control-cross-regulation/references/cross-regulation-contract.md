@@ -4,6 +4,13 @@ Use this contract when generating or reviewing tuning evidence for strongly
 coupled converter control loops. It defines what separates a documented tuning
 result from an undocumented gain tweak.
 
+## Contents
+
+- Case/loop metadata, cross-coupling matrix, and interaction metrics.
+- Before/after margins, time-domain link, and improvement gate.
+- Delay inventory, delay-case comparison, and margin classification.
+- Verdict wording, relation to other evidence, failure routing, and boundaries.
+
 ## Required Metadata
 
 ### Case level

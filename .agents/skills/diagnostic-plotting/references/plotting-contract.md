@@ -2,6 +2,13 @@
 
 This contract standardizes diagnostic figures for `simulink_agent_v1`.
 
+## Contents
+
+- Inputs and accepted output layout.
+- Manifest fields and figure checklist.
+- Recommended signals and failure marking.
+- Interpretation rules for chat/report use.
+
 ## Inputs
 
 Use one of:

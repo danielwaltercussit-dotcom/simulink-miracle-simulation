@@ -4,6 +4,13 @@ Use this contract when generating or reviewing software-side HIL / real-time
 readiness evidence for a power-electronics model bound for RTDS / OPAL-RT /
 Speedgoat-style deployment.
 
+## Contents
+
+- Scope and software-side honesty boundary.
+- Required manifest metadata and status semantics.
+- Model-backed evidence and check rules.
+- Interpretation, relation to other evidence, and failure routing.
+
 ## Scope And Honesty Boundary
 
 - This contract covers software-side readiness. It has two entry points: a

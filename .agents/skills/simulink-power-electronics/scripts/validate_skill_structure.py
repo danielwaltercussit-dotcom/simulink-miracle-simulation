@@ -77,7 +77,9 @@ def iter_skill_files(root: Path):
 
 
 def iter_markdown_files(root: Path):
-    yield root / "README.md"
+    readme = root / "README.md"
+    if readme.exists():
+        yield readme
     yield from iter_skill_files(root)
     yield from sorted((root / "references").glob("*.md"))
     yield from sorted((root / "subskills").glob("*/*.md"))

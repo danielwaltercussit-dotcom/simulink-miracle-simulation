@@ -1,4 +1,4 @@
 interface:
   display_name: "Simulink Auto Layout"
-  short_description: "Apply GitHub-sourced Simulink layout tooling safely."
-  default_prompt: "Use this skill to improve Simulink model layout, routing, readability, and component placement with project-local GitHub tools."
+  short_description: "Apply Simulink layout tooling safely"
+  default_prompt: "Use $simulink-auto-layout-github to improve Simulink model layout, routing, readability, and component placement with project-local GitHub layout tools."

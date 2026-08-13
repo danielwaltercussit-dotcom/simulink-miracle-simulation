@@ -5,7 +5,8 @@ output schema.
 
 ## Inputs
 
-- `ArchiveDir` — read-only lab archive root (default Desktop `实验室仿真模型汇总`)
+- `ArchiveDir` — read-only lab archive root (default `LAB_MODEL_ARCHIVE`; caller
+  must provide a path when that environment variable is unset)
 - `OutputDir` — gitignored output root (default `build/reports/lab_patterns`)
 - `Subset` — optional cellstr of pattern ids to limit the scan (e.g. `{'M03'}`)
 - `ScanBlocks` — load `.slx` to count blocks (default true; set false for speed)

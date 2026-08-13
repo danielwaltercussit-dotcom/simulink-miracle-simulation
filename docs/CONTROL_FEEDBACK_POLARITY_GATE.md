@@ -114,7 +114,9 @@ The Markdown table includes:
 Run:
 
 ```matlab
-cd("C:\Users\PC\Desktop\simulink_agent_workspace\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("tests")
 control_feedback_polarity_test
 ```

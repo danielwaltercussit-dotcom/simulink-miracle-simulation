@@ -17,7 +17,9 @@ Primary project hooks:
 Generate a registry report:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 addpath("scripts/loop")
 addpath("scripts/tuning")

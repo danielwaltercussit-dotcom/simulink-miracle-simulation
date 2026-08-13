@@ -1,0 +1,4 @@
+interface:
+  display_name: "Filing Bug Reports"
+  short_description: "Write concise reproducible bug reports"
+  default_prompt: "Use $filing-bug-reports to turn verified failures into concise reproducible bug reports with evidence, steps, and expected behavior."

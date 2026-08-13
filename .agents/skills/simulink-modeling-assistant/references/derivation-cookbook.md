@@ -4,6 +4,13 @@ How to build a new derived Simulink model in this project, distilled from the
 2026-06-01 successful run (`nebus39_dfig1_v0` — first try 5 s sim PASS, fault
 recovery 18 ms).
 
+## Contents
+
+- Invocation trigger and donor/spec/build-script recipe.
+- Mask introspection, wiring, fault injection, logging, and validation gates.
+- Snapshot/export rules and the `nebus39_dfig1_v0` reference instance.
+- S6 tuning prerequisites, direction policy, convergence, and failure handling.
+
 ## When to invoke this cookbook
 
 Trigger when the user asks to:
@@ -172,9 +179,10 @@ set_param(modelName,'InitFcn', sprintf([ ...
 After in-project sim PASS but **before** copying to AI summary, run:
 
 ```bash
-"/d/Program Files/MATLAB/R2024b/bin/matlab.exe" -batch "
+"${MATLAB_EXE:-matlab}" -batch "
   restoredefaultpath;  % clear ALL project paths
-  addpath(fullfile(getenv('APPDATA'),'MathWorks','MATLAB Add-Ons','Toolboxes','MATLAB MCP Core Server Toolbox'));
+  mcpToolbox = getenv('MATLAB_MCP_TOOLBOX_ROOT');
+  if ~isempty(mcpToolbox), addpath(mcpToolbox); end
   load_system('<outPath>');
   set_param('<model>','SimulationCommand','update');
   out = sim('<model>','StopTime','0.005');
@@ -228,8 +236,9 @@ S6/S7/S7B may legitimately SKIP on this model:
 If the current host or project defines an AI-summary snapshot routine, follow
 that current routine. Otherwise copy `<model>.slx`, `case_<model>.yaml`,
 `build_<model>.m`, `<model>_report.md`, and `<model>_*.png` to
-`fullfile(getenv('USERPROFILE'),'Desktop','AI summary of simulation models',modelName)`.
-Update its README index table.
+`fullfile(getenv('AI_SUMMARY_ROOT'),modelName)`. If `AI_SUMMARY_ROOT` is unset,
+ask the operator for the target snapshot root before copying. Update its README
+index table.
 
 ## Reference instance: nebus39_dfig1_v0
 

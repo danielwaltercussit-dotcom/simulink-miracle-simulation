@@ -58,8 +58,11 @@ and why that exclusion is acceptable for the decision being made.
 Use the project helper when a decision note is needed:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
-addpath("scripts/analysis")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
+skillRoot = fullfile(projectRoot, ".agents", "skills", "model-fidelity-selector");
+addpath(fullfile(skillRoot, "scripts", "analysis"))
 d = write_model_fidelity_decision( ...
     "CaseName","dfig_w33_weak_grid", ...
     "StudyObjective","PLL damping under low SCR", ...

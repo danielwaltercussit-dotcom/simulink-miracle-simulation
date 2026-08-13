@@ -3,6 +3,13 @@
 Use this contract when generating or reviewing VSC device support evidence for
 grid-following / grid-forming renewable-interconnection studies.
 
+## Contents
+
+- Required metadata, dimensions, and evidence status.
+- Provisional and control-mode consistency rules.
+- Minimum handoff bar and same-iteration evidence rule.
+- GFL/GFM completeness, weak-grid delay benchmark, and failure routing.
+
 ## Required Metadata
 
 Record:

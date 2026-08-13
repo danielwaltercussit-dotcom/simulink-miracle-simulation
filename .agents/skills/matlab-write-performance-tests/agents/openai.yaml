@@ -1,0 +1,4 @@
+interface:
+  display_name: "MATLAB Write Performance Tests"
+  short_description: "Create MATLAB performance tests"
+  default_prompt: "Use $matlab-write-performance-tests to create MATLAB performance tests for measured regressions or optimization targets."

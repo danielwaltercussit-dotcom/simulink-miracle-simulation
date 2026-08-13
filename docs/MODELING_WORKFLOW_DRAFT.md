@@ -1,6 +1,6 @@
 # 流程化电力系统 Simulink 建模规范
 
-适用项目：`C:\Users\jonas\Desktop\simulink_agent_v1`
+适用项目：`${SIMULINK_AGENT_ROOT}` (or the current repository root when unset)
 
 本文件是当前建模流程的精简版。历史 v0.5-v0.9 试验记录、GitHub 候选清单和旧布局观察已被压缩到当前规则；需要旧上下文时先看 `docs/OLD_CONTEXT_KEYWORDS.md`，不要重新加载旧 `.ctx`。
 
@@ -25,8 +25,8 @@
 
 当前主要外部参考源：
 
-- `C:\Users\jonas\Desktop\实验室仿真模型汇总`：完整实验室模型库，仅读取，不编辑。
-- `C:\Users\jonas\Desktop\AI summary of simulation models`：保留 6.3 以后模型作为生成结果参考。
+- `${LAB_MODEL_ARCHIVE}`：完整实验室模型库，仅读取，不编辑。
+- `${AI_SUMMARY_ROOT}`：保留 6.3 以后模型作为生成结果参考。
 - `.agents/skills/*`：项目本地技能契约。
 - `docs/MODELING_PATTERN_LIBRARY.md`：M01-M08 参数、布局和复用模式。
 
@@ -188,5 +188,5 @@ Codex 默认负责 review：
 模型保留策略：
 
 - 项目内生成模型只保留最近两天修改过、或最新 handoff 明确引用的模型。
-- 桌面实验室模型库和 `AI summary of simulation models` 不由本仓库清理。
+- `${LAB_MODEL_ARCHIVE}` 和 `${AI_SUMMARY_ROOT}` 不由本仓库清理。
 - 项目内 oracle 暂时保留，除非代码迁移到外部参考库路径。

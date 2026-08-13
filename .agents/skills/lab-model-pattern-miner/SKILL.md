@@ -21,7 +21,7 @@ mismatches for human review.
 
 ## Hard Rules
 
-1. The lab archive (`C:\Users\jonas\Desktop\实验室仿真模型汇总`) is **read-only**.
+1. The lab archive (`${LAB_MODEL_ARCHIVE}`) is **read-only**.
    The helper never writes inside it; verified by a before/after file-count and
    mtime check.
 2. All output goes under `build/reports/lab_patterns/` (gitignored).
@@ -52,7 +52,9 @@ mismatches for human review.
 ## Helper
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 % Full scan (M01-M08) with .slx block counts:
 r = mine_lab_model_patterns();

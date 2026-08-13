@@ -5,7 +5,7 @@ description: Use when the user asks for an AI-in-the-loop / closed-loop modeling
 
 # AI-in-Loop Orchestrator
 
-This skill is the project-local **router and loop driver** for closed-loop power-system Simulink work in `C:\Users\jonas\Desktop\simulink_agent_v1`. It does not replace the existing skills — it sequences them and enforces a deterministic stop condition.
+This skill is the project-local **router and loop driver** for closed-loop power-system Simulink work from the repository root. It does not replace the existing skills — it sequences them and enforces a deterministic stop condition.
 
 The current target case is `ieee39_10m39bus_sg5_dfig5_nebus_layout` (see Section 21 of `docs/MODELING_WORKFLOW_DRAFT.md`).
 
@@ -48,6 +48,9 @@ the matching row in Section 8 references them.
 7. Before S6 writes, apply `docs/CONTROL_TUNING_PRIORITY_AND_BOUNDARY.md`.
    Device/plant physical parameters and ratings are immutable; only proven
    control parameters may enter the registry.
+8. ML or data-driven diagnoses are advisory only. They may rank hypotheses or
+   propose probes, but deterministic stage gates and on-disk evidence own
+   PASS/FAIL.
 
 ## Loop State Machine
 
@@ -98,7 +101,7 @@ S3 now includes a model quality / layout gate. `ai_in_loop_stage_layout` runs
 | S0.25 | `model-fidelity-selector` | run before build when the study objective may need RMS/phasor/EMT/small-signal/hybrid selection |
 | S0.5 | `simulink-modeling-assistant` (pattern-match fast path) | skip if no M-row matches |
 | S1 | `specifying-plant-models`, `specifying-mbd-algorithms` | `generate-requirement-drafts` |
-| S2 | `building-simulink-models` | `simulink-modeling-assistant` for layout/parameter recipes; `simulink-interactions` for surgical edits |
+| S2 | `building-simulink-models` | `simulink-modeling-assistant` for layout/parameter recipes; `simulink-interactions` for surgical edits; `decoupled-interface-sfunctions` for EMT/averaged/electromechanical boundaries |
 | S3 | `simulink-auto-layout-github` | `simulink-modeling-assistant` layout cookbook for power-grid templates |
 | S4 | `simulating-simulink-models` | `simulink-debug-commandline` |
 | S5 | `simulating-simulink-models` | `simulink-profile-initialization` if init slow |
@@ -130,6 +133,9 @@ When in doubt, prefer official MathWorks MBD core skills (`building-simulink-mod
 
 For S2 device-template or donor-subsystem work, pair `building-simulink-models`
 with `simulink-device-adapters` before moving to compile or simulation.
+For S2 cross-domain equivalent-source or wrapper boundaries, pair it with
+`decoupled-interface-sfunctions`; keep static contract, wrapper/parent probe,
+and full-plant acceptance claims separate.
 For S3 readability and layout work, pair `simulink-auto-layout-github` with
 `simulink-model-quality-layout`; use the desktop lab archive as the read-only
 style reference for spacing, grouping, and legal Goto/From use.
@@ -170,7 +176,9 @@ The aggregate status at `build/reports/loop/status.json` always points to the la
 ## MATLAB Entry Point
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 ai_in_loop_run('goal','smoke','max_iter',5)
 ```
@@ -192,8 +200,8 @@ Use this for any interactive iteration where the agent needs `sim()`, model insp
 When MCP is offline or being debugged:
 
 ```bash
-"D:/Program Files/MATLAB/R2024b/bin/matlab.exe" -batch \
-  "cd('C:/Users/jonas/Desktop/simulink_agent_v1'); init_simulink_agent_project; ai_in_loop_run('goal','smoke','max_iter',1,'fast',true)"
+"${MATLAB_EXE:-matlab}" -batch \
+  "projectRoot=getenv('SIMULINK_AGENT_ROOT'); if isempty(projectRoot), projectRoot=pwd; end; cd(projectRoot); init_simulink_agent_project; ai_in_loop_run('goal','smoke','max_iter',1,'fast',true)"
 ```
 
 Cold start cost: 60–90 s for `init_simulink_agent_project`. Mitigations:
@@ -243,8 +251,8 @@ Current implementation hardens this contract in `scripts/loop/ai_in_loop_run.m`:
 - S9 re-reads `status.json`, verifies `update/smoke/tune` booleans, verifies
   required `sltest` boolean for `goal>=sltest`, checks required artifacts, and
   ensures `top.png` and enabled `fidelity_decision` artifacts exist.
-- successful iterations snapshot the model package to
-  `C:\Users\jonas\Desktop\AI summary of simulation models\<model>\`.
+- successful iterations snapshot the model package to the configured AI-summary
+  export root, for example `${AI_SUMMARY_ROOT}/<model>`.
 - S10C writes `ibr_validation_evidence.md/json` through
   `scripts/loop/ai_in_loop_stage_ibr_validation_evidence.m` when
   `validation_evidence=true`.

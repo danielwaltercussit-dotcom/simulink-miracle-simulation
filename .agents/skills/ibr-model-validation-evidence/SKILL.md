@@ -46,14 +46,18 @@ not a plant-model validation package.
 Use the project helper to create a fillable evidence checklist:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
-addpath("scripts/verification")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
+skillRoot = fullfile(projectRoot, ".agents", "skills", "ibr-model-validation-evidence");
+addpath(fullfile(skillRoot, "scripts", "verification"))
+snapshotRoot = getenv("AI_SUMMARY_ROOT");
+if isempty(snapshotRoot), error("Set AI_SUMMARY_ROOT or pass SnapshotPath explicitly"); end
 e = write_ibr_validation_evidence_plan( ...
     "CaseName","nebus39_dfig2_weakgrid_v0", ...
     "ModelPath","build/generated_models/nebus39_dfig2_weakgrid_v0.slx", ...
     "FidelityDecision","build/reports/fidelity/nebus39_fidelity_decision.md", ...
-    "SnapshotPath",fullfile(getenv("USERPROFILE"),"Desktop", ...
-      "AI summary of simulation models","nebus39_dfig2_weakgrid_v0"));
+    "SnapshotPath",fullfile(snapshotRoot,"nebus39_dfig2_weakgrid_v0"));
 ```
 
 ## Output

@@ -1,5 +1,12 @@
 # Verification Contract
 
+## Contents
+
+- PASS conditions and feedback-polarity classification codes.
+- JSON artifact and top-level `verify_power_system_model` metrics.
+- Failure routing.
+- Relation to AI-in-loop.
+
 ## PASS Conditions
 
 A derived model can be called verified only when all required checks are true:

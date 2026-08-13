@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Interactions"
+  short_description: "Inspect and edit Simulink models"
+  default_prompt: "Use $simulink-interactions to inspect or edit Simulink models with read-before-edit and verify-after-edit discipline."

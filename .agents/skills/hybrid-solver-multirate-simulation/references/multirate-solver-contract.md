@@ -4,6 +4,13 @@ Use this contract when generating or reviewing a solver and multirate step plan
 for cross-time-scale, converter-dominated Simulink models. The plan is a
 justification artifact, not a model rewrite.
 
+## Contents
+
+- Plan metadata and three separate status axes.
+- Model-backed probe and per-partition metadata.
+- Step heuristics, contract warnings, algebraic-loop/rate-transition rules.
+- Interpretation rules, relation to other evidence, and failure routing.
+
 ## Required Plan Metadata
 
 Record at the plan level:

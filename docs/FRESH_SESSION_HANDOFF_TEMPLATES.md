@@ -37,6 +37,52 @@ name one evidence index. Do not add more historical files.
 The generator must reject a missing evidence path, a non-`READY` package,
 oversized fields, or a prompt/pointer mismatch before a new session starts.
 
+## Claude Review Packet Template
+
+Use this template only for `claude_assistant` / `ask_claude` advisory review.
+It is not a Claude Code executor prompt and does not authorize edits, MATLAB,
+simulation, or handoff pointer updates.
+
+```text
+# Claude Review Packet
+
+## Layer 1: Global Map
+- current goal:
+- active worktree / branch / dirty status:
+- current task package:
+- latest handback final_state:
+- current next_claude_prompt objective:
+- prompt/packet consistency:
+- relevant skill routing:
+- forbidden scopes:
+- known failed paths not to repeat:
+
+## Layer 2: Evidence Index
+- latest handback packet:
+- current prompt summary:
+- key report paths:
+- validation artifacts:
+- model/evidence status files:
+- compact manifest, if needed:
+
+## Layer 3: Local High-Resolution Evidence
+- evidence file or excerpt 1:
+- evidence file or excerpt 2:
+- evidence file or excerpt 3:
+
+## Claude Output Contract
+Output only:
+1. Global risks
+2. Architecture/process inconsistencies
+3. Missing verification or tests
+4. Next 3 recommendations
+5. Up to 3 additional evidence files Codex should inspect
+
+Label every claim as verified, inference, untested, or blocked.
+Do not execute, edit, run MATLAB, scan the repo, clean the worktree, or decide
+the final direction.
+```
+
 ## Package States
 
 Codex writes `state: READY` before a new Claude session. Claude overwrites the

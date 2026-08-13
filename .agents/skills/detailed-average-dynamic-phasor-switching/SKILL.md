@@ -119,7 +119,9 @@ equivalence.
 ## Helper
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 s = summarize_fidelity_switch_evidence( ...
     "CaseName","vsc_weakgrid_emt_to_avg", ...

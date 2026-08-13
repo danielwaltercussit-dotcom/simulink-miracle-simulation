@@ -1,3 +1,4 @@
-display_name: Snapshot Auditor
-short_description: Audit AI-in-loop snapshot packages.
-default_prompt: Use $snapshot-auditor to audit the latest AI-in-loop snapshot package for completeness, traceability, and report readiness.
+interface:
+  display_name: "Snapshot Auditor"
+  short_description: "Audit AI-in-loop snapshot packages"
+  default_prompt: "Use $snapshot-auditor to audit the AI-in-loop snapshot package for completeness, traceability, portability, and report readiness."

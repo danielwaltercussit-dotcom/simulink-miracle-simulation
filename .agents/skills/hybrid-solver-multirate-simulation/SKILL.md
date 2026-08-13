@@ -120,7 +120,9 @@ Do not restore or copy any private model (including NEBUS39V2.slx) into the repo
 Use the project helper when you have a candidate solver plan to check:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 plan = struct( ...
     "case_name", "vsc_weakgrid_hybrid", ...

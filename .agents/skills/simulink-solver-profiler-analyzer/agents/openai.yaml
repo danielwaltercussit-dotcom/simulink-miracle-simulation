@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Solver Profiler Analyzer"
+  short_description: "Analyze Simulink solver profiler results"
+  default_prompt: "Use $simulink-solver-profiler-analyzer to analyze solver profiler evidence for stiffness, resets, zero crossings, or solver churn."

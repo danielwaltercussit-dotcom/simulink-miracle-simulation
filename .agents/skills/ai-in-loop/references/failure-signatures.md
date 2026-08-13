@@ -4,6 +4,13 @@ Each entry maps an observed symptom to a confidence level, the most likely root 
 
 Add a new entry only when the user confirms the diagnosis or when the same fix has been validated by smoke + sltest.
 
+## Contents
+
+- FS-001 to FS-008: core build, solver, sync, layout, test, and oracle failures.
+- FS-019 to FS-029: newer adapter, artifact, memory, modal, and ambient-mask failures.
+- FS-009 to FS-018: legacy device/control, status, Model Advisor, mask, and InitFcn failures.
+- Use `Adding new entries` before extending this catalogue.
+
 ## FS-001 SimulationCommand update fails with unresolved variable
 
 - **Symptom**: `Unrecognized function or variable 'X'` during S4.

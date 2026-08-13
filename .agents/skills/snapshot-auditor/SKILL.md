@@ -11,23 +11,25 @@ asks whether an exported model package is complete enough to hand off.
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
-init_simulink_agent_project
-addpath("scripts/loop")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
+skillRoot = fullfile(projectRoot, ".agents", "skills", "snapshot-auditor");
+addpath(fullfile(skillRoot, "scripts", "loop"))
+snapshotRoot = getenv("AI_SUMMARY_ROOT");
+if isempty(snapshotRoot), error("Set AI_SUMMARY_ROOT or pass snapshot_root explicitly"); end
 
 r = ai_in_loop_audit_snapshot(pwd, ...
     "nebus39_dfig2_weakgrid_v0", ...
-    fullfile(getenv("USERPROFILE"), "Desktop", ...
-    "AI summary of simulation models", "nebus39_dfig2_weakgrid_v0"));
+    fullfile(snapshotRoot, "nebus39_dfig2_weakgrid_v0"));
 assert(r.passed)
 ```
 
 ## Workflow
 
-1. Locate the snapshot directory:
-   `AI summary of simulation models/<model>/` unless the caller provides a
-   custom `snapshot_root`.
-2. Run `scripts/loop/ai_in_loop_audit_snapshot.m`.
+1. Locate the snapshot directory through `AI_SUMMARY_ROOT` or an explicit
+   `snapshot_root`; do not assume a local Desktop path.
+2. Run the bundled `scripts/loop/ai_in_loop_audit_snapshot.m`.
 3. Re-read the generated audit report before referencing the snapshot in chat:
    `build/reports/snapshots/<model>_snapshot_audit.md`.
 4. Treat a failed audit as a report/package failure, not as a model dynamics

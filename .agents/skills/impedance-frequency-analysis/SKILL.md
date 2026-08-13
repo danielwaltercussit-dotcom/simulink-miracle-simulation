@@ -60,7 +60,9 @@ Treat the desktop lab archive as read-only ground truth. Impedance-relevant:
 Use the project helper when you already have a frequency-indexed response:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 summary = summarize_impedance_frequency_response(frequencyHz, Zf, ...
     "CaseName", "dfig_weakgrid_zsweep", ...

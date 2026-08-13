@@ -1,0 +1,4 @@
+interface:
+  display_name: "Decoupled Interface S-Functions"
+  short_description: "Cross-scale Simulink interface contracts"
+  default_prompt: "Use $decoupled-interface-sfunctions for EMT / averaged-electromechanical interface contracts, model-authority gates, and wrapper-to-full-plant validation ladders. Keep contract_status / model_validation_status / handoff_ready separate and stop at the named gate on any hash mismatch or missing signal."

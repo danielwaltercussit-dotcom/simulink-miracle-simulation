@@ -72,7 +72,9 @@ restore `NEBUS39V2.slx`; it is intentionally absent as privacy-sensitive.
 ## Helper
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 evidence = struct( ...
     "case_name","mmc_hvdc_symmonopole", ...

@@ -106,18 +106,47 @@ def read_frontmatter_name(skill_dir):
     if not skill_md.exists():
         print(f"[ERROR] SKILL.md not found in {skill_dir}")
         return None
-    content = skill_md.read_text()
-    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    content = skill_md.read_text(encoding="utf-8")
+    match = re.match(r"^---\r?\n(.*?)\r?\n---", content, re.DOTALL)
     if not match:
         print("[ERROR] Invalid SKILL.md frontmatter format.")
         return None
     frontmatter_text = match.group(1)
 
-    import yaml
-
     try:
-        frontmatter = yaml.safe_load(frontmatter_text)
-    except yaml.YAMLError as exc:
+        frontmatter = {}
+        lines = frontmatter_text.splitlines()
+        index = 0
+        while index < len(lines):
+            raw_line = lines[index]
+            index += 1
+            if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+                continue
+            if raw_line[:1].isspace():
+                continue
+            line_match = re.match(r"^([A-Za-z0-9_-]+):\s*(.*)$", raw_line)
+            if not line_match:
+                raise ValueError(f"unsupported frontmatter line: {raw_line}")
+            key, value = line_match.groups()
+            value = value.strip()
+            if value in {">", "|"}:
+                block_lines = []
+                while index < len(lines):
+                    next_line = lines[index]
+                    if next_line.strip() and not next_line[:1].isspace():
+                        break
+                    index += 1
+                    block_lines.append(next_line.strip())
+                if value == ">":
+                    value = " ".join(line for line in block_lines if line)
+                else:
+                    value = "\n".join(block_lines)
+            if (value.startswith('"') and value.endswith('"')) or (
+                value.startswith("'") and value.endswith("'")
+            ):
+                value = value[1:-1]
+            frontmatter[key] = value
+    except ValueError as exc:
         print(f"[ERROR] Invalid YAML frontmatter: {exc}")
         return None
     if not isinstance(frontmatter, dict):
@@ -182,7 +211,7 @@ def write_openai_yaml(skill_dir, skill_name, raw_overrides):
     agents_dir = Path(skill_dir) / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
     output_path = agents_dir / "openai.yaml"
-    output_path.write_text("\n".join(interface_lines) + "\n")
+    output_path.write_text("\n".join(interface_lines) + "\n", encoding="utf-8")
     print(f"[OK] Created agents/openai.yaml")
     return output_path
 

@@ -43,7 +43,7 @@ Promote only after adding references and checks for synchronization, power flow,
 
 ## Reusable Check
 
-Use `scripts/analysis/audit_sps_voltage_measurement_contract.m` before treating
-a plotted near-zero voltage as proof of islanding. The helper verifies the VI
-measurement output mode and units; it does not itself prove energization.
+Use `../../scripts/analysis/audit_sps_voltage_measurement_contract.m` before
+treating a plotted near-zero voltage as proof of islanding. The helper verifies
+the VI measurement output mode and units; it does not itself prove energization.
 

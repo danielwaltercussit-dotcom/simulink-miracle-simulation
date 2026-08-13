@@ -1,3 +1,4 @@
-display_name: Baseline Regression
-short_description: Compare generated Simulink models against golden baselines.
-default_prompt: Compare this generated Simulink model against a baseline or golden run with explicit signals, tolerances, and regression artifacts.
+interface:
+  display_name: "Baseline Regression"
+  short_description: "Compare Simulink models to baselines"
+  default_prompt: "Use $baseline-regression to compare a generated Simulink model with a golden baseline using explicit signals, tolerances, and artifacts."

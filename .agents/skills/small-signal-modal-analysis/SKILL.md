@@ -41,7 +41,9 @@ Treat the desktop lab archive as read-only ground truth. Especially useful:
 Use the project helper when you already have a numeric state matrix:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 summary = summarize_modal_eigs(A, ...
     "CaseName", "m03_dfig_pll_scan", ...

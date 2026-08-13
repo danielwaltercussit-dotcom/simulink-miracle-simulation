@@ -14,7 +14,7 @@ tuning, layout, or model verification gates.
 
 ## Required Files
 
-In `AI summary of simulation models/<model>/`:
+In `${AI_SUMMARY_ROOT}/<model>/` or an explicitly supplied snapshot directory:
 
 - `<model>.slx`
 - `case_<model>.yaml`

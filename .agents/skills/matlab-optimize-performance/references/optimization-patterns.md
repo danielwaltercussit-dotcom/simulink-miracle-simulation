@@ -2,6 +2,13 @@
 
 Proven MATLAB optimization patterns with typical speedup ranges. Apply these after profiling identifies the bottleneck (Step 3 of the workflow).
 
+## Contents
+
+- Vectorization, preallocation, call reduction, and `arguments` blocks.
+- Persistent caching, logical indexing, common subexpression elimination, and algebraic simplification.
+- Batched vectorization and O(N^2) running-index rewrites.
+- GPU-specific patterns and direct-computation fast paths.
+
 ## 1. Vectorization — Replace Loops with Array Operations (2–200x+)
 
 The single most impactful optimization in MATLAB. Replace element-wise loops with built-in array operations.

@@ -10,7 +10,9 @@ Use this before building or modifying any derived model from a spec.
 Primary helper:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/verification")
 r = validate_power_system_spec("specs/case_nebus39_dfig2_weakgrid_v0.yaml", ...
     "ReportPath", "build/reports/spec_validation/case_nebus39_dfig2_weakgrid_v0.md");

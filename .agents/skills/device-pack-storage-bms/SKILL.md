@@ -82,7 +82,9 @@ Treat the desktop lab archive as read-only ground truth. Storage-relevant:
 Use the project helper when you have a declared storage case descriptor:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 descriptor = struct( ...
     "case_name", "bess_freq_response", ...

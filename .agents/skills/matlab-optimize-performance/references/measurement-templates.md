@@ -2,6 +2,13 @@
 
 Ready-to-use MATLAB script templates for each step of the performance optimization workflow.
 
+## Contents
+
+- Baseline measurement with `timeit`.
+- Profiling and before/after comparison.
+- GPU timing.
+- Scaling test.
+
 ## Template 1: Baseline Measurement (timeit)
 
 ```matlab

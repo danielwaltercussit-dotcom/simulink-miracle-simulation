@@ -6,6 +6,13 @@ phasor/load-flow). It is the schema enforced by
 `scripts/analysis/summarize_fidelity_switch_evidence.m` and exercised by
 `tests/fidelity_switching_contract_test.m`.
 
+## Contents
+
+- Fidelity labels and equivalence axes.
+- Required fields, direction, time-step, and measured equivalence rules.
+- Average-to-switching mapping and runnable prototype status.
+- Combined verdict, relation to evidence, and failure routing.
+
 ## Recognized Fidelity Labels
 
 Ranked finer -> coarser (rank in parentheses):

@@ -52,7 +52,9 @@ JSON report (same base name, `.json` extension, or set `ReportJsonPath`
 Primary helper:
 
 ```matlab
-projectRoot = pwd;  % run from the repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 addpath("scripts/verification")
 r = verify_power_system_model("nebus39_dfig2_weakgrid_v0", ...

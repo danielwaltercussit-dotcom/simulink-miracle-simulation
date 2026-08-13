@@ -11,7 +11,9 @@ snapshot-ready.
 Primary helper:
 
 ```matlab
-% Run from the repository root.
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 addpath("scripts/layout")
 r = audit_model_quality_layout("nebus39_dfig2_weakgrid_v0", ...
@@ -43,8 +45,8 @@ The helper is a layout/quality gate, not an auto-layout tool. It checks:
 - Goto/From use: allowed for measurement/control signals only
 - measurement/logging presence
 - oracle files are present and treated as read-only references
-- reference availability for
-  `fullfile(getenv('USERPROFILE'),'Desktop','实验室仿真模型汇总')`
+- reference availability for `LAB_MODEL_ARCHIVE` when the optional lab archive
+  is configured
 
 Before layout, call `capture_layout_structure`. After layout, call
 `verify_layout_structure(...,"ThrowOnFail",true)` before this S3 audit. A

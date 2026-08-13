@@ -58,10 +58,28 @@ Read these first, in order:
 
 Do not bulk-read every skill. Route narrowly.
 
+For skills-library optimization, the repo-local `.agents/skills` directory in
+the active `simulink_agent_v1` worktree is the source of truth. Other worktrees
+and workspace-root copies are sync targets or evidence only. Distill reusable
+modeling rules into existing `SKILL.md`, `references/`, or small skill-local
+helpers; leave provenance reports in place and link source paths instead of
+moving or copying run artifacts. A migration package carries only skills,
+skill-local helpers, reusable docs/templates, and distilled references; it
+excludes simulation models, tests, `build/`, `Claude_demo/`, `dif11_work/`,
+`slprj/`, and `.slxc` unless the user approves a wider archive. On Windows,
+sync by copy plus hash verification first; do not add symlink-based workflow or
+new packaging layers without approval. Before claiming portability complete,
+run the existing validators from a clean temp path or second host and record the
+command result in the final status; do not create a new manifest just for that
+smoke test.
+
 Codex uses the tiny latest pointer to locate the active package and review
 result. Claude Code starts only from the generated `next_claude_prompt.md`, then
 reads at most the three evidence files named there. The named package is the
 required handback destination, not a Claude startup artifact.
+When `latest_claude_packet.md` is newer than `next_claude_prompt.md`, the
+latest packet's `final_state` wins for Codex review. A stale guard prompt is a
+blocker, not an executable task, until Codex deliberately refreshes the prompt.
 
 ## 2.1 Planning-Only Skills
 
@@ -107,6 +125,44 @@ Rules:
 - The handoff packet should record whether a Claude-directed plan is
   `draft_pending_user_approval`, `approved_by_user`, or `not_applicable`.
 
+## 2.3 Revised Claude Review Mode
+
+Use this mode when Codex calls Claude through `claude_assistant` / `ask_claude`
+as an external reviewer. It is separate from Claude Code executor prompts.
+
+Claude review input uses three layers:
+
+1. Global Map: active worktree, branch, dirty status, task package, latest
+   handback `final_state`, current `next_claude_prompt.md` objective,
+   prompt/packet consistency, relevant skill routing, forbidden scopes, and
+   known failed paths that must not be repeated.
+2. Evidence Index: latest handback, current prompt summary, key report paths,
+   validation artifacts, model/evidence status files, and at most one compact
+   manifest when many files exist.
+3. Local High-Resolution Evidence: at most three focused files or excerpts.
+   Claude may request more, but Codex decides whether to inspect or provide
+   them.
+
+Claude review output must contain only:
+
+1. Global risks
+2. Architecture/process inconsistencies
+3. Missing verification or tests
+4. Next 3 recommendations
+5. Up to 3 additional evidence files it wants Codex to inspect
+
+Claude must label claims as `verified`, `inference`, `untested`, or `blocked`.
+Claude does not directly scan the repo, start MATLAB, modify files, update
+handoff pointers, clear dirty state, or choose the final direction.
+
+Codex remains the executor and evidence judge. After review, Codex checks disk
+evidence before acting, then decides whether to supplement evidence, update a
+prompt or packet, ask the user, or execute. Model/script edits and MATLAB /
+Simulink validation remain Codex-owned and must follow project-local modeling
+skills: reuse/pattern first, SATK/model-policy gates where applicable,
+`model_read -> model_edit -> model_read -> model_check`, and
+`simulink-model-verification` before claiming PASS.
+
 ## 3. Domain Target
 
 Optimize the skills library for complex Simulink modeling of
@@ -121,15 +177,15 @@ power-electronics dominated power systems:
 - small-signal/modal evidence paired with EMT/RMS time-domain evidence;
 - handoff-ready IBR model validation evidence.
 
-The target reference corpus is:
+The target reference corpus is configured by environment variable:
 
 ```text
-C:\Users\jonas\Desktop\实验室仿真模型汇总
+${LAB_MODEL_ARCHIVE}
 ```
 
-If the Chinese folder name is garbled in a terminal, discover it from
-PowerShell by listing Desktop directories and matching the lab/reference model
-archive by human inspection:
+If `LAB_MODEL_ARCHIVE` is unset on a new host, ask the user to point to the
+read-only lab/reference model archive. On Windows, the user may discover the
+folder by listing Desktop directories and matching the archive by inspection:
 
 ```powershell
 Get-ChildItem $env:USERPROFILE\Desktop -Directory
@@ -349,7 +405,7 @@ When Codex resumes after Claude Code:
   and must not be used by multiple Claude conversations that repeatedly switch
   branches.
 - Use the stable worktree shape
-  `C:\Users\jonas\Desktop\simulink_agent_v1__<package-slug>`.
+  `${SIMULINK_AGENT_WORKSPACE}\simulink_agent_v1__<package-slug>`.
 - Before editing, Claude Code must record `git rev-parse --abbrev-ref HEAD` and
   `git status --short --branch` in its branch packet. If the branch changes
   unexpectedly, stop instead of continuing in the shared tree.
@@ -358,6 +414,9 @@ When Codex resumes after Claude Code:
   primary worktree is an invalid handoff.
 - Stage package files by explicit path. Never use `git add -A` or `git add .`
   while sibling-package files are visible.
+- Before committing protocol-only or skills-library maintenance, review
+  `git diff --cached --name-only` against an explicit allowlist for that commit.
+  A broad dirty skills tree is not permission to stage unrelated files.
 - The branch-specific packet is the authoritative parallel-work record:
   `build/reports/agent_handoff/<package_slug>_claude_packet.md`. Keep it under
   60 lines. `latest_claude_packet.md` is only the compact global index.
@@ -446,8 +505,9 @@ Each new Claude conversation must:
 - stop rather than continue when output repeats, a tool stalls, a required
   artifact is missing, or the task boundary becomes unclear.
 
-Codex defines boundaries, reviews claims, and chooses the next chunk. Claude
-Code advances only the assigned chunk and does not need global project detail.
+Codex defines boundaries, reviews claims, and chooses the next chunk. In
+executor mode, Claude Code advances only the assigned chunk and does not need
+global project detail. External review mode is governed by Section 2.3.
 
 Chunk sizing should favor a coherent end-to-end result rather than one tiny
 action per conversation. Codex may approve a multi-phase chunk containing a

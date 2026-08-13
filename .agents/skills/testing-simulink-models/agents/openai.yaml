@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testing Simulink Models"
+  short_description: "Test Simulink models with artifacts"
+  default_prompt: "Use $testing-simulink-models to create or run Simulink model tests with reusable artifacts and explicit pass/fail evidence."

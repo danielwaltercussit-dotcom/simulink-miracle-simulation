@@ -4,6 +4,13 @@ Use this reference when diagnosing power-system simulation behavior across
 electrical, converter-control, electromechanical, and scenario time scales in
 `simulink_agent_v1`.
 
+## Contents
+
+- Data priority and window definitions.
+- Signal families and minimal metrics.
+- Classification and report language.
+- Artifact schema.
+
 ## Data Priority
 
 Use data in this order:

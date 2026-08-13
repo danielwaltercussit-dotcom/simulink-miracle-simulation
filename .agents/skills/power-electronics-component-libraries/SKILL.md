@@ -26,7 +26,9 @@ Read `references/github-component-sources.md` before selecting components. Curre
 3. Initialize project-local paths in MATLAB:
 
    ```matlab
-   cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+   projectRoot = getenv("SIMULINK_AGENT_ROOT");
+   if isempty(projectRoot), projectRoot = pwd; end
+   cd(projectRoot)
    init_github_power_electronics_layout_tools
    ```
 

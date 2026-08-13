@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Profiler Analyzer"
+  short_description: "Analyze Simulink profiler results"
+  default_prompt: "Use $simulink-profiler-analyzer to analyze Simulink profiler results and identify evidence-backed runtime bottlenecks."

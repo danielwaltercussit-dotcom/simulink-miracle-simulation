@@ -1,6 +1,6 @@
 # AI-in-Loop Workflow
 
-Project: `C:\Users\jonas\Desktop\simulink_agent_v1`
+Project: `${SIMULINK_AGENT_ROOT}` (or the current repository root when unset)
 Status: v0.1 (initial closed-loop spec, derived from `docs/MODELING_WORKFLOW_DRAFT.md` Sections 6, 8, 11, 21)
 
 ## 1. Why this exists
@@ -59,11 +59,12 @@ The canonical fidelity decision is also mirrored under
 On successful iterations the runner also snapshots the model package to:
 
 ```text
-C:\Users\jonas\Desktop\AI summary of simulation models\<model>\
+${AI_SUMMARY_ROOT}\<model>\
 ```
 
 The snapshot includes the generated `.slx`, spec, build script, project or loop
 report, relevant PNGs, latest loop status, and a `snapshot_manifest.json`.
+Set `AI_SUMMARY_ROOT` explicitly before enabling snapshot export on a new host.
 
 The agent never echoes full logs into chat. It quotes paths.
 
@@ -91,7 +92,9 @@ The loop stops when any of:
 ## 6. MATLAB entry
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 ai_in_loop_run('goal','smoke','max_iter',5)
 ```

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulating Simulink Models"
+  short_description: "Run bounded Simulink simulations"
+  default_prompt: "Use $simulating-simulink-models to run bounded Simulink simulations with explicit stop time, logged evidence, and failure handling."

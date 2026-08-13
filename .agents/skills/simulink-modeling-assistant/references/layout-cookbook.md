@@ -5,14 +5,21 @@ Use these as deterministic coordinate templates instead of running global
 auto-layout.
 
 After any root-canvas layout change, run `simulink-model-quality-layout` /
-`scripts/layout/audit_model_quality_layout.m`. The desktop
-`实验室仿真模型汇总` archive is the read-only source for M01-M08 layout style:
-M01/M02 for two-area spacing, M07 for compact single-machine layouts, and M08
-for legal signal-only Goto/From usage.
+`scripts/layout/audit_model_quality_layout.m`. `${LAB_MODEL_ARCHIVE}` is the
+read-only source for M01-M08 layout style: M01/M02 for two-area spacing, M07
+for compact single-machine layouts, and M08 for legal signal-only Goto/From
+usage.
 
 Use full layout only inside new or empty ordinary signal-flow subsystems. Use
 incremental placement for existing signal-flow subsystems. These modes never
 override the deterministic-coordinate rule for a power-system root canvas.
+
+## Contents
+
+- Root-canvas no-overlap rule and six universal layout rules.
+- M07, M08, M02, M05, and IEEE39/DFIG layout templates.
+- W33-W37 local wind-farm pattern.
+- Anti-patterns to avoid.
 
 ## Hard rule: zero overlap at root canvas
 
@@ -136,6 +143,66 @@ Combine §1 (per-machine) with §3 (multi-zone). Each remaining SG keeps the §1
 
 For the existing project model `ieee39_10m39bus_sg5_dfig5_nebus_layout.slx`,
 this is already implemented. Treat it as the worked example.
+
+### IEEE39 W33-W37 local wind-farm pattern
+
+For the latest saved `ieee39_sg5_dfig5_decoupled_interface/models/
+ieee39_10m39bus_sg5_dfig5_skills_test.slx` top canvas, the usable local
+wind-farm motif is:
+
+```
+WindSpeed / Trip constants  ->  W3x DFIG SubSystem  ->  Measurements / terminator
+          left side                 center                    right side
+```
+
+Observed saved-model examples from the 2026-06-29 decoupled-interface layout:
+
+- W33: constants at x≈1020-1050, `W33` at x≈1062-1188, measurement sink at
+  x≈1115-1135 below the block.
+- W34: constants at x≈1300-1330, `W34` at x≈1342-1468, measurement sink at
+  x≈1395-1415 below the block.
+- W35: constants at x≈1555-1585, `W35` at x≈1587-1713, measurement sink at
+  x≈1640-1660 below the block.
+- W36: constants at x≈1810-1840, `W36` at x≈1857-1983, measurement sink at
+  x≈1910-1930 below the block.
+- W37: constants at x≈20-50, `W37` at x≈200-295, measurement sink at x≈340-360.
+
+W33-W36 intentionally form a readable horizontal row at y≈2445 with roughly
+245-280 px between wind-farm subsystem left edges. This is preferable for the
+cluster view: enough separation for physical wiring and labels, while still
+making the W33-W36 group visually scan as one staged wind-farm band.
+
+Keep this left-to-right signal direction when adding or repairing DFIG roots:
+scenario/reference inputs on the left, physical DFIG block centered at its
+electrical bus location, diagnostics to the right. This keeps ports readable
+without hiding the IEEE39 one-line topology.
+
+For local DFIG accessory blocks, 25-40 px visual gaps are readable for
+neighboring constants, loads, taps, and measurement blocks. Allow larger
+inter-device spacing to preserve the bus topology. Do not globally compress
+W33-W37 into a neat table if doing so destroys the electrical geography of the
+39-bus diagram.
+
+#### 2026-07-01 L1/W37 donor layout update
+
+For the current IEEE39 1DFIG ladder line, treat
+`Claude_demo/ieee39_sg5_dfig5_skills_test/models_ladder/ieee39_l1_w37_1dfig.slx`
+as the W37 layout donor. Its root-canvas W37 cluster is cleaner than the older
+kX derivative layout and should be reused for weak-grid copies:
+
+- Put `W37_WindSpeed` and `W37_Trip` immediately left of `W37`
+  (`[-55 730 -25 750]`, `[-55 775 -25 795]`).
+- Keep `W37` central at `[75 727 170 853]`.
+- Put `TW_W37_mbus` and `W37_Measurements` just to the right of W37
+  (`[220 735 280 755]`, `[240 780 260 800]`).
+- Keep bus37 electrical diagnostics grouped by function: `PQ_bus37` with
+  `TW_bus37_PQ` above/right (`[535 677 595 748]`, `[440 705 500 725]`),
+  `TW_bus37_Iabc` nearby (`[535 770 595 790]`), and `TW_bus37_Vabc` /
+  `VI_bus37` as the lower voltage group (`[255 905 315 925]`,
+  `[255 1004 295 1086]`).
+- Apply this as a layout-only donor pattern to `models_ladder/weakgrid/kX*`
+  derivatives; do not move the canonical electrical bus topology, alter
+  controller gains, or use global `arrangeSystem`.
 
 ## Anti-patterns (don't do these)
 

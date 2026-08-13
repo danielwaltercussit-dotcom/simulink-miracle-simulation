@@ -1,0 +1,4 @@
+interface:
+  display_name: "Building Simulink Models"
+  short_description: "Build Simulink models from specifications"
+  default_prompt: "Use $building-simulink-models to build a Simulink model from a bounded specification while preserving project modeling constraints."

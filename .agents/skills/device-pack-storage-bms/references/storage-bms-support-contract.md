@@ -5,6 +5,13 @@ evidence for converter-dominated systems. It defines the metadata, the evidence
 dimensions, the PASS/WARN/MISSING/N/A rules, and the battery-vs-DC-link
 separation that the helper enforces.
 
+## Contents
+
+- Required metadata, grid-support modes, and evidence dimensions.
+- Battery/DC-link separation and same-study/same-condition rules.
+- Thermal-limit, provisional, status-count, and handoff rules.
+- Interpretation rules, relation to other evidence, and failure routing.
+
 ## Required Metadata
 
 Record:

@@ -89,7 +89,9 @@ archive.
 Use the project helper with a case descriptor you already have:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 d = struct();
 d.case_name = "vsc_gfm_weakgrid";

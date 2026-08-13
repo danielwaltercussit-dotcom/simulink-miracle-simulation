@@ -4,6 +4,13 @@ Use this contract when generating or reviewing MMC/HVDC converter-station
 evidence for Simulink/Simscape power-electronics studies. It is the durable
 specification; the `summarize_mmc_hvdc_support` helper conforms to it.
 
+## Contents
+
+- Required metadata and optional fault/loss/decoupling fields.
+- Evidence status and evidence tiers.
+- Cross-checks beyond the checklist.
+- Interpretation rules, relation to other evidence, and failure routing.
+
 ## Required Metadata
 
 Record (a missing required field downgrades that section and makes the package

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Requirement Drafts"
+  short_description: "Draft model and algorithm requirements"
+  default_prompt: "Use $generate-requirement-drafts to draft concise requirements for Simulink models or algorithms from verified project context."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI-in-Loop Simulink Orchestrator"
+  short_description: "Closed-loop Simulink modeling workflow"
+  default_prompt: "Use $ai-in-loop to run a bounded Simulink modeling loop with explicit stage gates, reports, and stop conditions."

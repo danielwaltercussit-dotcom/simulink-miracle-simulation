@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Debug Command Line"
+  short_description: "Debug Simulink from command line"
+  default_prompt: "Use $simulink-debug-commandline to debug Simulink values, block behavior, or execution flow from command-line evidence."

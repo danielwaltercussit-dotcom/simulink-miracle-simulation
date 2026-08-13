@@ -28,6 +28,12 @@ in task report folders; this file stores only the reviewed decision.
 - Structural limit: W36 Qref authority at the studied high-P operating point is
   blocked by the rotor-current circle and must not be claimed as a PLL/current
   PI tuning outcome.
+- Metric guard: headroom or filtered-magnitude ratios that normalize by real
+  power must require finite telemetry and a strictly positive, physically owned
+  base-P denominator. Near-zero, negative, missing, or wrong-owner denominator
+  evidence blocks the candidate instead of driving a positive-feedback tuning
+  decision.
+- Evidence anchor: `build/reports/agent_handoff/dfig_voltage_control_claude_packet.md`.
 - Reuse limit: do not select a tuning direction until unchanged-parameter T1
   evidence classifies the dominant band and signal owner.
 - Launch lesson: a detached T1 long baseline must be treated as disk-backed

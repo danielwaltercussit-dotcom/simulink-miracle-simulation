@@ -6,6 +6,18 @@ machines (buses 33-37) with aggregated `power_wind_dfig_avg` DFIG farms. These
 are hard-won, netlist-verified lessons for anyone repeating SG->DFIG replacement
 in a large SPS network. Treat as a reference checklist, not auto-run code.
 
+## Contents
+
+- [1. DFIG terminal voltage](#1-the-averaged-dfig-terminal-is-575-v-not-the-nom3-value)
+- [2. Farm sizing](#2-size-the-farm-with-nb_wt-only--never-lower-the-target-pg)
+- [3. Station interface transformer](#3-station-interface-transformer)
+- [4. Voltage-measurement contract](#4-verify-the-voltage-measurement-contract-before-diagnosing-an-island)
+- [5. Netlist-based island diagnosis](#5-netlist-based-island-diagnosis-only-after-the-measurement-audit)
+- [6. Failure-loop discipline](#6-failure-loop-discipline-process)
+- [7. Simulation cost](#7-simulation-cost-this-machine-19507-block-averaged-emt-50-us)
+- [8. Verdict criteria](#8-verdict-criteria-for-a-sg-dfig-replacement-use-a-numeric-gate)
+- [9. Reactive-control telemetry](#9-reactive-control-telemetry-before-tuning)
+
 ## 1. The averaged DFIG terminal is 575 V (NOT the `nom(3)` value)
 
 `power_wind_dfig_avg.slx / DFIG Wind Turbine` mask:

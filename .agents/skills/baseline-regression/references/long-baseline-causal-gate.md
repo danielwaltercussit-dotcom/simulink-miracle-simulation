@@ -4,6 +4,13 @@ Use this reference when a Simulink power-system run is too expensive for an
 interactive session and its result may become evidence for S6 tuning, causal
 perturbation design, or cross-timescale analysis.
 
+## Contents
+
+- Scope, launch contract, and detached execution.
+- Status vocabulary and success gate.
+- Network/host assumptions and causal gate before S6.
+- Perturbation discipline and common launch failure.
+
 ## Scope
 
 This pattern covers unchanged long baselines such as IEEE39 SG5/DFIG5 T1 runs,

@@ -3,6 +3,13 @@
 Lookup tables for default PI sets, base values, and electrical constants.
 The full derivation is in `docs/MODELING_PATTERN_LIBRARY.md`.
 
+## Contents
+
+- DFIG, synchronous-machine, and multi-voltage base defaults.
+- MMC and LCC HVDC constants.
+- Small VSC PI shorthand.
+- Common DFIG VSG/PLL signal-rotation snippets.
+
 ## §1 DFIG (M01 default — copy this block verbatim)
 
 ```matlab

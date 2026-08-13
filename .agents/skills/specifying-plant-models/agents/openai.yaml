@@ -1,0 +1,4 @@
+interface:
+  display_name: "Specifying Plant Models"
+  short_description: "Specify plant model structure and data"
+  default_prompt: "Use $specifying-plant-models to specify plant model structure, parameters, assumptions, and validation evidence before model construction."

@@ -12,7 +12,7 @@ Use this workflow for every parallel E/F/M/D Claude Code conversation.
 
 2. **Isolate**
    - Use a dedicated worktree:
-     `C:\Users\jonas\Desktop\simulink_agent_v1__<package-slug>`.
+     `${SIMULINK_AGENT_WORKSPACE}\simulink_agent_v1__<package-slug>`.
    - Never perform parallel implementation in the primary review workspace.
    - Confirm branch and status before editing.
 

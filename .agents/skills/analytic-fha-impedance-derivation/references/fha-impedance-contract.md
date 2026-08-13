@@ -6,6 +6,13 @@ analytic counterpart to `impedance-frequency-analysis/references/impedance-contr
 (P3); the two intentionally share frequency-band labels and the passivity
 screen so an analytic curve and a measured/simulated sweep are comparable.
 
+## Contents
+
+- Required metadata, validity band, metrics, and frequency bands.
+- Interpretation rules and measured-data comparison.
+- Bound verification and evidence-grade separation.
+- Relation to other evidence and failure routing.
+
 ## Required Metadata
 
 Record, or the derivation is provisional:

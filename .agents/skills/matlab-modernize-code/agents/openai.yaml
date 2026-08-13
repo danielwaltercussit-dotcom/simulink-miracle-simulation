@@ -1,0 +1,4 @@
+interface:
+  display_name: "MATLAB Modernize Code"
+  short_description: "Modernize MATLAB code safely"
+  default_prompt: "Use $matlab-modernize-code to modernize MATLAB code while preserving outputs, tests, and project compatibility."

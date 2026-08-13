@@ -84,7 +84,9 @@ frequency-domain artifact in `ibr-model-validation-evidence` (P4).
 ## Helper
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 
 model.type = "rlc_branches";

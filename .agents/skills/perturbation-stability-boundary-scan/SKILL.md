@@ -125,7 +125,9 @@ edit archive files and never copy private models into the repo. Use
 Use the project helper when you already have per-sample stability metrics:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 summary = summarize_stability_boundary_scan(samples, metric, ...
     "CaseName", "dfig_scr_gain_scan", ...

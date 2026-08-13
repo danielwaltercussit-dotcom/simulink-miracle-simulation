@@ -18,10 +18,9 @@ files.
   shared file edit.
 - Do not restore `NEBUS39V2.slx`. It is intentionally absent because the user
   marked it privacy-sensitive.
-- If a model reference is required, use the desktop read-only lab simulation
-  archive folder. If the Chinese folder name is garbled in the terminal, list
-  Desktop directories in PowerShell and identify the archive folder by
-  inspection; do not copy private models back into the repo.
+- If a model reference is required, use `${LAB_MODEL_ARCHIVE}` as the read-only
+  lab simulation archive. If it is unset, ask the user for the archive path; do
+  not copy private models back into the repo.
 - Run `checkcode` on changed MATLAB files when MATLAB is available.
 - Run package-specific smoke/contract tests.
 - If a runnable Simulink/Simscape model is created or changed, actually load,
@@ -153,11 +152,11 @@ generic DC-link converter evidence.
 For a new Claude Code dialog, use:
 
 ```text
-You are working in C:\Users\jonas\Desktop\simulink_agent_v1 on branch <branch-name>.
+You are working in ${SIMULINK_AGENT_ROOT} on branch <branch-name>.
 
 Task package: <stable package name>.
 
-First read AGENTS.md, docs/CODEX_CLAUDE_COLLABORATION.md, docs/PARALLEL_TASK_PACKAGES_EFMD.md, and build/reports/agent_handoff/latest_claude_packet.md if it exists in this worktree. Respect the privacy boundary: do not restore NEBUS39V2.slx; if needed, use the desktop read-only lab simulation archive folder as reference only. If the Chinese folder name is garbled in the terminal, list Desktop directories in PowerShell and identify it by inspection.
+First read AGENTS.md, docs/CODEX_CLAUDE_COLLABORATION.md, docs/PARALLEL_TASK_PACKAGES_EFMD.md, and build/reports/agent_handoff/latest_claude_packet.md if it exists in this worktree. Respect the privacy boundary: do not restore NEBUS39V2.slx; if needed, use ${LAB_MODEL_ARCHIVE} as a read-only reference only, and ask the user for that path when it is unset.
 
 Use only the write scope listed for your package in docs/PARALLEL_TASK_PACKAGES_EFMD.md unless a validation-blocking issue forces a shared edit. Keep artifacts package-local. Run checkcode on changed MATLAB files and run your package smoke/contract test. If you create or change a runnable Simulink/Simscape model, actually load/update/simulate it or explain exactly why that was not possible.
 

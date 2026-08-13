@@ -5,6 +5,13 @@ scan evidence for converter-dominated systems. It is the durable specification
 behind `summarize_stability_boundary_scan.m`; read it before changing metrics,
 the boundary rule, band/label wording, or pass/fail semantics.
 
+## Contents
+
+- Required metadata, metrics, and classification.
+- Boundary estimation and joint boundary curve.
+- Evidence tiers and interpretation rules.
+- Relation to other evidence, artifact manifest, and failure routing.
+
 ## Required Metadata
 
 Record:

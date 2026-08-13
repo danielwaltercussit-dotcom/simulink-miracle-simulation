@@ -14,7 +14,7 @@ This is a **router** skill, not a handbook. It maps a user request to:
    `simulating-simulink-models`, `testing-simulink-models`, `ai-in-loop`,
    `model-fidelity-selector`, `small-signal-modal-analysis`,
    `weak-grid-scr-scenario`, `gfl-gfm-control-comparison`,
-   `ibr-model-validation-evidence`).
+   `decoupled-interface-sfunctions`, `ibr-model-validation-evidence`).
 
 The goal is **token economy**: when a request is similar to one of the
 M01–M08 reference models, reuse their parameters and layout instead of
@@ -44,6 +44,22 @@ re-deriving from first principles.
      `两机两区域/`, `柔直四机两区模型/`.
 6. Output goes under `build/generated_models/` and `build/reports/`.
 
+## Portable Roots
+
+For migrated hosts, prefer explicit roots over local Desktop assumptions:
+
+- `SIMULINK_AGENT_ROOT`: repository root. If unset, snippets assume the current
+  MATLAB folder is already the repository root.
+- `AI_SUMMARY_ROOT`: optional export root for reusable model snapshots.
+- `LAB_MODEL_ARCHIVE`: optional read-only lab/reference model archive.
+- `MATLAB_EXE`: optional command-line MATLAB executable; otherwise use
+  `matlab` from `PATH`.
+- `MATLAB_MCP_TOOLBOX_ROOT`: optional MATLAB MCP toolbox path for isolation
+  tests that need it.
+
+If an optional root is unset, ask for it or skip that optional export/reference
+step. Do not invent a local Desktop path.
+
 ## Decision Flow
 
 ```
@@ -63,6 +79,8 @@ classify by request type:
    PE-specific (VSC,
        PLL, gating,
        waveform debug) ──▶ simulink-power-electronics
+   cross-domain EMT /
+       averaged interface ──▶ decoupled-interface-sfunctions
    simulate / verify   ──▶ simulating-simulink-models + ai-in-loop S4-S5
    write tests         ──▶ testing-simulink-models + ai-in-loop S7
 ```
@@ -91,6 +109,9 @@ Additional research-routing skills:
   capacity, and contingency sweeps.
 - Use `gfl-gfm-control-comparison` when the user asks to compare PLL/GFL and
   VSG/droop/GFM behavior.
+- Use `decoupled-interface-sfunctions` when the model crosses EMT, averaged
+  EMT, phasor/RMS, or electromechanical domains through an equivalent-source,
+  controlled-source, measurement, S-Function, or MATLAB Function boundary.
 - Use `ibr-model-validation-evidence` when the output is a reusable model
   package rather than a one-off smoke simulation.
 
@@ -100,6 +121,11 @@ When authoring or reviewing a build script for a derived model, use
 `simulink-device-adapters` before S4 compile so device names, adapter ports,
 InitFcn self-containment, mask introspection, and trace metadata are checked
 as part of S2 rather than discovered after simulation.
+
+When a build introduces an EMT/averaged/electromechanical boundary, use
+`decoupled-interface-sfunctions` before compile to keep `contract_status`,
+`model_validation_status`, and `handoff_ready` separate. A static contract pass
+must not be promoted to full-plant validation.
 
 Before building or extending a model from generic Simulink blocks, apply the
 official SATK gate distilled in `references/agentic-modeling-policy.md`: honor
@@ -119,9 +145,9 @@ physics verdict. Apply the six gates in
 energization, observability, operating point, then scientific evidence.
 
 When touching root layout, use `simulink-model-quality-layout` after the
-layout cookbook. The desktop `实验室仿真模型汇总` folder is a read-only style
-reference for M01/M02 spacing, M07 compact single-machine templates, and M08
-signal-only Goto/From practice.
+layout cookbook. When `LAB_MODEL_ARCHIVE` is configured, treat it as a
+read-only style reference for M01/M02 spacing, M07 compact single-machine
+templates, and M08 signal-only Goto/From practice.
 
 When the request is research-driven rather than only build-driven, run
 `model-fidelity-selector` before choosing a donor. If the selected path is

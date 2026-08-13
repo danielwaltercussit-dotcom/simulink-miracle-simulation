@@ -1,3 +1,4 @@
-display_name: Power Electronics Libraries
-short_description: Use GitHub power electronics libraries.
-default_prompt: Use this skill when selecting or integrating MATLAB/Simulink components for converter-interfaced power systems.
+interface:
+  display_name: "Power Electronics Libraries"
+  short_description: "Select power electronics libraries"
+  default_prompt: "Use $power-electronics-component-libraries to select or integrate MATLAB/Simulink components for converter-interfaced power systems."

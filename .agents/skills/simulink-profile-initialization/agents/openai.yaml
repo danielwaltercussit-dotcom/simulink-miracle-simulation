@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulink Profile Initialization"
+  short_description: "Profile Simulink initialization time"
+  default_prompt: "Use $simulink-profile-initialization to profile Simulink model initialization and identify slow setup or update-diagram work."

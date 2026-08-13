@@ -129,7 +129,9 @@ Do not restore or recreate `NEBUS39V2.slx`; it is intentionally absent.
 Use the project helper when you already have the tuning metadata:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 tuning = struct();
 tuning.operating_point = "P=0.8pu, SCR=2.5, GFL";

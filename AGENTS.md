@@ -24,6 +24,11 @@ It must not read the package at startup or recover context from old chats.
 The script must also write `next_claude_prompt.txt` so the user can transfer the
 prompt without relying on clipboard contents.
 
+External Claude review through `claude_assistant` / `ask_claude` is not Claude
+Code execution. For review-only calls, Codex must prepare the three-layer review
+packet defined in `docs/CODEX_CLAUDE_COLLABORATION.md` and keep Claude advisory:
+no repo scan, no MATLAB, no model edits, no handoff pointer updates.
+
 Use `docs/FRESH_SESSION_HANDOFF_TEMPLATES.md` for the exact compact format and
 size limits. Never append history to handoff files.
 
@@ -72,6 +77,12 @@ Project-local skill registry:
 
 - `.agents/skills`
 
+For skills-library optimization and migration work, treat
+`simulink_agent_v1/.agents/skills` as the authoritative portable skill library
+and follow the detailed portability boundary in
+`docs/CODEX_CLAUDE_COLLABORATION.md`. Do not include active models, tests, or
+run artifacts unless the user explicitly widens scope.
+
 When the user asks for Simulink modeling, simulation, testing, debugging, or
 profiling work in this project, first inspect the relevant `SKILL.md` file under
 `.agents/skills`. Prefer the official Model-Based Design core skills from
@@ -90,7 +101,9 @@ routing rule, not permission to uninstall or globally archive those skills.
 MATLAB-side initialization is project-local:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 init_simulink_agent_project
 ```
 
@@ -102,5 +115,5 @@ permission. If MCP tools are needed, use a project-scoped launch/configuration
 that points the MCP server at:
 
 ```text
-C:\Users\jonas\Desktop\simulink_agent_v1\external\simulink-agentic-toolkit\tools\tools.json
+${SIMULINK_AGENT_ROOT}\external\simulink-agentic-toolkit\tools\tools.json
 ```

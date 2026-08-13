@@ -1,3 +1,4 @@
-display_name: Simulink Model Verification
-short_description: Verify derived Simulink power-system models before PASS.
-default_prompt: Verify this derived Simulink power-system model with compile, smoke simulation, finite logged-output, layout, InitFcn, and report-artifact checks.
+interface:
+  display_name: "Simulink Model Verification"
+  short_description: "Verify derived Simulink models before PASS"
+  default_prompt: "Use $simulink-model-verification to verify this derived Simulink power-system model before PASS with compile, smoke, finite-output, layout, InitFcn, and report checks."

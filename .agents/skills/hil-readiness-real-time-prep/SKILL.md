@@ -74,7 +74,9 @@ io_mapping) surface follow-up work but do not block bring-up.
 ## Helper
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 manifest = struct( ...
     "case_name", "vsc_rt_candidate", ...
@@ -100,7 +102,9 @@ solver / fixed step / compiled discrete rates / continuous-state count from the
 *compiled* model, then calls the same status engine:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 info = hil_build_demo_rt_model("rt");   % tiny synthetic demo under build/
 summary = hil_readiness_from_model(info.path, ...

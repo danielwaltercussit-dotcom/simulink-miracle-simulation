@@ -4,6 +4,14 @@ Use a fresh Claude Code conversation for every work chunk in this project.
 Conversation history is disposable; project-local handoff files are the source
 of truth.
 
+This file governs Claude Code executor sessions launched from
+`build/reports/agent_handoff/next_claude_prompt.md`. If Claude is invoked by
+Codex through `claude_assistant` / `ask_claude` with a `Claude Review Packet`,
+it is review-only: do not edit files, start MATLAB, run simulations, update
+handoff pointers, or decide the final direction. Return only the requested
+advisory review sections with `verified`, `inference`, `untested`, or `blocked`
+labels.
+
 ## Start Contract
 
 1. Read `build/reports/agent_handoff/next_claude_prompt.md`.
@@ -14,6 +22,9 @@ of truth.
 
 Do not scan the repository to reconstruct context. Do not read old chats, the
 package packet, or the global pointer at startup. The prompt is self-contained.
+All work launched from `build/reports/agent_handoff/next_claude_prompt.md` is a
+quiet disk-backed executor task by default, even if the prompt forgets the exact
+`QUIET EXECUTOR` phrase.
 
 ## Modeling-Test Routing
 
@@ -73,11 +84,12 @@ or refactor skills during a bounded model test.
 
 ## Quiet Execution
 
-When the prompt says `QUIET EXECUTOR`, chat is a lifecycle display, not a work
-report. Client streaming output is capped at exactly one `START` line and one
-terminal `DONE` or `BLOCKED` line. Do not emit `WAIT`, progress lines, tool
-narration, pasted output, reasoning, findings, suggestions, or repeated status
-to the client. Put all detail in the named disk handback and status artifacts.
+For handoff work, chat is a lifecycle display, not a work report. Client
+streaming output is capped at exactly one `START` line and one terminal `DONE`
+or `BLOCKED` line. Do not emit `WAIT`, progress lines, tool narration, pasted
+output, reasoning, findings, suggestions, repeated status, generated code,
+MATLAB functions, JSON, log tails, or stack traces to the client. Put all detail
+in the named disk handback and status artifacts.
 
 Quiet execution does not mean silent failure. Update the prompt-named disk
 resume/status artifact after every phase and before any long command. If no
@@ -85,16 +97,22 @@ resume/status path is named, stop as `BLOCKED_EXECUTOR_CONTRACT` before editing.
 
 For a run expected to exceed 60 seconds:
 
-- prefer launching it as a Claude Code background task so it is visible in the
-  Background Tasks sidebar; do not use a blocking foreground run when a
-  background-capable tool is available;
+- prefer an OS-durable background path (for example a Windows Scheduled Task
+  writing flags/heartbeats) when the run must survive app/session teardown;
+  otherwise launch it as a Claude Code background task only when that is the
+  safest available option;
 - if no background-capable tool is available, stop and report `BLOCKED` rather
   than silently using a long synchronous call;
 - record the estimated wall time and status path before launch;
-- first poll after `max(60 s, min(10 min, 0.5 * ETA))`; later polls after
-  `max(60 s, min(5 min, 0.2 * ETA))`, reading only flags or compact status JSON;
+- do not chat-poll. The process writes heartbeat/status files. For ETA under
+  20 minutes, inspect flags at most every 5 minutes. For ETA 20-90 minutes,
+  inspect at most every 15 minutes. For ETA above 90 minutes, inspect at most
+  every 30 minutes. Reading only flags or compact status JSON counts as a poll;
 - inspect a targeted log tail only after failure or material overrun;
 - close the completed background task promptly after terminal evidence is read.
+- If an ordered phase launches a durable simulation expected to run longer than
+  the current reliable interactive window, write `DONE RUNNING <status path>` and
+  stop instead of remaining in chat just to poll.
 
 ## Handback Contract
 

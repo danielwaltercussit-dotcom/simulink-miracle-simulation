@@ -85,7 +85,9 @@ edit archive files. Use `lab-model-pattern-miner` when inspecting the archive.
 Use the project helper when you have a time-domain switching waveform:
 
 ```matlab
-projectRoot = pwd;  % run from repository root
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if isempty(projectRoot), projectRoot = pwd; end
+cd(projectRoot)
 addpath("scripts/analysis")
 summary = summarize_switching_waveform_evidence(timeS, waveform, ...
     "CaseName", "vsc_spwm_fault_window", ...
