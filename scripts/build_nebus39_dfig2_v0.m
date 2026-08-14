@@ -18,7 +18,7 @@ p.addParameter('Force', false, @islogical);
 p.parse(varargin{:});
 force = p.Results.Force;
 
-projectRoot = 'C:\Users\jonas\Desktop\simulink_agent_v1';
+projectRoot = fileparts(fileparts(mfilename('fullpath')));
 modelName   = 'nebus39_dfig2_v0';
 outDir      = fullfile(projectRoot,'build','generated_models');
 outPath     = fullfile(outDir, [modelName '.slx']);

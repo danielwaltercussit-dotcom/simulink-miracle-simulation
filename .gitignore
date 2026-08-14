@@ -1,5 +1,6 @@
 # Session-local / agent context
 .ctx/
+.claude/settings.local.json
 
 # Generated Simulink/MATLAB artifacts
 build/

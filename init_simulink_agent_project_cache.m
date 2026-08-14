@@ -2,7 +2,7 @@ function init_simulink_agent_project_cache(varargin)
 %INIT_SIMULINK_AGENT_PROJECT_CACHE  One-shot path cache for fast -batch startup.
 %
 %   Run ONCE in an interactive MATLAB session:
-%     >> cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+%     >> cd("<clone-root>")
 %     >> init_simulink_agent_project_cache
 %
 %   This adds the project's scripts/, scripts/loop/, and external/

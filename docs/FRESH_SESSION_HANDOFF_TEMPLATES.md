@@ -41,7 +41,11 @@ oversized fields, or a prompt/pointer mismatch before a new session starts.
 
 Use this template only for `claude_assistant` / `ask_claude` advisory review.
 It is not a Claude Code executor prompt and does not authorize edits, MATLAB,
-simulation, or handoff pointer updates.
+simulation, or handoff pointer updates. The goal is not to give Claude a tiny
+isolated snippet or an unlimited repository scan. Codex supplies a compact
+global map, an evidence index, and at most three local high-resolution evidence
+files or excerpts. Claude may request more evidence, but Codex decides whether
+to inspect or provide it.
 
 ```text
 # Claude Review Packet
@@ -82,6 +86,10 @@ Label every claim as verified, inference, untested, or blocked.
 Do not execute, edit, run MATLAB, scan the repo, clean the worktree, or decide
 the final direction.
 ```
+
+Codex must decide after the review whether disk evidence supports any Claude
+recommendation before updating prompts, writing handoff packets, or entering
+MATLAB/Simulink execution.
 
 ## Package States
 

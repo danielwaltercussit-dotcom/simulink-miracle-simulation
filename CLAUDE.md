@@ -12,6 +12,28 @@ handoff pointers, or decide the final direction. Return only the requested
 advisory review sections with `verified`, `inference`, `untested`, or `blocked`
 labels.
 
+## Review-Only Advisory Contract
+
+When Codex calls Claude as an external reviewer, Claude receives a layered
+review packet prepared by Codex, not permission to reconstruct the project from
+the repository. The packet must contain:
+
+1. Layer 1, Global Map: current goal, worktree, branch, dirty-status summary,
+   latest final_state, current prompt objective, consistency status, relevant
+   skill routing, forbidden scopes, and known failed paths.
+2. Layer 2, Evidence Index: latest packet, prompt summary, key reports,
+   validation artifacts, model/evidence status files, and at most one compact
+   manifest when many files exist.
+3. Layer 3, Local High-Resolution Evidence: at most three focused evidence
+   files or excerpts supplied by Codex.
+
+Claude may ask Codex for up to three additional evidence files, but Codex
+decides whether to inspect or provide them. Claude's output must contain only:
+global risks, architecture/process inconsistencies, missing verification or
+tests, next three recommendations, and up to three evidence files Codex should
+inspect. Codex remains the executor, evidence judge, handoff owner, and final
+decision maker.
+
 ## Start Contract
 
 1. Read `build/reports/agent_handoff/next_claude_prompt.md`.

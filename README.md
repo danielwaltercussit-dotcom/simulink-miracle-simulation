@@ -12,7 +12,11 @@ Start here:
 MATLAB initialization:
 
 ```matlab
-cd("C:\Users\jonas\Desktop\simulink_agent_v1")
+projectRoot = getenv("SIMULINK_AGENT_ROOT");
+if strlength(projectRoot) == 0
+    projectRoot = pwd;
+end
+cd(projectRoot)
 init_simulink_agent_project
 ```
 
