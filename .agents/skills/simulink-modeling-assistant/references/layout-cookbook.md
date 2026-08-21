@@ -204,6 +204,172 @@ kX derivative layout and should be reused for weak-grid copies:
   derivatives; do not move the canonical electrical bus topology, alter
   controller gains, or use global `arrangeSystem`.
 
+#### 2026-08-15 IEEE39 multi-DFIG penetration layout pattern
+
+For S53-A, S53-B, S88, and later penetration scenarios derived from the
+frozen IEEE39 baseline, preserve the central one-line network as the visual
+anchor and place each SG-to-DFIG replacement group radially outside its
+connection bus. The reviewed examples are under
+`Claude_demo/ieee39_sg5_dfig5_skills_test/models_penetration_v2/`.
+
+- Treat one replacement as a movable local group: the 20 kV interface tap,
+  station transformer, DFIG subsystem, WindSpeed/Qref sources, and measurement
+  sink move together. Do not repair readability by dragging only one member.
+- Keep the electrical order visually explicit from the IEEE39 bus outward:
+  bus/interface tap -> station transformer -> DFIG. Rotate the transformer or
+  DFIG when necessary so the physical ports face each other and the three
+  phase lines remain short and parallel.
+- Place WindSpeed and Qref beside the DFIG control-input edge. Place the
+  measurement sink beside the measurement-output edge. Control and diagnostic
+  lines must not cross the three-phase connection corridor.
+- For adjacent replacement buses such as 33-36, align interface taps and
+  transformers to the underlying bus columns, then stagger or spread the DFIG
+  blocks outward. A shared baseline is useful only when it preserves the
+  electrical geography and label clearance.
+- For peripheral buses such as 30, 37, and 38, orient the complete replacement
+  group toward the network instead of forcing every DFIG to use the same
+  orientation. Prefer a clear radial branch over visual uniformity.
+- Keep large signal-only panels such as `PV2_MeasurementChain` and
+  `PV2_BalanceObserver` outside the electrical canvas, aligned as separate
+  panels with a visible gap. They must not cover network lines or DFIG labels.
+- Use local line routing after moving a group. Never run global
+  `arrangeSystem` on an IEEE39 root canvas.
+- After saving a layout edit, audit root-level dangling lines, entirely
+  unconnected edit-owned blocks, and unused edit-owned From/Goto tags. Remove
+  only confirmed-unused owned artifacts; do not rewrite donor, masked, or
+  library internals merely to satisfy a global scan.
+
+#### 2026-08-18 reviewed dense-scenario refinement
+
+The manually reviewed S53-A, S53-B, and S88 canvases show that a local DFIG
+group is a reusable motif, not a coordinate template that must be copied
+unchanged into every penetration level:
+
+- Keep each six-block replacement group together: `Wxx`, `ST-xx`, the 20 kV
+  interface tap, `Wxx_WindSpeed`, `Wxx_Qref`, and `Wxx_mbus_sink`.
+- Orient the group toward its electrical bus. For a left-facing `Wxx`, place
+  WindSpeed/Qref on its right input edge and the measurement sink on its left
+  output edge; mirror that rule for a right-facing block.
+- In the dense 33-36 band, use facing pairs around the transformer row:
+  W33/W34 may face left and W35/W36 may face right. This leaves the central
+  three-phase corridor short and keeps signal wires outside it.
+- Reuse S53 geometry as the starting point for S88, then apply small local
+  offsets for the higher-density canvas. The reviewed S88 moved W30, W33-37,
+  and especially W38 locally to clear neighboring branches; exact cross-model
+  coordinate equality is not a quality requirement.
+- Peripheral groups may use different transformer and interface-tap
+  orientations. W30/W37 favor vertical radial branches; W38 may use a
+  horizontal transformer with a locally rotated interface tap when that
+  avoids crossing the network.
+- Preserve 30-75 px of readable signal-side clearance where practical, but
+  let electrical geography and uncrossed three-phase wiring take priority over
+  uniform spacing.
+- After any manual layout edit, treat physics as unchanged but still reload the
+  saved model, run update/check, and repeat the owned-artifact hygiene audit.
+
+#### 2026-08-20 S23-A visual semantics and guarded migration
+
+For the Word-v2 IEEE39 penetration ladder, use the reviewed S23-A canvas as a
+common-layout donor, but do not copy bus-local coordinates across an SG/DFIG
+technology mismatch.
+
+- Use orange for physical dynamic loads. Use a pale-orange fill for the
+  high-impedance topology-support load so it remains in the load family without
+  being confused with benchmark demand.
+- Use light blue for physical V/I measurements and generated measurement
+  terminals. Use cyan for the large measurement, balance-observer, and Word
+  logging panels.
+- Keep benchmark dynamic-load icons at one canonical size per horizontal or
+  vertical orientation. Keep generated measurement terminals at 20 by 20 px;
+  keep HV/interface taps and line monitors consistent within their role.
+- Copy S23-A positions only for blocks shared safely by donor and target. If a
+  target has a different SG/DFIG state at a bus, preserve that bus-local group
+  and any target-only control accessories.
+- If a target-only DFIG branch conflicts with the common network, translate the
+  complete six-block group (`Wxx`, `ST-xx`, 20 kV tap, WindSpeed, Qref, sink)
+  to the nearest clear area. Do not move only the transformer or DFIG block.
+- Resolve residual visual collisions by moving signal accessories or topology
+  support shunts first. Never move a real load, bus, SG, or network branch just
+  to satisfy a cosmetic grid.
+- A visual migration must assert unchanged electrical connectivity and
+  unchanged non-graphical root parameters, then perform disk readback, update,
+  zero-overlap, and owned-artifact hygiene checks.
+
+#### 2026-08-21 four-machine two-area R6/R7 wiring pattern
+
+The retained four-machine/two-area R6 4SG and R7 1DFIG+3SG families use a
+family-master propagation pattern. Source evidence is under
+`Claude_demo/4m2a_sg_dfig_oscillation_skills_test/reports/verification/R7_4_reference_layout_propagation/`.
+
+- Keep the electrical corridor at the top: Area 1 and B1 on the left, parallel
+  tie paths in the middle, and B2 and Area 2 on the right. Preserve short,
+  parallel three-phase lines and aligned breaker/line endpoints.
+- Keep PMU and derived-power calculations in a separate panel below the
+  electrical corridor. Keep waveform and measurement logging in a vertical
+  lane at the far right. Use signal-only Goto/From links between these regions
+  instead of long direct wires across the physical network.
+- Use one reviewed layout master per structurally compatible family. The R7
+  ABsame reference propagated 21 matching DFIG/measurement block positions and
+  64 keyed root-line point sets to its R7 siblings. Match a line by source block,
+  source port, destination blocks, and destination ports before copying points.
+- Do not copy R7 coordinates into R6 merely because both are four-machine
+  cases. For the R6 family, retain its own ABsame master, apply only matching
+  line geometry, and reroute connected root lines locally. Leave unmatched
+  SG/DFIG-specific blocks untouched.
+- Treat whitespace between the electrical corridor, PMU panel, and logging lane
+  as functional separation, not as a defect. Optimize only when a line crosses
+  a block, label, or incompatible semantic lane, or when a physical path becomes
+  hard to trace.
+- A layout update may refresh masked-block dialog caches. Compare block dialog
+  parameters, connectivity fingerprints, and model configuration before and
+  after the edit; restore exact pre-layout non-graphical values before accepting
+  a graphics-only change.
+- The reviewed R6/R7 previews have clear physical corridors and systematic
+  logging lanes. They do not justify another global layout pass; future changes
+  should be local to a new device or measurement group.
+
+#### Screenshot review and vision-model advisory loop
+
+Use screenshot analysis as a bounded advisory stage after deterministic
+structure checks, not as topology authority. A multimodal model can identify
+visual defects and rank layout candidates, but it must not create/delete blocks,
+change ports, infer physical connectivity from pixels, or declare PASS.
+
+1. Export one fit-to-view root screenshot plus focused crops for dense device
+   groups. Record the model modification time and screenshot time. If the image
+   predates the model, mark the visual verdict stale and use it only for triage.
+2. Give the visual model semantic lanes or labels when available: physical
+   network, device group, control/reference, measurement, and diagnostics.
+3. Ask it to locate line-block intersections, line-label occlusion, avoidable
+   crossings, remote return trunks, excessive orthogonal bends, signal wires in
+   a three-phase corridor, and fragmented device accessories.
+4. Generate at most three local candidates using group-level transforms such as
+   translate, mirror, rotate, or move an accessory panel. Protect buses, real
+   loads, the central network, and all non-graphical parameters.
+5. Rank candidates with both geometric features and visual reasoning. Useful
+   features are overlap count, line-block intersection count, crossings, bend
+   count, longest trunk, corridor intrusion, group compactness, label clearance,
+   and symmetry. Reject any candidate that fails a deterministic hard gate even
+   if the image looks cleaner.
+6. Apply one candidate only after `capture_layout_structure` /
+   `verify_layout_structure`, disk readback, update/check, zero-overlap, dangling
+   line, and owned-artifact hygiene gates pass. Retain the previous accepted
+   geometry when no candidate improves the targeted defect.
+
+The current practical neural approach is pairwise candidate ranking, not free
+coordinate generation. Codex or another vision model can provide this ranking
+now. Train a dedicated graph/vision model only after retaining enough accepted
+and rejected before/after pairs with topology labels; its output remains
+`advisory_needs_gate` and never replaces model structure verification.
+
+The 2026-08-21 review of the available IEEE39 previews found S23-A readable and
+well separated. S53-A and S88 still warrant local candidate generation around
+the dense DFIG groups, especially buses 30 and 33-38, where long vertical runs,
+foldbacks, and accessory wiring approach the three-phase corridor. Do not run a
+global layout. These previews were exported on 2026-08-20 and predate the latest
+2026-08-21 model saves, so refresh them after the active IEEE39 work completes
+before claiming a final visual pass.
+
 ## Anti-patterns (don't do these)
 
 - Auto-layout / `arrangeSystem` over a power-grid one-line diagram. It loses electrical-flow semantics.

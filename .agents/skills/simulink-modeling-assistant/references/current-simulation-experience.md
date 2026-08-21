@@ -226,3 +226,61 @@ Use the following gates:
   sensitivity, named-state participation, or another physical identity bridge.
   For shaft/torsional claims, frequency should respond to shaft stiffness with
   the expected trend; a Ksh-insensitive mode is not a shaft mode.
+
+## 10. Multi-DFIG penetration initialization
+
+For several simultaneous SG-to-DFIG replacements, reuse the same workflow but
+solve every scenario independently:
+
+- separate installed MVA from dispatched MW; retain the declared capacity and
+  prefer a bounded active-power reference such as `Pref` for the final dispatch
+  residual instead of resizing the farm;
+- establish a feasible PV solution at the scenario P dispatch before imposing
+  DFIG terminal Q, then change PV buses to PQ sequentially while retaining each
+  converged solution as the next load-flow initial guess;
+- initialize remaining SG rotor angles, turbine power, and AVR references from
+  that scenario-local load flow, and initialize DFIG rotor/controller states
+  from a compatible warm operating point before formal admission;
+- treat a 5 s window after a Qref or wind step as a bounded safety preflight,
+  not automatically as steady-state evidence when slow control states remain;
+- in electrically close multi-DFIG groups, do not extrapolate independent
+  per-channel Qref slopes unless a coupled Jacobian experiment validates the
+  approximation. A sign reversal between Qref and measured Q is a hard stop
+  for diagonal or common-shift correction.
+
+After parameter commitment, require model update, owned-artifact hygiene, and
+a short reload from the accepted operating point before retaining the model.
+
+## 11. Canonical scenario-file discipline
+
+For a scenario matrix such as IEEE39 DFIG penetration, distinguish required
+scientific scenarios from tuning branches:
+
+- each table-defined scenario owns one canonical model file, for example
+  `ieee39_pv2_s53_a.slx`;
+- tune, initialize, instrument, and repair that scenario in place after taking
+  at most one clearly named rollback copy before a major physical change;
+- do not create `probe`, `trial`, `final`, `final2`, parameter-suffixed, or
+  timestamped `.slx` variants for ordinary iterations; write run-specific
+  parameters and waveforms to reports instead;
+- a missing table-defined scenario is a legitimate new canonical model, not a
+  branch. Build it from the current accepted baseline and validated donor;
+- before creating even a legitimate new canonical model, report its exact
+  scientific role, intended filename, donor model, and governing Word/table
+  entry to the user and wait for approval. When the required canonical file
+  already exists, preserve reviewed manual wiring/layout and perform parameter,
+  instrumentation, and validation work in that file instead;
+- when the baseline physical contract changes, invalidate or explicitly
+  regenerate dependent scenarios instead of silently mixing old-baseline and
+  new-baseline models;
+- once a canonical model passes readback, update/check, hygiene, and its staged
+  admission gate, remove obsolete temporary model copies while retaining their
+  report evidence.
+- when a frozen or admitted canonical model receives a graphics-only change,
+  retain the physical evidence only through an explicit hash bridge that proves
+  unchanged connectivity and non-graphical parameters. Update the canonical
+  hash pointer; do not claim that the old run hash directly matches the edited
+  file, and do not rerun a long simulation solely for color or layout changes.
+
+This rule limits model-file proliferation without collapsing scientifically
+distinct capacity/location scenarios into one mutable file.
