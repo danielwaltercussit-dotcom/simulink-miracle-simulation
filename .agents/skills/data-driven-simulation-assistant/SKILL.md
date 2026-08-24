@@ -50,8 +50,9 @@ outputs.
 4. Use the lexical baseline by default. Use the CPU neural classifier only when
    its saved model and evaluation summary were produced from the current
    dataset and the summary has no gate or forbidden-action violations.
-5. Produce advisory JSON with candidate labels, confidence, evidence paths,
-   required deterministic gates, forbidden actions, and next review.
+5. Produce advisory JSON with candidate labels, candidate parameter classes,
+   confidence, evidence paths, required deterministic gates, forbidden actions,
+   and next review.
 6. Route any acceptance, S6, modal, source-identity, or launch decision to the
    relevant project skill or contract.
 
@@ -69,8 +70,9 @@ Train the portable NumPy MLP with
 --neural-summary <summary.json>`.
 Without `--neural-model`, the command deliberately uses the transparent lexical
 baseline. Neural output may rank candidate routes such as modal sensitivity,
-MIMO coupling, or active frequency sweep; it may not supply or authorize a
-controller write.
+MIMO coupling, or active frequency sweep. It may also name candidate parameter
+classes for tie-breaking after mathematical screening. It may not supply a
+direction, step size, controller write, or tuning acceptance.
 
 ## Output
 
@@ -81,6 +83,7 @@ Runtime output must be machine-readable JSON shaped by the contract:
   "status": "advisory",
   "query_id": "example",
   "candidates": [],
+  "candidate_parameter_classes": [],
   "required_gates": [],
   "forbidden_actions": [],
   "next_review": "human_or_codex_review_required"

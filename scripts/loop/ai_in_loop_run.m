@@ -77,6 +77,18 @@ p.addParameter('modal_zmin',1e-6,@isnumeric);
 p.addParameter('modal_fmin',0.1,@isnumeric);
 p.addParameter('modal_fmax',200,@isnumeric);
 p.addParameter('modal_min_damping',0.05,@isnumeric);
+% S6 mathematical candidate generation. Enabled by default for tune/full
+% goals; registry-order direction is disabled unless explicitly requested.
+p.addParameter('mathematical_tuning',true,@(x)islogical(x)||isnumeric(x));
+p.addParameter('modal_sensitivity_step',0.02,@isnumeric);
+p.addParameter('modal_sensitivity_max_relative_step',0.10,@isnumeric);
+p.addParameter('modal_sensitivity_max_knobs',8,@(x)isnumeric(x)&&isscalar(x)&&x>=1);
+p.addParameter('modal_target_damping',0.08,@isnumeric);
+p.addParameter('modal_operating_point_tolerance',1e-3,@isnumeric);
+p.addParameter('modal_candidate_validation_tolerance',1e-5,@isnumeric);
+p.addParameter('minimum_growth_improvement',0.02,@isnumeric);
+p.addParameter('neural_tuning_advice','',@(x)isstruct(x)||ischar(x)||isstring(x));
+p.addParameter('allow_rule_tuning_fallback',false,@(x)islogical(x)||isnumeric(x));
 p.parse(varargin{:});
 opt = p.Results;
 opt.fast = logical(opt.fast);
@@ -85,6 +97,8 @@ opt.fidelity_decision = logical(opt.fidelity_decision);
 opt.validation_evidence = logical(opt.validation_evidence);
 opt.weakgrid_scr = logical(opt.weakgrid_scr);
 opt.modal_analysis = logical(opt.modal_analysis);
+opt.mathematical_tuning = logical(opt.mathematical_tuning);
+opt.allow_rule_tuning_fallback = logical(opt.allow_rule_tuning_fallback);
 
 projectRoot = ai_in_loop_project_root();
 loopRoot    = fullfile(projectRoot,'build','reports','loop');
@@ -188,8 +202,20 @@ for iter = 0:(opt.max_iter-1)
         % S6 TUNE
         if any(strcmp(opt.goal, {'tune','sltest','full'}))
             tuningReport = fullfile(iterDir, 'tuning_report.md');
+            candidateAnalysisFcn = [];
+            if opt.mathematical_tuning
+                candidateAnalysisFcn = @(modelName,reg,metrics,round) ...
+                    ai_in_loop_stage_tuning_analysis(projectRoot,modelName,reg,metrics, ...
+                    round,iterDir,opt);
+            end
             state.stages.S6 = ai_in_loop_stage_tune(projectRoot, opt.model_name, opt.t_full, ...
-                'ReportPath', tuningReport);
+                'ReportPath', tuningReport, ...
+                'CandidateAnalysisFcn', candidateAnalysisFcn, ...
+                'NeuralAdvice', opt.neural_tuning_advice, ...
+                'LinearizationSampleTime', opt.modal_ts, ...
+                'ModalValidationTolerance', opt.modal_candidate_validation_tolerance, ...
+                'MinimumGrowthImprovement', opt.minimum_growth_improvement, ...
+                'AllowRuleFallback', opt.allow_rule_tuning_fallback);
             ai_in_loop_require_stage_pass(state.stages.S6, false);
             state.evidence  = 'measured';
         end
@@ -322,5 +348,11 @@ end
 diagnosticsDir = fullfile(iterDir, 'diagnostics');
 if isfolder(diagnosticsDir)
     rmdir(diagnosticsDir, 's');
+end
+analysisDirs = dir(fullfile(iterDir,'tuning_analysis_round_*'));
+for k = 1:numel(analysisDirs)
+    if analysisDirs(k).isdir
+        rmdir(fullfile(iterDir,analysisDirs(k).name),'s');
+    end
 end
 end

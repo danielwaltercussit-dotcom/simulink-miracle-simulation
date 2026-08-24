@@ -40,6 +40,16 @@ FORBIDDEN_ACTIONS = [
     "do_not_launch_expensive_simulation",
 ]
 
+PARAMETER_CLASSES_BY_LABEL = {
+    "modal_parameter_sensitivity_required": (
+        "pll",
+        "current_pi",
+        "dc_link_pi",
+        "speed_pi",
+    ),
+    "mimo_cross_coupling_required": ("current_pi", "pll"),
+}
+
 
 @dataclass(frozen=True)
 class LabelRule:
@@ -487,6 +497,15 @@ def compute_idf(records: list[dict[str, Any]]) -> dict[str, float]:
     return {token: math.log((1 + doc_count) / (1 + count)) + 1.0 for token, count in df.items()}
 
 
+def _candidate_parameter_classes(candidates: Iterable[dict[str, Any]]) -> list[str]:
+    classes: list[str] = []
+    for candidate in candidates:
+        for parameter_class in PARAMETER_CLASSES_BY_LABEL.get(candidate.get("label", ""), ()):
+            if parameter_class not in classes:
+                classes.append(parameter_class)
+    return classes
+
+
 def suggest_from_records(
     query_text: str,
     records: list[dict[str, Any]],
@@ -568,6 +587,7 @@ def suggest_from_records(
         "query_id": query_id,
         "candidates": candidates,
         "required_gates": required_gates,
+        "candidate_parameter_classes": _candidate_parameter_classes(candidates),
         "forbidden_actions": FORBIDDEN_ACTIONS,
         "next_review": "human_or_codex_review_required",
         "similar_records": [
@@ -870,6 +890,7 @@ def suggest_from_neural_model(
         "query_id": query_id,
         "candidates": candidates,
         "required_gates": required_gates,
+        "candidate_parameter_classes": _candidate_parameter_classes(candidates),
         "forbidden_actions": FORBIDDEN_ACTIONS,
         "next_review": "human_or_codex_review_required",
         "model_type": "hashed_bow_numpy_mlp",

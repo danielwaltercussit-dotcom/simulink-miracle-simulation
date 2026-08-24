@@ -1,21 +1,20 @@
-function s = ai_in_loop_stage_tune(~, modelName, tFull, varargin)
-%AI_IN_LOOP_STAGE_TUNE  S6 — closed-loop tuning stage.
+function s = ai_in_loop_stage_tune(projectRoot, modelName, tFull, varargin)
+%AI_IN_LOOP_STAGE_TUNE  S6 — mathematics-first closed-loop tuning stage.
 %
 %   s = ai_in_loop_stage_tune(projectRoot, modelName, tFull, ...
 %           'MaxRounds', 5, ...
 %           'FaultStart', 0.5, 'FaultEnd', 0.7, ...
 %           'VnomLL', 13.8e3)
 %
-%   What this stage does (rule-driven inner loop):
-%     1. sim(modelName, StopTime=tFull) → out
-%     2. extract_tuning_metrics(out) → m
-%     3. if m.stable: PASS, return
-%        else: tuning_registry(modelName) → reg
-%              choose knob whose fs_targets contains m.fs_signature
-%              new_val = scale_fcn(current, signDirFromFS)
-%              set_param(blk, mask, new_val); save_system
-%              re-sim; repeat up to MaxRounds
-%     4. if not converged in MaxRounds: status=FAIL with FS code so the outer
+%   What this stage does:
+%     1. Simulate the unchanged baseline and extract tuning metrics.
+%     2. For an unstable result, re-linearize registered control knobs and
+%        derive a bounded candidate from d(zeta)/dp.
+%     3. Write one candidate, re-linearize to confirm modal movement, then run
+%        the short time-domain validation.
+%     4. Accept improvement; otherwise restore the pre-write snapshot and mask
+%        the rejected candidate. Neural advice may break mathematical ties only.
+%     5. If not converged in MaxRounds: status=FAIL with FS code so the outer
 %        ai_in_loop_run can decide whether to break out or retry.
 %
 %   Result struct:
@@ -30,18 +29,28 @@ p.addParameter('FaultStart', 0.5, @isnumeric);
 p.addParameter('FaultEnd',   0.7, @isnumeric);
 p.addParameter('VnomLL',     13.8e3, @isnumeric);
 p.addParameter('ReportPath', '', @(x) ischar(x) || isstring(x));
+p.addParameter('CandidateAnalysisFcn', [], @(x) isempty(x) || isa(x,'function_handle'));
+p.addParameter('NeuralAdvice', struct(), @(x) isstruct(x) || ischar(x) || isstring(x));
+p.addParameter('LinearizationSampleTime', 50e-6, @(x)isnumeric(x)&&isscalar(x)&&x>0);
+p.addParameter('ModalValidationTolerance', 1e-5, @(x)isnumeric(x)&&isscalar(x)&&x>=0);
+p.addParameter('MinimumGrowthImprovement', 0.02, @(x)isnumeric(x)&&isscalar(x)&&x>=0);
+p.addParameter('AllowRuleFallback', true, @(x)islogical(x)||isnumeric(x));
 p.parse(varargin{:});
 opt = p.Results;
+opt.AllowRuleFallback = logical(opt.AllowRuleFallback);
 
 s = struct('name','S6_TUNE','status','PASS','model',char(modelName), ...
     't_full', tFull, 'rounds', 0, 'history', struct([]), ...
-    'final_metrics', struct(), 'tuning_hook', '');
+    'final_metrics', struct(), 'tuning_hook', '', ...
+    'candidate_decisions',struct([]),'mathematical_analysis',{{}}, ...
+    'modal_verification',{{}});
 
 if ~bdIsLoaded(modelName); load_system(char(modelName)); end
 
 % Write-contract gate and rollback helper live under scripts/tuning.
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(fileparts(here), 'tuning'));
+neuralAdvice = load_neural_advice(opt.NeuralAdvice, projectRoot);
 
 % Round 0 — sim with current parameters
 [out, simOk, errMsg] = safe_sim(modelName, tFull);
@@ -95,33 +104,67 @@ for round = 1:opt.MaxRounds
     if isempty(targetSig); break; end
 
     % Pick a knob: first reg entry that (a) targets this FS and (b) is not exhausted
-    knob = []; knobIdx = 0;
-    for k = 1:numel(reg)
-        if any(strcmp(reg(k).fs_targets, targetSig)) && ~knob_state(k).exhausted
-            knob = reg(k); knobIdx = k;
-            break
+    reg = tuning_registry(modelName);
+    regForSelection = reg;
+    for k = 1:numel(regForSelection)
+        stateIdx = find(strcmp({knob_state.id},regForSelection(k).id),1);
+        if ~isempty(stateIdx) && knob_state(stateIdx).exhausted
+            regForSelection(k).fs_targets = {};
         end
     end
-    if isempty(knob)
+    sensitivity = struct();
+    analysis = struct('status','SKIPPED','note','candidate analysis disabled');
+    if ~isempty(opt.CandidateAnalysisFcn)
+        try
+            analysis = opt.CandidateAnalysisFcn(modelName,regForSelection,m,round);
+        catch ME
+            analysis = struct('status','SKIPPED','note',ME.message);
+        end
+        s.mathematical_analysis{end+1} = analysis;
+        if isfield(analysis,'sensitivity')
+            sensitivity = analysis.sensitivity;
+        end
+    end
+    decision = select_tuning_candidate(regForSelection,targetSig,sensitivity,neuralAdvice, ...
+        'AllowRuleFallback',opt.AllowRuleFallback);
+    s.candidate_decisions(end+1) = decision;
+    if ~any(strcmp(decision.status,{'CANDIDATE','FALLBACK'}))
         s.status = 'FAIL';
-        s.note   = sprintf('All knobs targeting FS=%s are exhausted', targetSig);
+        s.note = sprintf('No authorized candidate for FS=%s: %s',targetSig,decision.reason);
         s.final_metrics = m;
-        write_tuning_report(opt.ReportPath, s);
+        write_tuning_report(opt.ReportPath,s);
+        return
+    end
+    knobIdx = decision.registry_index;
+    knob = reg(knobIdx);
+    stateIdx = find(strcmp({knob_state.id},knob.id),1);
+    if isempty(stateIdx)
+        s.status = 'FAIL';
+        s.note = sprintf('Candidate %s is absent from knob state',knob.id);
+        s.final_metrics = m;
+        write_tuning_report(opt.ReportPath,s);
         return
     end
 
-    % Direction policy
-    if isfield(m,'I_osc_growth') && ~isnan(m.I_osc_growth) && m.I_osc_growth > 1.05
-        signDir = +1;
+    % Mathematical direction is primary; legacy direction is fallback-only.
+    if strcmp(decision.status,'CANDIDATE')
+        relativeStep = decision.relative_step;
+        signDir = sign(relativeStep);
     else
-        signDir = -1;
+        relativeStep = NaN;
+        if isfield(m,'I_osc_growth') && ~isnan(m.I_osc_growth) && m.I_osc_growth > 1.05
+            signDir = +1;
+        else
+            signDir = -1;
+        end
     end
     % If this knob has tried the same direction 2 times without improvement,
     % flip direction. If we've already flipped once before and still didn't
     % improve, the knob is exhausted — let the scheduler move on.
-    if knob_state(knobIdx).last_dir == signDir && knob_state(knobIdx).no_improve >= 2
-        if knob_state(knobIdx).flip_count >= 1
-            knob_state(knobIdx).exhausted = true;
+    if strcmp(decision.status,'FALLBACK') && ...
+            knob_state(stateIdx).last_dir == signDir && knob_state(stateIdx).no_improve >= 2
+        if knob_state(stateIdx).flip_count >= 1
+            knob_state(stateIdx).exhausted = true;
             s.history(end+1).round   = round;
             s.history(end).params    = capture_registry(modelName);
             s.history(end).metrics   = m;
@@ -129,14 +172,14 @@ for round = 1:opt.MaxRounds
             continue
         end
         signDir = -signDir;
-        knob_state(knobIdx).no_improve = 0;
-        knob_state(knobIdx).flip_count = knob_state(knobIdx).flip_count + 1;
+        knob_state(stateIdx).no_improve = 0;
+        knob_state(stateIdx).flip_count = knob_state(stateIdx).flip_count + 1;
     end
 
     % --- Write-contract gate: refuse immutable/unclassified knobs ---
     [writable, why] = tuning_entry_is_writable(knob);
     if ~writable
-        knob_state(knobIdx).exhausted = true;
+        knob_state(stateIdx).exhausted = true;
         s.history(end+1).round = round;
         s.history(end).params  = capture_registry(modelName);
         s.history(end).metrics = m;
@@ -145,12 +188,16 @@ for round = 1:opt.MaxRounds
     end
 
     oldVal = eval(get_param(knob.block_path, knob.mask_param));
-    newVal = knob.scale_fcn(oldVal, signDir);
+    if strcmp(decision.status,'CANDIDATE')
+        newVal = oldVal .* (1 + relativeStep);
+    else
+        newVal = knob.scale_fcn(oldVal, signDir);
+    end
     newVal = clamp_to_bounds(newVal, knob.min, knob.max);
 
     % If clamped to bound and equals old, this knob is exhausted — skip
     if all(abs(newVal - oldVal) < 1e-9)
-        knob_state(knobIdx).exhausted = true;
+        knob_state(stateIdx).exhausted = true;
         s.history(end+1).round = round;
         s.history(end).params  = capture_registry(modelName);
         s.history(end).metrics = m;
@@ -165,11 +212,24 @@ for round = 1:opt.MaxRounds
     preWrite = capture_registry(modelName);
     wr = tuning_write_then_sim(preWrite, ...
         @() write_knob(knob, newVal, modelName), ...
-        @() safe_sim(modelName, tFull), ...
+        @() validate_then_sim(modelName,tFull,analysis,decision, ...
+            opt.LinearizationSampleTime,opt.ModalValidationTolerance), ...
         @(snap) restore_registry(modelName, snap));
     if wr.rolled_back
         if wr.restore_ok
             save_system(modelName);
+        end
+        if wr.restore_ok && startsWith(wr.msg,'modal verification rejected:')
+            knob_state(stateIdx).exhausted = true;
+            if isstruct(wr.out) && isfield(wr.out,'modal_verification')
+                s.modal_verification{end+1} = wr.out.modal_verification;
+            end
+            s.history(end+1).round = round;
+            s.history(end).params = preWrite;
+            s.history(end).metrics = m;
+            s.history(end).action = sprintf('%s rejected and rolled back (%s)', ...
+                knob.id,wr.msg);
+            continue
         end
         s.status = 'FAIL';
         s.error  = wr.msg;
@@ -178,36 +238,52 @@ for round = 1:opt.MaxRounds
         write_tuning_report(opt.ReportPath, s);
         return
     end
-    out = wr.out;
+    validation = wr.out;
+    out = validation.simulation_output;
+    s.modal_verification{end+1} = validation.modal_verification;
     m_new = extract_tuning_metrics(out, ...
         'fault_t_start', opt.FaultStart, 'fault_t_end', opt.FaultEnd, ...
         'V_nom_LL', opt.VnomLL);
 
-    % Improvement check on growth metric. Mark exhausted only after 3 same-direction
-    % moves with no measurable improvement.
+    % The time-domain gate accepts an improving or stable candidate. A rejected
+    % candidate is restored immediately; rollback is protection, not a search
+    % direction generator.
     new_growth = m_new.I_osc_growth;
     if isnan(new_growth); new_growth = Inf; end
-    if new_growth < best_growth - 0.02
+    accepted = m_new.stable || ...
+        new_growth < best_growth - opt.MinimumGrowthImprovement;
+    trialSnapshot = capture_registry(modelName);
+    if accepted
         best_growth = new_growth;
-        best_snapshot = capture_registry(modelName);
-        knob_state(knobIdx).no_improve = 0;
+        best_snapshot = trialSnapshot;
+        knob_state(stateIdx).no_improve = 0;
     else
-        knob_state(knobIdx).no_improve = knob_state(knobIdx).no_improve + 1;
-        if knob_state(knobIdx).no_improve >= 3
-            knob_state(knobIdx).exhausted = true;
+        knob_state(stateIdx).no_improve = knob_state(stateIdx).no_improve + 1;
+        knob_state(stateIdx).exhausted = true;
+        restored = restore_registry(modelName,preWrite);
+        if ~restored
+            s.status = 'FAIL';
+            s.error = sprintf('Rejected candidate %s could not be rolled back',knob.id);
+            s.final_metrics = m_new;
+            write_tuning_report(opt.ReportPath,s);
+            return
         end
+        save_system(modelName);
     end
-    knob_state(knobIdx).last_dir = signDir;
+    knob_state(stateIdx).last_dir = signDir;
 
     s.history(end+1).round   = round;
-    s.history(end).params    = capture_registry(modelName);
+    s.history(end).params    = trialSnapshot;
     s.history(end).metrics   = m_new;
-    s.history(end).action    = sprintf('%s.%s: %s -> %s (FS=%s dir=%+d)', ...
-        knob.id, knob.mask_param, mat2str(oldVal), mat2str(newVal), targetSig, signDir);
+    s.history(end).action    = sprintf('%s.%s: %s -> %s (FS=%s source=%s neural=%d accepted=%d)', ...
+        knob.id, knob.mask_param, mat2str(oldVal), mat2str(newVal), targetSig, ...
+        decision.source, decision.neural_supported, accepted);
     s.rounds = round + 1;
 
-    m = m_new;
-    if m.stable
+    if accepted
+        m = m_new;
+    end
+    if accepted && m.stable
         s.status = 'PASS';
         s.final_metrics = m;
         write_tuning_report(opt.ReportPath, s);
@@ -231,6 +307,25 @@ write_tuning_report(opt.ReportPath, s);
 end
 
 % ---------------------------------------------------------------
+function [payload, ok, msg] = validate_then_sim(modelName,tFull,analysis,decision,Ts,tolerance)
+payload = struct('simulation_output',[], ...
+    'modal_verification',struct('status','SKIPPED','confirmed',true, ...
+    'reason','legacy fallback has no mathematical prediction'));
+if strcmp(decision.status,'CANDIDATE')
+    payload.modal_verification = verify_modal_candidate(modelName,analysis,Ts, ...
+        'Tolerance',tolerance);
+    if ~payload.modal_verification.confirmed
+        ok = false;
+        msg = sprintf('modal verification rejected: %s', ...
+            payload.modal_verification.reason);
+        return
+    end
+end
+[out,ok,msg] = safe_sim(modelName,tFull);
+payload.simulation_output = out;
+end
+
+
 function [out, ok, msg] = safe_sim(modelName, t)
 ok = true; msg = '';
 try
@@ -297,6 +392,33 @@ for k = 1:numel(reg)
 end
 end
 
+function advice = load_neural_advice(input, projectRoot)
+advice = struct();
+if isstruct(input)
+    raw = input;
+else
+    path = char(input);
+    if isempty(path); return; end
+    if ~isfile(path); path = fullfile(projectRoot,path); end
+    if ~isfile(path); return; end
+    try
+        raw = jsondecode(fileread(path));
+    catch
+        return
+    end
+end
+if isempty(raw) || ~isfield(raw,'status') || ...
+        ~any(strcmp(char(raw.status),{'advisory','advisory_needs_gate'})) || ...
+        ~isfield(raw,'forbidden_actions')
+    return
+end
+forbidden = string(raw.forbidden_actions);
+if ~any(strcmp(forbidden,'do_not_authorize_s6_tuning'))
+    return
+end
+advice = raw;
+end
+
 function write_tuning_report(reportPath, s)
 if strlength(string(reportPath)) == 0
     return
@@ -322,7 +444,26 @@ end
 if isfield(s, 'error') && ~isempty(s.error)
     fprintf(fid, '- error: %s\n', s.error);
 end
-fprintf(fid, '\n## History\n\n');
+if ~isempty(s.candidate_decisions)
+    fprintf(fid, '\n');
+    fprintf(fid, '## Candidate Decisions\n\n');
+    for k = 1:numel(s.candidate_decisions)
+        d = s.candidate_decisions(k);
+        fprintf(fid, '- round %d: `%s`, source=`%s`, relative_step=%.6g, neural_supported=`%d`\n', ...
+            k, d.id, d.source, d.relative_step, d.neural_supported);
+    end
+    fprintf(fid, '\n');
+end
+if ~isempty(s.modal_verification)
+    fprintf(fid, '## Modal Verification\n\n');
+    for k = 1:numel(s.modal_verification)
+        v = s.modal_verification{k};
+        fprintf(fid, '- round %d: status=`%s`, confirmed=`%d`, reason=%s\n', ...
+            k,v.status,v.confirmed,v.reason);
+    end
+    fprintf(fid, '\n');
+end
+fprintf(fid, '## History\n\n');
 if isempty(s.history)
     fprintf(fid, '_No tuning rounds recorded._\n');
 else

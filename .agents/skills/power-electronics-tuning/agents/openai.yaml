@@ -1,4 +1,4 @@
 interface:
   display_name: "Power Electronics Tuning"
-  short_description: "Tune converter controls with bounded registry rules"
-  default_prompt: "Use $power-electronics-tuning to inspect and improve the tuning registry for this Simulink power-electronics model."
+  short_description: "Tune controls from bounded modal sensitivity"
+  default_prompt: "Use $power-electronics-tuning to derive bounded controller candidates from modal sensitivity, then validate and roll back through deterministic gates."

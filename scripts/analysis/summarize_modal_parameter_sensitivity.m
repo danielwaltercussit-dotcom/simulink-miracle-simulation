@@ -28,12 +28,13 @@ stateNames = iStateNames(opts.StateNames, n);
 
 [V, D, W] = eig(A);
 lambda = diag(D);
-representative = find(imag(lambda) > opts.ModeImagTolerance);
+physicalPole = iPhysicalPole(lambda, opts);
+representative = find(imag(physicalPole) > opts.ModeImagTolerance);
 if isempty(representative)
     representative = (1:n).';
 end
-zeta = iDamping(lambda);
-[~, order] = sortrows([zeta(representative), real(lambda(representative))], [1 -2]);
+zeta = iDamping(physicalPole);
+[~, order] = sortrows([zeta(representative), real(physicalPole(representative))], [1 -2]);
 representative = representative(order);
 representative = representative(1:min(opts.MaxModes, numel(representative)));
 m = numel(representative);
@@ -51,17 +52,24 @@ for row = 1:m
     if abs(den) <= opts.BiorthogonalityTolerance
         warnings(end+1) = "mode_" + idx + "_ill_conditioned_left_right_pair"; %#ok<AGROW>
     end
-    mode(row) = iBuildMode(idx, lambda(idx), V(:,idx), W(:,idx), ...
+    mode(row) = iBuildMode(idx, physicalPole(idx), V(:,idx), W(:,idx), ...
         stateNames, opts.DampingThreshold, den);
     for col = 1:p
         if abs(den) <= opts.BiorthogonalityTolerance
             continue
         end
         derivative = (W(:,idx)' * dA(:,:,col) * V(:,idx)) / den;
+        if opts.MatrixDomain == "discrete"
+            if abs(lambda(idx)) <= opts.DiscretePoleTolerance
+                derivative = NaN;
+            else
+                derivative = derivative / (opts.SampleTime * lambda(idx));
+            end
+        end
         dLambdaReal(row,col) = real(derivative);
         dLambdaImag(row,col) = imag(derivative);
         [dDamping(row,col), dFrequency(row,col)] = ...
-            iDerivedMetricSensitivity(lambda(idx), derivative);
+            iDerivedMetricSensitivity(physicalPole(idx), derivative);
     end
 end
 
@@ -74,6 +82,8 @@ summary.case_name = char(opts.CaseName);
 summary.status = char(iStatus(recommendation, warnings));
 summary.generated_at = char(datetime("now", "Format", "yyyy-MM-dd HH:mm:ss"));
 summary.matrix_source = char(opts.MatrixSource);
+summary.matrix_domain = char(opts.MatrixDomain);
+summary.sample_time = opts.SampleTime;
 summary.operating_point = char(opts.OperatingPoint);
 summary.n_states = n;
 summary.parameter_names = cellstr(names);
@@ -110,6 +120,11 @@ p.addParameter("MaxModes", 12, @(x) isnumeric(x) && isscalar(x) && x >= 1);
 p.addParameter("ModeImagTolerance", 1e-8, @(x) isnumeric(x) && isscalar(x));
 p.addParameter("BiorthogonalityTolerance", 1e-10, @(x) isnumeric(x) && isscalar(x));
 p.addParameter("MatrixSource", "", @(x) ischar(x) || isstring(x));
+p.addParameter("MatrixDomain", "continuous", ...
+    @(x) any(strcmpi(string(x), ["continuous" "discrete"])));
+p.addParameter("SampleTime", NaN, @(x) isnumeric(x) && isscalar(x));
+p.addParameter("DiscretePoleTolerance", 1e-9, ...
+    @(x) isnumeric(x) && isscalar(x) && x > 0);
 p.addParameter("OperatingPoint", "", @(x) ischar(x) || isstring(x));
 p.addParameter("OutputDir", "", @(x) ischar(x) || isstring(x));
 p.parse(varargin{:});
@@ -117,8 +132,13 @@ opts = p.Results;
 opts.CaseName = string(opts.CaseName);
 opts.StateNames = string(opts.StateNames);
 opts.MatrixSource = string(opts.MatrixSource);
+opts.MatrixDomain = lower(string(opts.MatrixDomain));
 opts.OperatingPoint = string(opts.OperatingPoint);
 opts.OutputDir = string(opts.OutputDir);
+if opts.MatrixDomain == "discrete" && ~(isfinite(opts.SampleTime) && opts.SampleTime > 0)
+    error("ModalSensitivity:SampleTime", ...
+        "A positive SampleTime is required for a discrete state matrix.");
+end
 end
 
 
@@ -135,7 +155,8 @@ if iscell(input)
 else
     dA = input;
 end
-if ~isnumeric(dA) || ~isequal(size(dA), [n n p]) || any(~isfinite(dA), "all")
+validSize = size(dA,1) == n && size(dA,2) == n && size(dA,3) == p && ndims(dA) <= 3;
+if ~isnumeric(dA) || ~validSize || any(~isfinite(dA), "all")
     error("ModalSensitivity:InvalidDerivatives", ...
         "dAdp must be finite N-by-N-by-P numeric data.");
 end
@@ -174,6 +195,17 @@ mag = abs(lambda);
 zeta = NaN(size(lambda));
 valid = mag > eps;
 zeta(valid) = -real(lambda(valid)) ./ mag(valid);
+end
+
+
+function pole = iPhysicalPole(lambda, opts)
+if opts.MatrixDomain == "discrete"
+    pole = NaN(size(lambda));
+    keep = abs(lambda) > opts.DiscretePoleTolerance;
+    pole(keep) = log(lambda(keep)) / opts.SampleTime;
+else
+    pole = lambda;
+end
 end
 
 

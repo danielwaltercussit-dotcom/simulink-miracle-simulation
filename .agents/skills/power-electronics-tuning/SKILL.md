@@ -52,17 +52,21 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
   parameters.
 - Record `before -> after`, FS target, units, bounds, and model path.
 - Prefer one root cause per outer AI-in-loop iteration.
-- Do not trust literature direction alone; use live metrics such as
-  `I_osc_growth`, recovery time, voltage band, and dominant frequency.
+- Do not derive direction from literature or live growth alone. Use live metrics
+  to diagnose and validate, then derive the automatic step from the current
+  registered-control `d(zeta)/dp` matrix.
 - Use `multitimescale-analysis` before changing knobs when it is unclear
   whether the dominant behavior is converter-control, electromechanical, or
   scenario-recovery scale.
 - For repeated, coupled, or weakly damped failures, prefer a model-backed
   `d(zeta)/dp` ranking from `small-signal-modal-analysis` over registry order.
-  Apply only a bounded control-parameter candidate, re-linearize to verify the
-  predicted modal movement, then run the existing time-domain acceptance and
-  rollback gates. Fall back to one-knob search only when sensitivity evidence
-  is unavailable or provisional, and state that limitation.
+  Apply only a bounded control-parameter candidate. Re-linearize before the
+  short simulation and require every matched critical mode to remain within the
+  configured dimensionless damping tolerance while at least one improves.
+  Then run the time-domain acceptance gate. Reject and immediately restore any
+  candidate that fails either gate. A registry-rule fallback requires an
+  explicit operator option when sensitivity evidence is unavailable or
+  provisional.
 - Use `diagnostic-plotting` for before/after overlays whenever a tuning change
   is accepted, rejected, or ambiguous.
 - If the same signature and same fix repeat, stop and ask the user.
@@ -74,7 +78,8 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
 ## Data-Driven Assistant Routing
 
 Use `data-driven-simulation-assistant` only for candidate retrieval, candidate
-failure labels, missing-gate hints, or advisory experiment suggestions before a
-tuning decision. The deterministic tuning contract, S6 registry, baseline
-evidence, rollback policy, and live metrics own final knob selection,
-direction, acceptance, and write permission.
+failure labels, missing-gate hints, parameter-class priors, or advisory
+experiment suggestions before a tuning decision. Neural parameter classes may
+break ties between mathematically valid candidates. The sensitivity matrix,
+deterministic tuning contract, S6 registry, rollback policy, and live metrics
+own direction, acceptance, and write permission.

@@ -62,8 +62,9 @@ Every runtime suggestion must be valid JSON with this shape:
       "why": "short candidate rationale"
     }
   ],
+  "candidate_parameter_classes": ["pll", "current_pi"],
   "required_gates": ["relative/or/absolute/contract.md"],
-  "forbidden_actions": ["S6 tuning", "model PASS/FAIL"],
+  "forbidden_actions": ["do_not_authorize_s6_tuning", "do_not_claim_pass_fail"],
   "next_review": "human_or_codex_review_required"
 }
 ```
@@ -81,6 +82,9 @@ Allowed `status` values:
 `confidence` is a ranking signal for review priority, not a decision threshold.
 Use values from `0.0` to `1.0`. Do not translate confidence into PASS/FAIL,
 S6 authorization, modal identity, source identity, or run-launch decisions.
+`candidate_parameter_classes` is also a ranking prior only. S6 may use it to
+break a tie after `d(zeta)/dp` has independently validated both candidates; it
+must not use it for direction, step size, write permission, or acceptance.
 
 ## Evidence Requirements
 

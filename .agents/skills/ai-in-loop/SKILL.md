@@ -120,12 +120,15 @@ Data-driven assistant routing:
   `PASS`/`FAIL`, S6 write permission, modal identity, validation evidence, and
   run-launch decisions; data-driven output is never a stop-condition override.
 
-Before another registry-order S6 attempt, route to mathematical analysis when
-the same failure signature survives two bounded trials, modal damping is low,
-or MIMO coupling is suspected. Use modal parameter sensitivity for candidate
-direction and run an active frequency/MIMO sweep when frequency-response data
-is absent. Return only the bounded candidate to S6; the existing write,
-rollback, re-linearization, and time-domain gates remain authoritative.
+S6 uses mathematical analysis before its first automatic write and again after
+every accepted round. Re-linearize the current parameter state, estimate the
+registered control-parameter `dA/dp` matrices, and use `d(zeta)/dp` to select a
+non-degrading bounded direction. Run an active frequency/MIMO sweep when
+coupling is suspected and frequency-response data is absent. Neural output may
+break a tie between mathematically valid parameter classes; it cannot supply a
+direction or authorize a write. Rejected candidates are rolled back immediately
+and removed from the current search. Registry-order guessing is disabled in the
+orchestrator unless an operator explicitly enables the legacy fallback.
 
 For S9 report figures, use `diagnostic-plotting` when smoke, tuning, scenario,
 or regression evidence needs waveform plots beyond the root `top.png` layout
@@ -283,6 +286,16 @@ Current implementation hardens this contract in `scripts/loop/ai_in_loop_run.m`:
 
 S6 is **not** a pass-through anymore. It runs an inner loop:
 
+The default orchestrator path is mathematics-first: re-linearize each round,
+estimate registered-control `dA/dp`, compute `d(zeta)/dp`, select one bounded
+non-degrading candidate, then validate it in time domain. A rejected candidate
+is restored immediately and removed from the current search. The older
+registry-order sketch below applies only when `allow_rule_tuning_fallback=true`.
+After the candidate write, `verify_modal_candidate.m` re-linearizes before the
+short simulation. The candidate must preserve every matched critical mode and
+improve at least one by more than the configured dimensionless damping
+tolerance; otherwise S6 restores the pre-write snapshot without simulating.
+
 ```
 1. sim(modelName, StopTime=tFull) → out
 2. m = extract_tuning_metrics(out)
@@ -306,16 +319,24 @@ Files:
   is not yet sufficient for automatic writes on the full IEEE39 SG5/DFIG5 test
   model, so complete tuning-readiness inventory first
 - `scripts/loop/ai_in_loop_stage_tune.m` — the inner loop driver
+- `scripts/loop/ai_in_loop_stage_tuning_analysis.m` - per-round dA/dp and
+  modal-sensitivity generation
+- `scripts/tuning/select_tuning_candidate.m` - deterministic mathematics-first
+  candidate selector
+- `scripts/tuning/verify_modal_candidate.m` - post-write modal movement gate
 - References: `.agents/skills/simulink-modeling-assistant/references/dfig-pll-tuning-refs.md`
 
 Important behaviour notes:
-- Direction is **empirical** (driven by `I_osc_growth`), not from prior
+- Automatic direction comes from the current `d(zeta)/dp` matrix. Neural
+  confidence and rollback history cannot set its sign or step size.
+- With explicit legacy fallback, direction is **empirical** (driven by
+  `I_osc_growth`), not from prior
   literature. The literature rule "weak grid → lower PLL bandwidth" was the
   starting hypothesis but was wrong on this Asynchronous-Machine-based DFIG;
   the inner loop self-corrected by reading the live growth metric.
 - Automatic writes require a proven rollback snapshot. Restore best-so-far
-  after rejected/non-converged candidates and restore the pre-write snapshot
-  after simulation errors.
+  after non-converged runs, and restore the pre-write snapshot immediately after
+  rejected candidates or simulation errors.
 - Reference test bench: `nebus39_dfig_weakgrid_v0` — built specifically with
   an unstable PLL to exercise S6. Converges in 3 rounds: `[15 9.6 3 150]`
   → `[33.75 21.6 6.75 337.5]`, oscillation amplitude 298 A → 1 A.

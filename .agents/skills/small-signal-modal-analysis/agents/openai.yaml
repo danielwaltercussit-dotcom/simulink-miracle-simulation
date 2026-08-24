@@ -1,4 +1,4 @@
 interface:
   display_name: "Small-Signal Modal Analysis"
-  short_description: "Modal damping and participation analysis"
-  default_prompt: "Use $small-signal-modal-analysis to analyze converter-grid modal damping, dominant states, participation factors, and the required time-domain validation route."
+  short_description: "Modal participation and parameter sensitivity"
+  default_prompt: "Use $small-signal-modal-analysis to analyze damping, participation factors, dA/dp and d(zeta)/dp, then route bounded candidates to time-domain validation."

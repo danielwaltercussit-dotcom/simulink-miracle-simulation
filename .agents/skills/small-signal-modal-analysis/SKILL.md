@@ -63,10 +63,13 @@ summary = summarize_modal_eigs(A, ...
 ```
 
 For parameter ranking, call
-`scripts/analysis/summarize_modal_parameter_sensitivity.m` with the accepted
-continuous-time `A`, one `dA/dp` matrix per registered control parameter,
-parameter values/scales, and bounds. Its constrained least-norm step is a
-candidate direction only. Apply at most one bounded candidate through
+`scripts/analysis/summarize_modal_parameter_sensitivity.m` with an accepted
+continuous-time `A`, or with a discrete `A` plus `MatrixDomain="discrete"` and
+a positive `SampleTime`. Supply one `dA/dp` matrix per registered control
+parameter, parameter values/scales, and bounds. The helper maps discrete poles
+and derivatives into the continuous pole domain before computing damping
+sensitivity. Its constrained least-norm step is a candidate direction only.
+Apply at most one bounded candidate through
 `power-electronics-tuning`, then re-linearize and confirm the predicted mode
 before time-domain validation.
 

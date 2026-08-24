@@ -192,6 +192,7 @@ class DataDrivenSimulationAssistantTest(unittest.TestCase):
             self.assertEqual(inferred["model_type"], "hashed_bow_numpy_mlp")
             self.assertEqual(inferred["status"], "advisory_needs_gate")
             self.assertIn("small-signal-modal-analysis", "\n".join(inferred["required_gates"]))
+            self.assertIn("pll", inferred["candidate_parameter_classes"])
 
             changed_dataset = Path(temp_dir) / "changed_dataset.jsonl"
             changed_dataset.write_bytes((FIXTURES / "dataset.jsonl").read_bytes() + b"\n")
