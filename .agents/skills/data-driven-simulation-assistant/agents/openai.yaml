@@ -1,0 +1,4 @@
+interface:
+  display_name: "Data-Driven Simulation Assistant"
+  short_description: "Advisory retrieval and neural routing for simulation evidence"
+  default_prompt: "Review text and JSON simulation evidence, rank candidate diagnoses or next analyses, and route every decision through deterministic project gates."

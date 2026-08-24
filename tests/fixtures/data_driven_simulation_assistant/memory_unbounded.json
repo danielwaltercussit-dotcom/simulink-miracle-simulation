@@ -1,0 +1,9 @@
+{
+  "dataset": "dataset.jsonl",
+  "expected_labels": ["memory_unbounded"],
+  "forbidden_actions": ["s6_authorized", "model_accepted", "modal_identity_confirmed"],
+  "forbidden_labels": [],
+  "query_id": "memory_unbounded",
+  "query_text": "The monitor shows growing run folders and appended logs with memory pressure. A retention policy is missing and the pid slope should be bounded.",
+  "required_gate_substrings": ["simulating-simulink-models", "plotting-contract"]
+}

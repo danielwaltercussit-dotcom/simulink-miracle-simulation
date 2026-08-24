@@ -115,6 +115,16 @@ Additional research-routing skills:
 - Use `ibr-model-validation-evidence` when the output is a reusable model
   package rather than a one-off smoke simulation.
 
+Data-driven assistant routing:
+
+- Use `data-driven-simulation-assistant` only for candidate retrieval,
+  candidate failure labels, missing-gate hints, or advisory experiment
+  suggestions from prior text reports.
+- The deterministic modeling, simulation, modal, tuning, regression, and
+  verification gates own final decisions; data-driven output is never model
+  acceptance, modal identity, source identity, tuning direction, or run-launch
+  authority.
+
 ## Stage Routing
 
 When authoring or reviewing a build script for a derived model, use
@@ -154,6 +164,15 @@ When the request is research-driven rather than only build-driven, run
 small-signal/modal, do not force a derived `.slx` build first; use the lab math
 scripts or exported linearization evidence as the primary artifact and pair it
 with time-domain validation later.
+
+Use the mathematical-analysis route before repeated tuning when any of these is
+true: a low-damping mode is observed, two or more loops are coupled, the same
+failure signature survives two bounded knob trials, the tuning direction is
+unknown, or a converter-grid resonance is suspected. The standard route is:
+qualified operating point -> `A` and state names -> modal participation ->
+parameter sensitivity -> active frequency/MIMO sweep when applicable -> one
+bounded candidate -> re-linearization -> time-domain verification. A neural
+assistant may recommend this route but cannot skip or decide any stage.
 
 Same routing table as `ai-in-loop` SKILL.md, with one extra:
 

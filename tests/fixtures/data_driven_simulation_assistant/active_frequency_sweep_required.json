@@ -1,0 +1,7 @@
+{
+  "query_id": "active-frequency-sweep-required",
+  "dataset": "dataset.jsonl",
+  "query_text": "Impedance unknown and frequency response missing. An active injection sweep is required to locate the resonance.",
+  "expected_labels": ["active_frequency_sweep_required"],
+  "required_gate_substrings": ["impedance-frequency-analysis", "run_frequency_injection_sweep"]
+}

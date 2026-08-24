@@ -1,0 +1,9 @@
+{
+  "dataset": "dataset.jsonl",
+  "expected_labels": ["degenerate_time_axis"],
+  "forbidden_actions": ["s6_authorized", "model_accepted", "modal_identity_confirmed"],
+  "forbidden_labels": [],
+  "query_id": "degenerate_time_axis",
+  "query_text": "The exported signal has duplicate timestamps, zero duration, and a single sample. This degenerate time axis cannot support damping or settling claims.",
+  "required_gate_substrings": ["plotting-contract", "simulating-simulink-models"]
+}

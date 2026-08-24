@@ -32,9 +32,11 @@ where available, modal evidence. Do not overclaim from spectral features alone.
 
 ## Workflow
 
-1. Confirm the evidence source and operating point: measured, simulated
-   injection sweep, or analytic. Record it; an undocumented source makes the
-   analysis provisional.
+1. Confirm the operating point and evidence source. When external frequency
+   data is absent, create a temporary non-persistent injection hook or a copied
+   probe model and run `scripts/analysis/run_frequency_injection_sweep.m`.
+   Never wait for the user to manufacture `Z(f)` when the model exposes a safe
+   injection and measurement boundary.
 2. Assemble a frequency grid (`frequency_hz`, ascending, positive) and the
    complex positive-sequence response on that grid.
 3. Choose the `Kind`: `impedance` (Z in ohms or pu), `admittance` (Y, inverted
@@ -73,7 +75,12 @@ summary = summarize_impedance_frequency_response(frequencyHz, Zf, ...
 
 The helper is pure base-MATLAB (no Signal Processing Toolbox): peak detection
 uses a prominence-ratio rule, and the passivity screen flags `real(Z)<0` bands.
-It does not run a Simulink sweep itself; supply the data.
+For existing data, supply it directly. For model-backed data, use
+`run_frequency_injection_sweep` with a trial callback that sets the injection,
+runs the bounded model trial, and returns `time`, `input`, and `output`; feed its
+`response_complex` into this helper. Use enough settling and measurement cycles,
+check the reported sinusoidal-fit quality, refine near peaks, and restore every
+temporary model change.
 
 ## Output
 

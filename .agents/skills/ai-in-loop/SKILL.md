@@ -105,11 +105,27 @@ S3 now includes a model quality / layout gate. `ai_in_loop_stage_layout` runs
 | S3 | `simulink-auto-layout-github` | `simulink-modeling-assistant` layout cookbook for power-grid templates |
 | S4 | `simulating-simulink-models` | `simulink-debug-commandline` |
 | S5 | `simulating-simulink-models` | `simulink-profile-initialization` if init slow |
-| S6 | `simulink-power-electronics` (PE) + project tuning scripts | `multitimescale-analysis` and `small-signal-modal-analysis` for cross-window or low-damping diagnosis; `impedance-frequency-analysis` for resonance/passivity evidence when frequency-response data exists; `weak-grid-scr-scenario` for low-SCR sensitivity; `simulink-solver-profiler-analyzer` if numeric issue; `matlab-optimize-performance` for slow tuning scripts |
+| S6 | `simulink-power-electronics` (PE) + project tuning scripts | `multitimescale-analysis` and `small-signal-modal-analysis` for cross-window or low-damping diagnosis; `impedance-frequency-analysis` plus active injection sweep for suspected resonance/passivity, including when external frequency data is absent; `weak-grid-scr-scenario` for low-SCR sensitivity; `simulink-solver-profiler-analyzer` if numeric issue; `matlab-optimize-performance` for slow tuning scripts |
 | S7 | `simulink-model-verification`, `testing-simulink-models` | `sltest-harness-generation` for persistent S7 tests; `baseline-regression` for golden-run comparisons; `filing-bug-reports` if real defect found; `matlab-write-performance-tests` for `matlab.perftest` regressions in `scripts/loop/`; mathworks-ci-verify reference: `LaneFollowingExecModelAdvisor.m` pattern for ModelAdvisor harness |
 | S8 | this skill (router) | `diagnostic-plotting` for failure-localization figures; `gfl-gfm-control-comparison` for controller-choice failures; `simulink-profiler-analyzer` for perf, `code-simplifier` / `matlab-modernize-code` for script cleanups |
 | S9 | this skill | `diagnostic-plotting` for logsout figures and `figure_manifest.json` |
 | S10 | this skill + `snapshot-auditor` | `snapshot-auditor` for copied package completeness before handoff; `ibr-model-validation-evidence` for handoff-ready plant/model credibility packages |
+
+Data-driven assistant routing:
+
+- Use `data-driven-simulation-assistant` in S8/S9 only for candidate retrieval,
+  candidate failure labels, missing-gate hints, or advisory experiment
+  suggestions from reviewed text artifacts.
+- The AI-in-loop state machine and deterministic project gates own final
+  `PASS`/`FAIL`, S6 write permission, modal identity, validation evidence, and
+  run-launch decisions; data-driven output is never a stop-condition override.
+
+Before another registry-order S6 attempt, route to mathematical analysis when
+the same failure signature survives two bounded trials, modal damping is low,
+or MIMO coupling is suspected. Use modal parameter sensitivity for candidate
+direction and run an active frequency/MIMO sweep when frequency-response data
+is absent. Return only the bounded candidate to S6; the existing write,
+rollback, re-linearization, and time-domain gates remain authoritative.
 
 For S9 report figures, use `diagnostic-plotting` when smoke, tuning, scenario,
 or regression evidence needs waveform plots beyond the root `top.png` layout

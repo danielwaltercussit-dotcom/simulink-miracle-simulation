@@ -33,8 +33,19 @@ Treat the desktop lab archive as read-only ground truth. Especially useful:
 4. Compute eigenvalues, damping ratios, damped frequencies, and participation
    factors where state names are available.
 5. Map modes to time-domain observables using `diagnostic-plotting`.
-6. Route tuning or scenario work only after identifying the dominant state
+6. When tuning direction matters, derive `dA/dp` analytically or by bounded
+   central differences over registered control parameters, then compute
+   `d(lambda)/dp` and `d(zeta)/dp`.
+7. Route tuning or scenario work only after identifying the dominant state
    group and frequency band.
+
+## Data-Driven Assistant Routing
+
+Use `data-driven-simulation-assistant` only for candidate retrieval of similar
+text reports, candidate modal-uncertainty labels, or candidate evidence gaps.
+The deterministic modal contract owns final modal identity, damping
+interpretation, participation claims, and any route toward tuning or scenario
+changes.
 
 ## Helper
 
@@ -50,6 +61,25 @@ summary = summarize_modal_eigs(A, ...
     "StateNames", stateNames, ...
     "OutputDir", "build/reports/modal/m03_dfig_pll_scan");
 ```
+
+For parameter ranking, call
+`scripts/analysis/summarize_modal_parameter_sensitivity.m` with the accepted
+continuous-time `A`, one `dA/dp` matrix per registered control parameter,
+parameter values/scales, and bounds. Its constrained least-norm step is a
+candidate direction only. Apply at most one bounded candidate through
+`power-electronics-tuning`, then re-linearize and confirm the predicted mode
+before time-domain validation.
+
+When analytic `dA/dp` is unavailable, use
+`scripts/analysis/estimate_state_matrix_parameter_derivatives.m`. Supply a
+model-owned callback that applies an in-memory parameter vector, restores it
+after linearization, and returns `A` plus the operating-point vector. The helper
+runs bounded central differences and flags one-sided steps or operating-point
+drift; the user does not need to provide derivative data.
+
+Do not finite-difference immutable plant ratings. If the operating point moves
+materially between perturbations, report the sensitivity as provisional and
+use `perturbation-stability-boundary-scan` instead of a local linear step.
 
 ## Output
 

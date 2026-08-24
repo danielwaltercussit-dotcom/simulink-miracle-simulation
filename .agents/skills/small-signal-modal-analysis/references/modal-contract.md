@@ -14,6 +14,8 @@ Record:
 - eigenvalue units
 - damping threshold
 - related time-domain run or required follow-up run
+- candidate parameter names, values, perturbation rule, scales, and bounds when
+  parameter sensitivity is requested
 
 ## Metrics
 
@@ -48,6 +50,15 @@ Use physical names when possible:
 - A mode near the electromechanical band can still involve converter states.
 - Do not assign root cause from frequency alone; use participation and
   time-domain validation.
+- Keep state-mode participation and parameter-mode sensitivity distinct:
+  participation identifies mode ownership, while `d(lambda)/dp` and
+  `d(zeta)/dp` estimate how a registered parameter moves that mode.
+- Treat a recommended parameter step as provisional until the model is
+  re-linearized at the candidate point and the same mode is matched again.
+- Reject or downgrade sensitivity evidence when the perturbation moves the
+  operating point outside tolerance, the eigenvector pair is ill-conditioned,
+  the mode is repeated or poorly separated, or prediction and re-linearization
+  disagree.
 - If the linearization point is not documented, the analysis is provisional.
 
 ## Failure Routing

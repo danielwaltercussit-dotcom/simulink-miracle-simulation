@@ -1,0 +1,7 @@
+{
+  "query_id": "modal-sensitivity-required",
+  "dataset": "dataset.jsonl",
+  "query_text": "Repeated gain trial left tuning direction unknown. Run parameter sensitivity and damping sensitivity before another write.",
+  "expected_labels": ["modal_parameter_sensitivity_required"],
+  "required_gate_substrings": ["small-signal-modal-analysis", "summarize_modal_parameter_sensitivity"]
+}

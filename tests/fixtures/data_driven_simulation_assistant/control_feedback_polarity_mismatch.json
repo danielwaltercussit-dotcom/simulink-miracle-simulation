@@ -1,0 +1,9 @@
+{
+  "dataset": "dataset.jsonl",
+  "expected_labels": ["control_feedback_polarity_mismatch"],
+  "forbidden_actions": ["s6_authorized", "model_accepted", "modal_identity_confirmed"],
+  "forbidden_labels": [],
+  "query_id": "control_feedback_polarity_mismatch",
+  "query_text": "The derivation and wiring disagree: there is a feedback sign mismatch and the loop may have the wrong feedback sign. Do not tune gains to mask polarity.",
+  "required_gate_substrings": ["control_feedback_polarity_test", "verify_control_feedback_polarity", "derivation-cookbook"]
+}

@@ -57,6 +57,12 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
 - Use `multitimescale-analysis` before changing knobs when it is unclear
   whether the dominant behavior is converter-control, electromechanical, or
   scenario-recovery scale.
+- For repeated, coupled, or weakly damped failures, prefer a model-backed
+  `d(zeta)/dp` ranking from `small-signal-modal-analysis` over registry order.
+  Apply only a bounded control-parameter candidate, re-linearize to verify the
+  predicted modal movement, then run the existing time-domain acceptance and
+  rollback gates. Fall back to one-knob search only when sensitivity evidence
+  is unavailable or provisional, and state that limitation.
 - Use `diagnostic-plotting` for before/after overlays whenever a tuning change
   is accepted, rejected, or ambiguous.
 - If the same signature and same fix repeat, stop and ask the user.
@@ -64,3 +70,11 @@ compact reusable record there; do not append raw logs or unreviewed guesses.
   rejected candidates, and non-converged tuning.
 - Treat the experience library as reviewed guidance, not authorization to skip
   model-specific T0/T1 evidence or immutable-boundary checks.
+
+## Data-Driven Assistant Routing
+
+Use `data-driven-simulation-assistant` only for candidate retrieval, candidate
+failure labels, missing-gate hints, or advisory experiment suggestions before a
+tuning decision. The deterministic tuning contract, S6 registry, baseline
+evidence, rollback policy, and live metrics own final knob selection,
+direction, acceptance, and write permission.

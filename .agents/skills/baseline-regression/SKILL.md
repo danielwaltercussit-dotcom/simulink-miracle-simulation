@@ -35,6 +35,14 @@ Never modify oracle models to make a regression pass.
 6. Write a regression report and route failures to tuning, model verification,
    or debugging.
 
+## Data-Driven Assistant Routing
+
+Use `data-driven-simulation-assistant` only for candidate retrieval, candidate
+failure labels, missing-gate hints, or advisory experiment suggestions based on
+text reports. The deterministic regression contract owns baseline selection,
+tolerance policy, metric comparison, evidence promotion, and any PASS/FAIL
+wording.
+
 ## Output
 
 Write reports under:

@@ -82,6 +82,11 @@ undocumented delay change blocks improvement.
    Gain Array (RGA)** and a **singular-value screen** (sigma_max, sigma_min,
    condition number) as a reproducible interaction metric and an input-output
    pairing recommendation.
+   If `G` is unavailable, obtain it with
+   `scripts/analysis/run_frequency_injection_sweep.m`: inject one input at a
+   time, estimate every output phasor, and review frequency-dependent RGA,
+   singular values, condition number, and fit quality around each loop
+   crossover and observed resonance.
 5. Attach a per-loop **margin metric** (phase margin, gain margin, or damping
    ratio). For an improvement claim, supply both **before and after** margins
    (`phase_margin_before_deg`/`phase_margin_after_deg`, etc.).
@@ -168,6 +173,11 @@ you supply, computes the RGA / singular-value interaction metric with base-MATLA
 a model-backed time-domain artifact. Supply margins from your own `margin`/`bode`
 analysis or a time-domain estimate; supply `gain_matrix` from a linearization or
 identification. The helper does not itself run the model.
+
+Do not collapse a frequency-dependent MIMO result into one DC matrix when the
+pairing or condition number changes near crossover. Use modal parameter
+sensitivity to rank control-only knobs, then confirm the candidate with a new
+MIMO sweep and the model-backed disturbance run required above.
 
 ## Output
 

@@ -1,0 +1,9 @@
+{
+  "dataset": "dataset.jsonl",
+  "expected_labels": ["modal_identity_unproven"],
+  "forbidden_actions": ["s6_authorized", "model_accepted", "modal_identity_confirmed"],
+  "forbidden_labels": [],
+  "query_id": "frequency_coincidence",
+  "query_text": "A frequency coincidence near 0.72 Hz is being treated as peak-only evidence, but there is no eigenvalue linkage and participation is missing.",
+  "required_gate_substrings": ["small-signal-modal-analysis"]
+}

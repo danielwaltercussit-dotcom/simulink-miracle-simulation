@@ -1,0 +1,7 @@
+{
+  "query_id": "mimo-coupling-required",
+  "dataset": "dataset.jsonl",
+  "query_text": "The dq loops show MIMO coupling and cross regulation. RGA and the gain-matrix condition number are missing.",
+  "expected_labels": ["mimo_cross_coupling_required"],
+  "required_gate_substrings": ["multivariable-control-cross-regulation", "run_frequency_injection_sweep"]
+}
