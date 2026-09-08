@@ -284,3 +284,32 @@ scientific scenarios from tuning branches:
 
 This rule limits model-file proliferation without collapsing scientifically
 distinct capacity/location scenarios into one mutable file.
+
+## 12. External benchmark and model-library intake
+
+External repositories supply candidate methods and model definitions, not
+local operating-point or acceptance authority. The 2026-08-25 review distilled:
+
+- MathWorks Simscape Electrical Support Library v1.1.0 for R2025b separates
+  component tests, MATPOWER-seeded power-system construction, and five switch
+  fidelities. Reuse the sequence `component contract -> qualified load flow ->
+  explicit fidelity -> system simulation`; do not copy its models into this
+  library or assume R2025b behavior on another release.
+- MATPOWER 8.1 is a steady-state power-flow/optimization reference. Its
+  `case39` documents source-data modifications and remaining generator-limit
+  violations. Treat imported IEEE39 data as provenance-bearing initialization,
+  then independently qualify bases, limits, dispatch, dynamic parameters, and
+  the Simulink operating point.
+- OpenIPSL v3.1.0 adds tested dynamic-model families including synchronous
+  machines, governors, excitation systems, and WECC REGC/REEC/REPC renewable
+  controls. Use its hierarchy and equations as a cross-check only; Modelica
+  initialization, connector semantics, and parameter conventions do not make a
+  block a drop-in Simulink donor.
+- ANDES remains useful as an independent symbolic-DAE/eigenvalue/time-domain
+  reference. Cross-tool agreement can expose state-order, initialization, and
+  sign errors, but disagreement is a diagnosis trigger rather than a majority
+  vote, and external execution never replaces local model verification.
+
+Source anchors: `mathworks/Simscape_Electrical_Support_Library` v1.1.0,
+`MATPOWER/matpower` 8.1 and `data/case39.m`, `OpenIPSL/OpenIPSL` v3.1.0, and
+`CURENT/andes`; retain the reviewed tag/commit when a rule is refreshed.

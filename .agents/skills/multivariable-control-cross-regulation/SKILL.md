@@ -179,6 +179,26 @@ pairing or condition number changes near crossover. Use modal parameter
 sensitivity to rank control-only knobs, then confirm the candidate with a new
 MIMO sweep and the model-backed disturbance run required above.
 
+## External Method Anchors (reviewed 2026-08-25)
+
+MathWorks `slTuner`/`systune` is an optional cross-check when the licensed
+toolchain is available. Its current documented workflow supports arrays of
+operating points and parameter variations, hard and soft goals, and automatic
+MIMO loop scaling. Apply these lessons even when using the base-MATLAB helper:
+
+- evaluate the same registered controller against a declared operating-point
+  set instead of accepting a single nominal linearization;
+- inspect scaled and physical-unit loop interaction so automatic scaling cannot
+  hide a poorly conditioned or incorrectly based channel;
+- keep hard stability, saturation, immutable-parameter, and model-authority
+  gates separate from soft performance objectives;
+- validate every accepted multi-model or gain-scheduled candidate in the full
+  nonlinear model because local linear performance is not global evidence.
+
+Sources: MathWorks `slTuner`, `systune`, `TuningGoal.LoopShape`, and gain-schedule
+tuning documentation, accessed 2026-08-25. These sources define candidate
+methods, not permission to write gains or bypass local sensitivity/MIMO gates.
+
 ## Output
 
 Write cross-regulation reports under:

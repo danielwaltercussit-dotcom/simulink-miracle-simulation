@@ -70,6 +70,27 @@ Use physical names when possible:
 - GFL/GFM comparison: route to `gfl-gfm-control-comparison` after computing
   comparable modal summaries.
 
+## External Method Anchors (reviewed 2026-08-25)
+
+- MathWorks `linearize` supports named analysis I/O, explicit or batched
+  operating points, returned `linop`, and numerical perturbation for blocks
+  without a usable Jacobian. Record the actual returned operating point and
+  downgrade zero/unsupported block linearizations instead of accepting a
+  finite A matrix by itself.
+- Validate an exact/block linearization with `frestimate` at the same operating
+  point and the same analysis I/O. A material FRF mismatch blocks modal or
+  sensitivity authority until I/O placement, perturbation amplitude,
+  unsupported blocks, and operating-point drift are resolved.
+- When forward and central numerical perturbation give materially different
+  modes or derivatives, report numerical sensitivity and do not promote the
+  affected `d(lambda)/dp` or `d(zeta)/dp` direction.
+- Use parameter sensitivity before optimization to rank influential parameters
+  and after optimization to check local robustness. This does not replace the
+  registered control-only boundary, mode matching, or nonlinear validation.
+
+Sources: MathWorks `linearize`, `frestimate`, Linearization Basics, and Simulink
+Design Optimization sensitivity-analysis documentation, accessed 2026-08-25.
+
 ## Ambient-Masked Ringdown (reviewed 2026-06-23, T1RD45)
 
 - A spectral line already present in a pre-injection/null window is AMBIENT; a

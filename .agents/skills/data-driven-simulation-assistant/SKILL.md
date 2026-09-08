@@ -26,6 +26,8 @@ outputs.
 - proposing candidate failure labels and evidence paths;
 - identifying candidate missing gates for review;
 - shaping dataset records and label coverage for data-driven experiments;
+- reviewing official documentation and maintained research repositories as
+  candidate knowledge sources;
 - planning a no-training baseline or later neural-network prototype;
 - warning when data quality is too weak for an ML-assisted suggestion.
 
@@ -44,16 +46,25 @@ outputs.
 1. Read `references/assistant-contract.md`.
 2. If labels or dataset fields matter, read `references/label-taxonomy.md` and
    `references/dataset-schema.md`.
-3. Build or refresh the text/JSONL experience dataset; do not ingest `.slx` or
+3. For external knowledge, prefer official vendor documentation, standards,
+   primary papers, and maintained repositories. Record source revision,
+   license, applicable model/fidelity, and tool version before reuse.
+4. Treat external material as a candidate until its mathematics and assumptions
+   are reviewed and its useful claim is reproduced on a small fixture or
+   existing local evidence. Distill accepted rules into an existing
+   `references/*.md`; do not copy whole repositories or manuals into skills.
+5. Build or refresh the text/JSONL experience dataset; do not ingest `.slx` or
    `.mat` binaries. Use `--include-build-reports` for reviewed run reports; the
    builder still excludes `build/ml` so it cannot train on its own output.
-4. Use the lexical baseline by default. Use the CPU neural classifier only when
+6. Use deterministic filters for model family, fidelity, operating point,
+   authority, and review status before lexical or neural ranking.
+7. Use the lexical baseline by default. Use the CPU neural classifier only when
    its saved model and evaluation summary were produced from the current
    dataset and the summary has no gate or forbidden-action violations.
-5. Produce advisory JSON with candidate labels, candidate parameter classes,
+8. Produce advisory JSON with candidate labels, candidate parameter classes,
    confidence, evidence paths, required deterministic gates, forbidden actions,
    and next review.
-6. Route any acceptance, S6, modal, source-identity, or launch decision to the
+9. Route any acceptance, S6, modal, source-identity, or launch decision to the
    relevant project skill or contract.
 
 ## Read When Needed
@@ -61,6 +72,29 @@ outputs.
 - `references/assistant-contract.md` for advisory boundaries and JSON schema.
 - `references/label-taxonomy.md` for candidate labels and required gates.
 - `references/dataset-schema.md` for JSONL record shape and dataset limits.
+- `../simulink-modeling-assistant/references/problem-solving-knowledge-base.md`
+  for the deterministic symptom-to-diagnostic route that data-driven ranking
+  may suggest but never replace.
+
+## External Knowledge Distillation
+
+Use this authority order when external sources inform a modeling task:
+
+1. locally verified model evidence;
+2. official documentation, standards, and vendor model definitions;
+3. maintained research repositories with tests and a primary publication;
+4. community repositories, issues, and informal articles.
+
+Levels 2-4 can propose methods, checks, or candidate parameter classes. They do
+not override local operating-point qualification, modal participation,
+parameter sensitivity, MIMO coupling, frequency-sweep evidence, or verification
+gates. Community material remains hypothesis-only until locally reproduced.
+
+Keep external acquisition separate from the portable library: inspect or clone
+sources in a temporary research location, pin a tag or commit, review the
+license, and retain only the distilled rule plus provenance. A normal clone of
+this library must not require an external repository, vector database, model
+binary, or historical run directory to use accepted knowledge.
 
 ## Neural Inference
 

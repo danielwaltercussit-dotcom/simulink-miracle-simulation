@@ -13,6 +13,9 @@ only.
   structured inputs; retain their source paths and provisional status.
 - Dataset builders must not ingest `.slx` or `.mat` binary content directly.
 - Prefer repo-relative paths in records when possible.
+- Generated retrieval indexes are not authority. Reviewed rules remain in the
+  relevant skill reference, while raw reports and external sources remain
+  provenance.
 
 ## JSONL Record
 
@@ -53,6 +56,67 @@ Each line is one JSON object with these fields:
   when not available.
 - `evidence_paths`: one or more text evidence paths for review.
 - `required_gates`: deterministic contracts that must review the candidate.
+
+## Optional Reviewed-Knowledge Metadata
+
+Records distilled from local experience or external sources may add:
+
+```json
+{
+  "knowledge_status": "candidate",
+  "applicability": {
+    "model_family": "ieee39_dfig",
+    "fidelity": "phasor",
+    "operating_point": "declared operating-point id",
+    "control_mode": "gfl"
+  },
+  "external_source": {
+    "authority": "vendor_official",
+    "url": "https://example.invalid/source",
+    "revision": "tag-or-commit",
+    "license": "reviewed license identifier",
+    "tool_version": "R20xx",
+    "reviewed_at": "YYYY-MM-DD",
+    "local_reproduction": "not_run"
+  },
+  "reuse_limits": ["do_not_transfer_parameter_values"],
+  "supersedes": []
+}
+```
+
+- `knowledge_status`: `candidate`, `verified`, `provisional`, `rejected`, or
+  `blocked`. Only Codex-reviewed, disk-backed claims may become `verified`.
+- `applicability`: deterministic retrieval filters. Unknown values must remain
+  explicit rather than inferred from semantic similarity.
+- `external_source.authority`: use `vendor_official`, `standard`,
+  `primary_publication`, `maintained_research_repo`, or `community`.
+- `revision`: immutable tag, release, document version, DOI, or commit when the
+  source provides one.
+- `local_reproduction`: `not_run`, `partial`, `passed`, or `failed`. A remote
+  example running successfully is not local reproduction.
+- `reuse_limits`: boundaries such as model-specific assumptions, prohibited
+  parameter transfer, missing toolbox coverage, or incompatible fidelity.
+- `supersedes`: ids of older records whose conclusions are no longer current.
+
+Before lexical or neural ranking, filter incompatible model families,
+fidelities, operating points, control modes, rejected/blocked knowledge, and
+unmet deterministic gates. Neural similarity never promotes a candidate or
+external source to verified knowledge.
+
+## External Knowledge Admission Loop
+
+1. Periodically inspect official sources and trusted repositories for methods,
+   version changes, and known failure modes.
+2. Extract a bounded candidate with provenance; do not ingest a whole manual or
+   repository into the portable library.
+3. Review mathematical assumptions, units, bases, fidelity, version, and
+   license.
+4. Reproduce the claim on a small fixture or existing local evidence without
+   modifying a canonical model merely to test external advice.
+5. Distill accepted knowledge into the relevant existing `references/*.md` and
+   retain source revision and reuse limits.
+6. Rebuild the local lightweight index. Actual modeling decisions still route
+   through local mathematical analysis and deterministic verification gates.
 
 ## Minimal Fixture Expectations
 

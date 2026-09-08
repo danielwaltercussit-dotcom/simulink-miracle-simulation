@@ -87,6 +87,10 @@ classify by request type:
 
 ## Read When Needed
 
+- `references/problem-solving-knowledge-base.md` - start here when a model
+  fails to compile or initialize, runs slowly, produces nonfinite or implausible
+  results, oscillates, or has no defensible tuning direction. It routes one
+  symptom to one primary diagnostic path and its stop conditions.
 - `references/current-simulation-experience.md` — shared acceptance-gate,
   operating-point, observability, modal-interpretation, and long-run memory
   contract. Read this for replacement studies, oscillation claims, or long
@@ -173,6 +177,12 @@ qualified operating point -> `A` and state names -> modal participation ->
 parameter sensitivity -> active frequency/MIMO sweep when applicable -> one
 bounded candidate -> re-linearization -> time-domain verification. A neural
 assistant may recommend this route but cannot skip or decide any stage.
+
+When the failure class is not yet established, read
+`references/problem-solving-knowledge-base.md` first. Select one primary path
+from the observed evidence instead of launching every available analysis. If
+that path reaches a listed stop condition, preserve the evidence and resolve
+the failed prerequisite before tuning or escalating simulation cost.
 
 Same routing table as `ai-in-loop` SKILL.md, with one extra:
 
