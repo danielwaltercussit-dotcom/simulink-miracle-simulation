@@ -29,6 +29,9 @@ conclusions grounded in inspected paths, logged signals, simulations, and checks
 
 ## Read When Needed
 
+- [Converter fault analysis](../simulink-modeling-assistant/references/converter-fault-analysis.md):
+  VSC/GFM recovery, VSG support, two-area/IEEE39 interaction, MMC harmonic and
+  energy diagnosis. Filter by actual topology/control before selecting a card.
 - `references/domain-map.md`: choose the domain subskill.
 - `references/workflow.md`: inspect -> diagnose -> edit -> validate.
 - `references/model-standards.md`: before editing PE models.

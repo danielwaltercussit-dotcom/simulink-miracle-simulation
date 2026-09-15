@@ -47,3 +47,11 @@ build/reports/control_comparison/<case>/
 
 Read `references/comparison-contract.md` before changing fairness checks,
 metric names, or conclusion wording.
+
+For limiter recovery, VSG/VSM fault support, phase jumps, or unbalance, read
+PE-01/03/06 in
+[converter fault analysis](../simulink-modeling-assistant/references/converter-fault-analysis.md).
+Report current safety, limiter exit, and intended operating-point recovery as
+separate gates. Neither a GFM label nor small-signal improvement establishes
+better transient performance across fault locations. Paper settings remain
+candidates until the local sensitivity and nonlinear verification gates pass.

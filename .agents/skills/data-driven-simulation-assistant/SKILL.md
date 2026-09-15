@@ -78,6 +78,15 @@ outputs.
 
 ## External Knowledge Distillation
 
+For user-authorized acquisition, use
+[research-paper-review](../research-paper-review/SKILL.md) for source/formula
+review and [knowledge-graph-creation](../knowledge-graph-creation/SKILL.md) for
+alias-safe, source-linked maintenance. Retrieve the matched card from
+[converter fault analysis](../simulink-modeling-assistant/references/converter-fault-analysis.md)
+for converter faults; return its source ID, applicability, and local status.
+These are reading/routing instructions, not a claim that the current dataset
+builder or neural classifier automatically ingests the relationship table.
+
 Use this authority order when external sources inform a modeling task:
 
 1. locally verified model evidence;

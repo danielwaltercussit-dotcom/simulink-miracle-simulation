@@ -31,6 +31,11 @@ rules, but still require model evidence before diagnosis or edits.
 
 ## Stub Policy
 
+The shared
+[converter fault analysis](../../simulink-modeling-assistant/references/converter-fault-analysis.md)
+adds source-reviewed theoretical routes for renewable-grid, HVDC, and MMC
+questions. It does not promote their stub status or establish model validation.
+
 A stub subskill may contain:
 
 - intended scope

@@ -24,6 +24,11 @@ or agreement with an external tool alone.
 
 ## Fast Router
 
+For converter-specific fault and coupling evidence, follow the focused
+[converter fault analysis](converter-fault-analysis.md) relationship table.
+It extends KB-02/06/08/09/11/13 without changing their gates. Read only the
+matched source card, not the entire paper collection.
+
 | ID | Observed problem | First discriminator | Primary route | Stop condition |
 |---|---|---|---|---|
 | KB-01 | Update or compile fails | Is the failure structural, masked, variant-dependent, or callback-dependent? | Structural read/check | Unresolved ownership or hidden initialization |
@@ -362,20 +367,30 @@ Use this compact card when a paper contributes a diagnostic or modeling rule:
   subsystems where required.
 - **Evidence:** analytical proof, simulation, experiment, benchmarks, metrics,
   uncertainty, and negative or ablation results.
+- **Reading:** source type, actual reading depth, and section/page locator;
+  abstract-only entries cannot support detailed implementations.
 - **Transfer map:** local variable and unit mapping, applicable skill/KB route,
   expected benefit, and conditions that would invalidate transfer.
 - **Reproduction:** smallest local fixture or existing evidence that can test
   the useful claim without changing an active model.
-- **Decision:** `candidate`, `admitted`, `rejected`, or `superseded`, with the
-  deterministic gate and evidence path. Only admitted rules enter this file.
+- **Decision:** `candidate`, `admitted`, `rejected`, or `superseded`, with scope,
+  deterministic gate, and evidence path. Distinguish admission as theoretical
+  diagnostic guidance from admission as a locally verified model action.
+- **Local status:** `untested`, `algebra_checked`, `fixture_verified`,
+  `model_verified`, `rejected_for_transfer`, or `blocked`. Source prestige and
+  reading depth do not raise this status. Keep candidates visibly separated.
 
 The reading workflow was cross-checked against the MIT-licensed
 [BESSER-PEARL research-paper-review skill](https://github.com/BESSER-PEARL/research-agent-skills/blob/main/research-paper-review/SKILL.md),
 the [OpenAI research-documentation skill](https://github.com/openai/skills/tree/main/skills/.curated/notion-research-documentation),
 and the [Anthropic PDF skill](https://github.com/anthropics/skills/blob/main/skills/pdf/SKILL.md).
 Their useful ideas were reduced to source tracking, structured extraction,
-consistency checks, limitations, and reproducibility. No external skill was
-installed or copied, and none is a runtime dependency of this library.
+consistency checks, limitations, and reproducibility. That initial review did
+not install external skills. On 2026-09-14, project-local MIT adaptations of
+[research-paper-review](../../research-paper-review/SKILL.md) and
+[knowledge-graph-creation](../../knowledge-graph-creation/SKILL.md) were added
+with pinned upstream commits and retained licenses. Neither requires an
+external service, database, or repository at runtime.
 
 ## Theory Map
 

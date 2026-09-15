@@ -87,6 +87,10 @@ classify by request type:
 
 ## Read When Needed
 
+- `references/converter-fault-analysis.md` - source-linked VSC/GFM/VSG,
+  two-area/IEEE39 interaction, MMC harmonic/energy, and fault-recovery routes.
+  Filter by controller, fidelity, and limiter state; paper cases are not local
+  model validation or transferable parameter settings.
 - `references/problem-solving-knowledge-base.md` - start here when a model
   fails to compile or initialize, runs slowly, produces nonfinite or implausible
   results, oscillates, or has no defensible tuning direction. It routes one
@@ -104,6 +108,9 @@ classify by request type:
 
 Additional research-routing skills:
 
+- For user-authorized knowledge updates, use `research-paper-review` to check
+  papers and `knowledge-graph-creation` to merge source-linked diagnostic
+  relationships. These are maintenance skills, not mandatory simulation steps.
 - Use `model-fidelity-selector` before deriving a new model when the user asks
   about RMS/EMT, phasor, switching, weak-grid, modal, impedance, or validation
   credibility rather than only a structural model edit.

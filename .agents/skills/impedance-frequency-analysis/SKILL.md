@@ -27,8 +27,10 @@ where available, modal evidence. Do not overclaim from spectral features alone.
 - Use this skill when you have a frequency-indexed response (impedance Z(f),
   admittance Y(f), or a transfer-function-like response) and want resonance,
   passivity, and harmonic-stability evidence.
-- The two are independent evidence chains. Agreement between a modal mode and an
-  impedance resonance at the same frequency is strong, non-circular evidence.
+- Frequency coincidence alone does not establish modal ownership. A response
+  derived from the same A matrix is a consistency check, not independent
+  evidence. Match states, I/O, and operating point, then seek an independent
+  injection or time-domain observation before claiming corroboration.
 
 ## Workflow
 
@@ -37,8 +39,9 @@ where available, modal evidence. Do not overclaim from spectral features alone.
    probe model and run `scripts/analysis/run_frequency_injection_sweep.m`.
    Never wait for the user to manufacture `Z(f)` when the model exposes a safe
    injection and measurement boundary.
-2. Assemble a frequency grid (`frequency_hz`, ascending, positive) and the
-   complex positive-sequence response on that grid.
+2. Assemble a frequency grid (`frequency_hz`, ascending, positive). A scalar
+   positive-sequence response is an initial screen only; use independent
+   dq/sequence injections and the MIMO route when coupling is relevant.
 3. Choose the `Kind`: `impedance` (Z in ohms or pu), `admittance` (Y, inverted
    to Z internally), or `response` (generic; passivity screen is N/A).
 4. Summarize: resonance peaks, per-band magnitude, and the negative-resistance
@@ -95,3 +98,8 @@ build/reports/impedance/<case>/
 
 Read `references/impedance-contract.md` before changing metrics, peak/passivity
 rules, band labels, or pass/fail wording.
+
+For MMC periodic dynamics or multi-converter network interaction, read the
+matched PE-02/04 card in
+[converter fault analysis](../simulink-modeling-assistant/references/converter-fault-analysis.md).
+HSS guidance does not mean the scalar helper implements harmonic lifting.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Power-System Paper Review"
+  short_description: "Distill papers into evidence-gated modeling guidance"
