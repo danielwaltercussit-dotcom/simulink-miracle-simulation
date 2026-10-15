@@ -87,3 +87,43 @@ physical fault topology, impedance, timing, clearing/protection, and monitored
 quantities for a power-system fault study. Record baseline fault states and
 restore them after a probe; never remove another task's fault definitions.
 No new fault-injection runtime was installed by this knowledge update.
+
+## VSC, DFIG, and SG Skill Refresh (2026-10-15)
+
+The following are default-branch revisions inspected on this date; repository
+recency alone does not establish a better modeling rule. The earlier intake
+above remains a historical snapshot. Install into this repository's
+`.agents/skills`, preserving the active worktree and existing task files.
+
+| Repository and inspected revision | Local decision |
+|---|---|
+| [MathWorks SATK](https://github.com/matlab/simulink-agentic-toolkit/tree/0ed76364e5af8098c9731f317a4ee4b17d947d3d), `0ed76364e5af8098c9731f317a4ee4b17d947d3d` (2026-10-14) | Install adapted `simulink-linearize` and `simulink-frequency-response`, retaining manifests and MathWorks license; no toolkit runtime upgrade |
+| [npuzsy/simulink-power-electronics](https://github.com/npuzsy/simulink-power-electronics/tree/74d2b967db8a6735b6bbf79c1f24034ab4709b14), `74d2b967db8a6735b6bbf79c1f24034ab4709b14` (2026-05-24) | Apache-2.0; existing local derivative already includes this scope; preserve local extensions |
+| [power-simulink-rule](https://github.com/1841220388zzzcccxxx-star/power-simulink-rule/tree/9086c157ae5f96536a67bee08fb7bcfe3cd68736), `9086c157ae5f96536a67bee08fb7bcfe3cd68736` (2026-09-10) | MIT; distill measurement/rate/gate inspection into device contracts; do not install overlapping rulebook |
+| [NotPracticingGold builder](https://github.com/NotPracticingGold/simulink-power-electronics-builder/tree/8b56e9af51cce9aaecb6be218924f12cc3206174), `8b56e9af51cce9aaecb6be218924f12cc3206174` (2026-07-22) | MIT; distill port-adjacency and save/reopen layout checks; no universal name hiding or duplicated backup/audit scripts |
+| [OrangeXxin agent](https://github.com/OrangeXxin/power-electronics-agent/tree/20219a4c0f8a10a6d07fa1fdc0569c57051d24ff), `20219a4c0f8a10a6d07fa1fdc0569c57051d24ff` (2026-08-16) | MIT; retain source/version/port probing idea; PFC-specific formulas and unsupported library/license generalizations are not transferred |
+| [AIPE-Simulation-Skills](https://github.com/FulongLi/AIPE-Simulation-Skills/tree/454738f06547e5ccca1087c6d33e83c67a4d6c86), `454738f06547e5ccca1087c6d33e83c67a4d6c86` (2026-10-07) | Catalog inspected; no repository license found, no content copied |
+| [matlab/skills](https://github.com/matlab/skills/tree/f93265a6477ea05028927530f02cd1e847c73d7e), `f93265a6477ea05028927530f02cd1e847c73d7e` (2026-10-14) | Catalog primarily tutoring, assessment, MBSE, and generic utilities; no targeted device skill selected |
+| [huanhyougo PE skill](https://github.com/huanhyougo/matlab-power-electronics-skill/tree/4a0db6cf1c3e52da8ce12c41e8d38de1f36b7817), `4a0db6cf1c3e52da8ce12c41e8d38de1f36b7817` (2026-05-17) | Unchanged revision and unresolved license; no new copying |
+
+Searches for dedicated DFIG and wound-field synchronous-machine `SKILL.md`
+entries did not identify a qualified addition. Generic motor/PMSG control and
+ordinary model repositories are not substitutes for those device contracts.
+The shared [machine/converter contract](../../simulink-device-adapters/references/machine-converter-contract.md)
+therefore strengthens existing local device knowledge rather than claiming
+that a specialized external device skill was found.
+
+Corrections made while adapting the official skills:
+
+- `BatchConsistency` is R2025a+, so feature-detect it for R2024b; check state
+  identity explicitly before sensitivity differencing.
+- Fixed-Ts sinestream supports a compatible explicit rad/s vector as well as
+  a range cell. Preserve Hz/rad/s metadata and adequate low-frequency cycles.
+- Independent injection can validate a clean analytical linearization. PRBS
+  does not automatically yield a meaningful LTI model under discontinuities.
+
+Rejected community generalizations include mandatory SPS-only libraries,
+fixed solver/gain values, NOT-only shoot-through protection, silent filters to
+break physical loops, and assuming `ee_lib` needs only a base Simscape license.
+Verify actual installed blocks and products. These decisions preserve the
+existing sensitivity-first tuning and model-verification authority.

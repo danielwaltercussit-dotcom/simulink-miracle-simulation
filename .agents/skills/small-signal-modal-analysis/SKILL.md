@@ -29,6 +29,8 @@ Treat the desktop lab archive as read-only ground truth. Especially useful:
 1. Confirm the operating point and parameter set.
 2. Obtain `A` from an existing math script, Symbolic Math Jacobian, or
    Simulink linearization.
+   For the latter, use [simulink-linearize](../simulink-linearize/SKILL.md) to
+   qualify I/O, state coverage, reduction, operating point, and release options.
 3. Record the state order before computing eigenvalues.
 4. Compute eigenvalues, damping ratios, damped frequencies, and participation
    factors where state names are available.

@@ -65,6 +65,11 @@ and bus conditions with the audited target. Read
 Read `references/adapter-contract.md` before changing build scripts or adding a
 new device family.
 
+Read [machine and converter contracts](references/machine-converter-contract.md)
+for VSC, DFIG, or SG bases, aggregation, power direction, shaft/angle mapping,
+initialization, and switched-control timing before transferring donor values
+or interpreting linearization evidence.
+
 ## Routing
 
 - Use `simulink-spec-validator` before choosing adapters.

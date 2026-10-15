@@ -29,6 +29,9 @@ conclusions grounded in inspected paths, logged signals, simulations, and checks
 
 ## Read When Needed
 
+- [Machine and converter contracts](../simulink-device-adapters/references/machine-converter-contract.md):
+  VSC, DFIG, and SG bases, power/angle conventions, initialization, and PWM
+  timing. Use before combining different device families or donor parameters.
 - [Converter fault analysis](../simulink-modeling-assistant/references/converter-fault-analysis.md):
   VSC/GFM recovery, VSG support, two-area/IEEE39 interaction, MMC harmonic and
   energy diagnosis. Filter by actual topology/control before selecting a card.

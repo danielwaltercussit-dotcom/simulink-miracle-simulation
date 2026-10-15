@@ -1,0 +1,3 @@
+interface:
+  display_name: "Bounded Simulink Frequency Response"
+  short_description: "Estimate frequency responses with qualified injections"

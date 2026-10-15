@@ -3,6 +3,12 @@
 Lookup tables for default PI sets, base values, and electrical constants.
 The full derivation is in `docs/MODELING_PATTERN_LIBRARY.md`.
 
+These values belong to the named pattern/donor, not to the device class in
+general. The copy instruction below applies only after a matching M-row and
+base/control contract have been confirmed. For a different donor, inspect its
+parameters and [machine/converter contract](../../simulink-device-adapters/references/machine-converter-contract.md)
+instead of overwriting plant ratings or applying these gains by default.
+
 ## Contents
 
 - DFIG, synchronous-machine, and multi-voltage base defaults.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Qualified Simulink Linearization"
+  short_description: "Extract state-space models with operating-point gates"

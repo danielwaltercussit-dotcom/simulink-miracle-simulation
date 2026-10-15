@@ -34,6 +34,11 @@ where available, modal evidence. Do not overclaim from spectral features alone.
 
 ## Workflow
 
+For a licensed Simulink Control Design path, use
+[simulink-frequency-response](../simulink-frequency-response/SKILL.md) for
+`frestimate` setup and frequency-unit/rate checks. The base-MATLAB callback
+sweep below remains the fallback; neither path owns final stability acceptance.
+
 1. Confirm the operating point and evidence source. When external frequency
    data is absent, create a temporary non-persistent injection hook or a copied
    probe model and run `scripts/analysis/run_frequency_injection_sweep.m`.

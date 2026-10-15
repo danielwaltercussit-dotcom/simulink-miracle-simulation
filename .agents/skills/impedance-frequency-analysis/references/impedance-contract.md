@@ -116,3 +116,7 @@ Distilled from the official SATK frequency-response workflow, reviewed
 - When using the existing base-MATLAB sweep helper instead of `frestimate`,
   retain the same scientific gates. Do not imply optional toolbox APIs or
   upstream behavior are already implemented by the local helper.
+- The installed [simulink-frequency-response](../../simulink-frequency-response/SKILL.md)
+  adds API details checked 2026-10-15: Hz/rad/s conversion, fixed-Ts-compatible
+  frequency selection, amplitude checks, and low-frequency coverage. Do not
+  shorten a sweep by silently removing the band containing the target mode.

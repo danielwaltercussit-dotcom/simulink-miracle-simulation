@@ -87,6 +87,9 @@ classify by request type:
 
 ## Read When Needed
 
+- [Machine and converter contracts](../simulink-device-adapters/references/machine-converter-contract.md)
+  - VSC/DFIG/SG base, sign, aggregation, and initialization checks before
+  transferring a donor or extracting a model-backed A matrix.
 - `references/converter-fault-analysis.md` - source-linked VSC/GFM/VSG,
   two-area/IEEE39 interaction, MMC harmonic/energy, and fault-recovery routes.
   Filter by controller, fidelity, and limiter state; paper cases are not local
@@ -108,6 +111,10 @@ classify by request type:
 
 Additional research-routing skills:
 
+- Use `simulink-linearize` for qualified model-backed A/B/C/D extraction and
+  `simulink-frequency-response` for the optional licensed `frestimate` route.
+  These supply API mechanics; modal, sensitivity, impedance, and verification
+  skills retain scientific acceptance. The base-MATLAB sweep remains available.
 - For user-authorized knowledge updates, use `research-paper-review` to check
   papers and `knowledge-graph-creation` to merge source-linked diagnostic
   relationships. These are maintenance skills, not mandatory simulation steps.
