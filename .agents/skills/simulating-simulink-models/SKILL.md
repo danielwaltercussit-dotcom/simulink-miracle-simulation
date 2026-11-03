@@ -13,6 +13,10 @@ Use this skill to generate simulation results for analysis. For persistent, reus
 
 ## When to Use
 
+When the requested experiment uses existing named structural variants, read
+[variant experiment boundary](variant-experiment-boundary.md) for release,
+activation, isolation, and restore rules. Ordinary runs do not need this route.
+
 - Running a Simulink model from a MATLAB script
 - Configuring simulation parameters (StopTime, solver, etc.) programmatically
 - Passing input signals to root-level Inport blocks

@@ -22,6 +22,10 @@ p = generate_fault_scenario_patch("voltage_sag_0p5pu_200ms", ...
 
 Read `references/scenario-catalog.md` to pick a scenario.
 
+## GFL VSC经验补充（2026-11-02）
+
+GFL选相跌落/升高与正负序输入，参见[选相语义条款](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)的VSC-R06；源相对地、装置端口和真实故障阻抗需区分。
+
 ## Scenario Card
 
 Each scenario must specify:

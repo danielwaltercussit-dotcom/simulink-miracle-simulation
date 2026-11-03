@@ -21,6 +21,10 @@ r = inspect_device_adapter_contract("nebus39_dfig2_weakgrid_v0", ...
 assert(r.passed)
 ```
 
+## GFL VSC经验补充（2026-11-02）
+
+VSC的N聚合、单机参数所有权、复制自包含与状态接口，参见[GFL封装条款](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)的VSC-R01/R02/R07。
+
 ## Adapter Contract
 
 Each reusable device template or copied donor subsystem should expose:

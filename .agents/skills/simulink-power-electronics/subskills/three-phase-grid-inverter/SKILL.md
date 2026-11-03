@@ -13,6 +13,9 @@ Use the root `simulink-power-electronics` workflow first, then load this subskil
 
 ## Resource Map
 
+- 平均GFL的并联、正负序FRT和保护使能，参见[GFL经验条款](../../../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)；不替代本子技能的开关级SVPWM验证。
+
+
 - Read `references/svpwm-three-level.md` for T-type or NPC three-level SVPWM logic, sector handling, and gate mapping.
 - Read `references/table7-state-vectors.md` when auditing or rebuilding the 36 small-sector state-vector table.
 - Read `references/vsg-control-notes.md` for VSG (Virtual Synchronous Generator) control implementation, PI tuning experience, power calculation verification, and feedforward formulas specific to grid-connected inverters.

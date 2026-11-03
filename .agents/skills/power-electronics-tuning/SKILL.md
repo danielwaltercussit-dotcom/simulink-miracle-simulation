@@ -35,6 +35,10 @@ Read `references/closed-loop-experience-library.md` before selecting a tuning
 family for an established model. After each reviewed tuning round, add one
 compact reusable record there; do not append raw logs or unreviewed guesses.
 
+## GFL VSC经验补充（2026-11-02）
+
+GFL故障恢复和DC/Q外环交接，参见[恢复及跟踪条款](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)的VSC-R03/R04；有限增益跟踪与限幅不构成严格无扰证据。
+
 ## Rules
 
 - Tune only registered knobs.

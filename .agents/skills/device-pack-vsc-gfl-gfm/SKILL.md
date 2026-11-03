@@ -17,6 +17,10 @@ existing evidence chains (`weak-grid-scr-scenario`, `small-signal-modal-analysis
 `ibr-model-validation-evidence`) and records, per dimension, whether the
 assumption is documented and whether the named evidence artifact is present.
 
+## GFL VSC经验补充（2026-11-02）
+
+GFL并联封装、正负序FRT、保护使能、稳态初始化或高穿交接任务，先读[经验补充条款](references/gfl-frt-wrapper-playbook.md)。需要核对案例值与验收边界时再读[三VSC冻结案例](references/three-vsc-case-evidence.md)，不要把案例参数当作通用定值。
+
 ## Core Rule
 
 A VSC case is only as trustworthy as its weakest documented dimension. Record

@@ -17,6 +17,10 @@ Use it before saying a model is:
 - snapshot-ready for the user's configured AI-summary/export folder
 - AI-in-loop PASS
 
+## GFL VSC经验补充（2026-11-02）
+
+GFL保护、限流、初始点及FRT回归，参见[分层验证条款](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)的VSC-R05/R07/R08；恢复、参考约束、实际电流和切换跳变分别给出结论。
+
 ## Core Rule
 
 Do not declare PASS from a narrative report alone. PASS requires a reusable

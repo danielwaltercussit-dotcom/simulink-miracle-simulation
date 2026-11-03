@@ -20,6 +20,10 @@ The goal is **token economy**: when a request is similar to one of the
 M01–M08 reference models, reuse their parameters and layout instead of
 re-deriving from first principles.
 
+## GFL VSC经验补充（2026-11-02）
+
+GFL VSC结构/封装/FRT任务，在现有模式匹配后按需转到[GFL经验补充](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)；案例只提供参数来源与失败边界，不授权覆盖目标已有定值。
+
 ## Trigger
 
 - "用 M01 / M03 / M05 / M07 的参数建一个 ..."

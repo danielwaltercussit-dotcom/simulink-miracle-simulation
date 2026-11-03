@@ -29,6 +29,9 @@ conclusions grounded in inspected paths, logged signals, simulations, and checks
 
 ## Read When Needed
 
+- [GFL VSC聚合、保护与恢复经验](../device-pack-vsc-gfl-gfm/references/gfl-frt-wrapper-playbook.md)：按需读取条款；案例值与无扰切换边界分开核对。
+
+
 - [Machine and converter contracts](../simulink-device-adapters/references/machine-converter-contract.md):
   VSC, DFIG, and SG bases, power/angle conventions, initialization, and PWM
   timing. Use before combining different device families or donor parameters.

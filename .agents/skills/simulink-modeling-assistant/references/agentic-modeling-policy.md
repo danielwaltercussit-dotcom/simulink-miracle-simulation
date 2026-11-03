@@ -127,3 +127,27 @@ fixed solver/gain values, NOT-only shoot-through protection, silent filters to
 break physical loops, and assuming `ee_lib` needs only a base Simscape license.
 Verify actual installed blocks and products. These decisions preserve the
 existing sensitivity-first tuning and model-verification authority.
+
+## Targeted GitHub Gap Review (2026-11-03)
+
+Web search covered power-system, impedance, converter, and DFIG skill terms;
+repository API trees supplemented indexed results. This is a bounded search,
+not a claim to enumerate all GitHub content. Existing VSC-K entries and their
+single-source device-pack evidence remain unchanged.
+
+| Candidate / inspected revision | Gap decision |
+|---|---|
+| MathWorks SATK `f7330c565877a2bce42eb029baa988398e0dc415` (2026-10-29) | New variant-management workflow distilled into the simulation skill; no runtime/toolkit upgrade or bulk installation |
+| datathings/marketplace `16729afb6224050a7f6ef2c8511dcfc9b1f5cab4` (2026-10-26) | Pandapower skill and power-flow reference reviewed; add independent network crosscheck, not dynamic-model substitution; Apache-2.0 repository |
+| zunyiqingfeng-code/skills `fd9f8c5e6fe8b5f9529dc05b4e21890063087453` | Catalog has Simulink builder but no verified applicable license; no copying |
+| qcsui/HiLCoder `9819b4cb6cfed83cc8b654d583cf114dd746e0d7` | Current SKILL.md declares PolyForm Noncommercial, unlike older MIT descriptions; FPGA-specific runtime not installed |
+| npuzsy/simulink-power-electronics | Search result scope overlaps the existing local derivative; no duplicate skill |
+| ndpvt-web/arxiv-claude-skills ProOPF entry | Search-level candidate only; no primary-method or implementation verification, no admission |
+
+Read only the triggered addition:
+[network crosscheck](../../weak-grid-scr-scenario/references/network-crosscheck.md)
+or [variant experiment boundary](../../simulating-simulink-models/variant-experiment-boundary.md).
+Both are source-reviewed guidance with local model status `untested`. No new
+database, generated index, model copy, package dependency, or global skill was
+added. Future executions still require qualified operating points, mathematical
+sensitivity where applicable, and deterministic model verification.

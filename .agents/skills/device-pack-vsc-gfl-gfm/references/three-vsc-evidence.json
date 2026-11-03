@@ -1,0 +1,235 @@
+{
+  "id": "VSC-LOCAL-20261101",
+  "distilled_on": "2026-11-02",
+  "source_root_alias": "VSC_EXPERIENCE_SOURCE_ROOT",
+  "source_root_resolution": "Caller supplies original modeling-project root; raw files are optional provenance, not skill execution dependencies.",
+  "evidence_level": "Frozen local model checks; not manufacturer certification, national-standard compliance, or validation of future targets.",
+  "models": [
+    {
+      "model": "VSC_GFL_300_huawei",
+      "frozen_model_sha256": "5f94718f4ad8cb05ac91f62ce7e32d2972d9ca874fae8c797aae84754e6bd2c5",
+      "parameters_snapshot": {
+        "N": "1",
+        "Pnom_unit": "300000",
+        "Clink_unit": "0.0019849999999999998",
+        "Vnom_ac": "800",
+        "Vnom_dc": "1300",
+        "Ts_Control": "1.0000000000000001e-05",
+        "FRT_Imax": "1.1",
+        "FRT_Iqmax": "1.06",
+        "FRT_LV_enter": "0.90",
+        "FRT_LV_exit": "0.95",
+        "FRT_HV_enter": "1.10",
+        "FRT_HV_exit": "1.05",
+        "FRT_LVRecoveryRamp": "1",
+        "FRT_IdRamp": "0.3",
+        "FRT_PdcRamp": "0.3",
+        "FRT_TrackingGain": "100",
+        "FRT_Klv": "2",
+        "FRT_Khv": "1.5",
+        "FRT_KlvAsym": "2",
+        "FRT_KhvAsym": "2",
+        "FRT_Kneg": "1",
+        "FRT_K1P": "1",
+        "FRT_ExitTime": "0.020",
+        "OC_CurrentLimit": "1.2",
+        "OC_AllowedTime": "4"
+      },
+      "normal_regression_max_delta": 0,
+      "frt_cases": 5,
+      "protection_selection_cases": 5,
+      "saved_initial_state_count": 33,
+      "static_audit_pass": true,
+      "handover_jumps": [
+        {
+          "case": "symmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            -0.07934696612704772,
+            0.001774801380879285,
+            0
+          ]
+        },
+        {
+          "case": "asymmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            -0.04494084466646786,
+            0.0031261213621795072,
+            0
+          ]
+        }
+      ],
+      "source_files": [
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_300_huawei/verification.json",
+          "sha256": "3839af320fdd54d428241160f027112e78f6c6a16ceba6afbe0aa6d5178b0012"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_300_huawei/enable_verification.json",
+          "sha256": "a984195f9163ab11584638b6b1a294fdfe5607dc98337e899ea530657dc2889f"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_300_huawei/enable_static_audit.json",
+          "sha256": "97994455bbaa08bb43a45c0fd4eb2477fc824f0b39340932afa9f3618bd148e0"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_300_huawei/reference_unit_tests.json",
+          "sha256": "28fd3f6030d30fcb19ce6bf72269403f853dcd14b3797a2c17a39d4210da56e9"
+        }
+      ]
+    },
+    {
+      "model": "VSC_GFL_320_yangguang",
+      "frozen_model_sha256": "742d870d52bd5c047162a6e46ce5352ee9824b2979605a2e55a4991478b0d1d0",
+      "parameters_snapshot": {
+        "N": "1",
+        "Pnom_unit": "320000",
+        "Clink_unit": "0.0022799999999999999",
+        "Vnom_ac": "800",
+        "Vnom_dc": "1300",
+        "Ts_Control": "1.0000000000000001e-05",
+        "FRT_Imax": "1.06",
+        "FRT_NormalImax": "1.1",
+        "FRT_Iqmax": "1.05",
+        "FRT_LV_enter": ".90",
+        "FRT_LV_exit": ".92",
+        "FRT_HV_enter": "1.10",
+        "FRT_HV_exit": "1.08",
+        "FRT_LVRecoveryRamp": "1",
+        "FRT_IdRamp": "0.3",
+        "FRT_PdcRamp": "0.3",
+        "FRT_TrackingGain": "100",
+        "FRT_Klv": "1.5",
+        "FRT_Khv": "1.5",
+        "FRT_KlvAsym": "1.5",
+        "FRT_KhvAsym": "1.5",
+        "FRT_Kneg": "1",
+        "FRT_K1P": "1",
+        "FRT_ExitTime": "0",
+        "YG_Overcurrent": "1.32",
+        "YG_OvercurrentDelay": ".1"
+      },
+      "normal_regression_max_delta": 0,
+      "frt_cases": 5,
+      "protection_selection_cases": 5,
+      "saved_initial_state_count": 33,
+      "static_audit_pass": true,
+      "handover_jumps": [
+        {
+          "case": "symmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            0.7074462266190042,
+            0.017790429776748985,
+            0
+          ]
+        },
+        {
+          "case": "asymmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            0.7216955732752316,
+            0.016811896255774117,
+            0
+          ]
+        }
+      ],
+      "source_files": [
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_yangguang/verification.json",
+          "sha256": "8a413999b6805d5bcf0f1173768b6fe474e28d8fe1c8fba178a32994710b2baa"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_yangguang/enable_verification.json",
+          "sha256": "d85d04af6eaef2f11440cc269ee78aa3aef405fbeafd621238883d32a2c26395"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_yangguang/enable_static_audit.json",
+          "sha256": "9c9a5289845a3250fed488dcb87732dea469831d8679b5c24f94ed78fe6e710a"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_yangguang/reference_unit_tests.json",
+          "sha256": "3a731390c6a7f61fb14c81da2b7654b5c0a1f220b39adb52b4a9258076b3e2df"
+        }
+      ]
+    },
+    {
+      "model": "VSC_GFL_320_zhongche",
+      "frozen_model_sha256": "93a6b681b8b260670bf636df574741adde56645fa2a4bcd8fbf49396195d440f",
+      "parameters_snapshot": {
+        "N": "1",
+        "Pnom_unit": "320000",
+        "Clink_unit": "0.00282",
+        "Vnom_ac": "800",
+        "Vnom_dc": "1300",
+        "Ts_Control": "1.0000000000000001e-05",
+        "FRT_Imax": "1.10",
+        "FRT_Iqmax": "1.065",
+        "FRT_LV_enter": "0.90",
+        "FRT_LV_exit": "0.95",
+        "FRT_HV_enter": "1.10",
+        "FRT_HV_exit": "1.05",
+        "FRT_LVRecoveryRamp": "1",
+        "FRT_IdRamp": "0.3",
+        "FRT_PdcRamp": "0.3",
+        "FRT_TrackingGain": "100",
+        "FRT_Klv": "1.8",
+        "FRT_Khv": "1.8",
+        "FRT_KlvAsym": "2",
+        "FRT_KhvAsym": "2",
+        "FRT_Kneg": "1",
+        "FRT_K1P": "1",
+        "FRT_ExitTime": "0.020",
+        "OC_CurrentLimit": "1.2",
+        "OC_AllowedTime": "4"
+      },
+      "normal_regression_max_delta": 0,
+      "frt_cases": 5,
+      "protection_selection_cases": 5,
+      "saved_initial_state_count": 33,
+      "static_audit_pass": true,
+      "handover_jumps": [
+        {
+          "case": "symmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            -0.15692934961332583,
+            0.0025811435882754303,
+            0
+          ]
+        },
+        {
+          "case": "asymmetric_high",
+          "delta_id_iq_iqneg_pu": [
+            -0.04738990566813894,
+            0.0028955713843200072,
+            0
+          ]
+        }
+      ],
+      "source_files": [
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_zhongche/verification.json",
+          "sha256": "86bd93ac52ea9bab798e3102d3cfe2b2d1d7457382dc6ab528e9d0147850b0d7"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_zhongche/enable_verification.json",
+          "sha256": "b504ee475f3d3d1d010a977d83e4bfdad6c51524d48b3b00506416df1c36e2d4"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_zhongche/enable_static_audit.json",
+          "sha256": "104db1f90e6ea8606abc80053d2c32a8533e34e606b5947efe97d91c65ebd4f1"
+        },
+        {
+          "path": "build/reports/trip_ramp_20261101_151005/VSC_GFL_320_zhongche/reference_unit_tests.json",
+          "sha256": "46f917e3ffaddc220c25564cdef346d77cdebec23a932ce2f957144f75e11a81"
+        }
+      ]
+    }
+  ],
+  "scenario_source": {
+    "id": "VSC-PHASE-20261101",
+    "relative_report_root": "build/reports/scenario_phase_20261101_142122",
+    "legacy_exact_comparisons": 11208,
+    "selected_phase_function_checks": 56,
+    "pass": true,
+    "source_sha256": "ae285b92c0e90aea15a380c233e51065daf9e3851edab59be020a8241755d5ae",
+    "scope": "Grounded voltage-source amplitude scenarios, not physical fault impedances."
+  }
+}

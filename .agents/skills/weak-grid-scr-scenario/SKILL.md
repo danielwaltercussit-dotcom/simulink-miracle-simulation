@@ -17,6 +17,10 @@ accepting pass/fail conclusions.
 
 ## Workflow
 
+For independent topology/load-flow/short-circuit corroboration, read
+[network crosscheck](references/network-crosscheck.md). Match source partitions
+before comparing SCR; static-network agreement does not validate converter dynamics.
+
 1. Identify the converter bus, rated MVA, and network equivalent being stressed.
 2. Choose SCR or ESCR values and the method used to realize them.
 3. Add control sensitivity axes only when needed: PLL gain scale, VSG inertia,

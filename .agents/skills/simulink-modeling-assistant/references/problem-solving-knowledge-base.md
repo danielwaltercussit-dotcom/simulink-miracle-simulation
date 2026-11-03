@@ -449,3 +449,7 @@ new primary result changes its mathematical boundary, or local evidence shows
 the rule is incomplete. Update the existing entry and provenance in place.
 Do not create a new report, bundle, manifest, copied repository, or vector
 database merely because a source was reviewed.
+
+## GFL VSC局部模型经验
+
+KB-01/02/08/11/13遇到GFL聚合、序分量、保护与恢复问题时，按需读取[三VSC案例关系VSC-K01～K08](../../device-pack-vsc-gfl-gfm/references/three-vsc-case-evidence.md)。该页独立保存局部参数与反例，不改写本路由的通用判据；原始证据留在来源工程。
